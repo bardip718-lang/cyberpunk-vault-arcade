@@ -16,6 +16,8 @@ import { CardGame } from "@/components/card-game";
 import { AdminConsole } from "@/components/admin-console";
 import { AuthModal } from "@/components/auth-modal";
 import { TopUpModal } from "@/components/topup-modal";
+import { WithdrawModal } from "@/components/withdraw-modal";
+import { WalletView } from "@/components/wallet-view";
 import { useVault } from "@/lib/vault-store";
 
 export const Route = createFileRoute("/")({
