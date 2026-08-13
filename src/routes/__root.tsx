@@ -86,6 +86,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Cyberpunk gaming and reward vault with reels, card match and UPI top-ups." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "google-site-verification", content: "TPalwJp-PowMkRqDEiW1ywWLzH00JplehfBmxYWfaxk" },
+
     ],
     links: [
       {
