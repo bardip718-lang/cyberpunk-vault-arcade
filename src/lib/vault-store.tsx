@@ -233,6 +233,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       signOut,
       addScore,
       submitOrder,
+      submitWithdrawal,
       resolveOrder,
     }),
     [
