@@ -1,6 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Gamepad2, LogIn, LogOut, ShieldCheck, Wallet } from "lucide-react";
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Gamepad2,
+  LogIn,
+  LogOut,
+  ShieldCheck,
+  Wallet,
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ReelGame } from "@/components/reel-game";
@@ -8,6 +16,8 @@ import { CardGame } from "@/components/card-game";
 import { AdminConsole } from "@/components/admin-console";
 import { AuthModal } from "@/components/auth-modal";
 import { TopUpModal } from "@/components/topup-modal";
+import { WithdrawModal } from "@/components/withdraw-modal";
+import { WalletView } from "@/components/wallet-view";
 import { useVault } from "@/lib/vault-store";
 
 export const Route = createFileRoute("/")({
@@ -33,7 +43,12 @@ function Index() {
   const { user, orders, signOut } = useVault();
   const [authOpen, setAuthOpen] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
   const pending = orders.filter((o) => o.status === "pending").length;
+
+  const openDeposit = () => (user ? setTopUpOpen(true) : setAuthOpen(true));
+  const openWithdraw = () => (user ? setWithdrawOpen(true) : setAuthOpen(true));
+
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-16 pt-6">
@@ -48,17 +63,18 @@ function Index() {
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Score balance</p>
             <p className="font-display text-xl text-primary">{user ? user.balance : 0}</p>
           </div>
+          <Button onClick={openDeposit} className="font-display tracking-wide">
+            <ArrowDownToLine className="size-4" /> Deposit
+          </Button>
+          <Button variant="secondary" onClick={openWithdraw} className="font-display tracking-wide">
+            <ArrowUpFromLine className="size-4" /> Withdraw
+          </Button>
           {user ? (
-            <>
-              <Button variant="secondary" onClick={() => setTopUpOpen(true)}>
-                <Wallet className="size-4" /> Top up
-              </Button>
-              <Button variant="ghost" onClick={signOut} aria-label="Sign out">
-                <LogOut className="size-4" /> {user.guest ? "Exit guest" : "Sign out"}
-              </Button>
-            </>
+            <Button variant="ghost" onClick={signOut} aria-label="Sign out">
+              <LogOut className="size-4" /> {user.guest ? "Exit guest" : "Sign out"}
+            </Button>
           ) : (
-            <Button onClick={() => setAuthOpen(true)}>
+            <Button variant="ghost" onClick={() => setAuthOpen(true)}>
               <LogIn className="size-4" /> Sign in
             </Button>
           )}
@@ -74,21 +90,28 @@ function Index() {
       )}
 
       <Tabs defaultValue="reels">
-        <TabsList className="mb-5 grid w-full grid-cols-3 bg-secondary/60">
+        <TabsList className="mb-5 grid w-full grid-cols-4 bg-secondary/60">
           <TabsTrigger value="reels">
             <Gamepad2 className="mr-1 size-4" /> Reels
           </TabsTrigger>
           <TabsTrigger value="cards">Data Match</TabsTrigger>
+          <TabsTrigger value="wallet">
+            <Wallet className="mr-1 size-4" /> Wallet
+          </TabsTrigger>
           <TabsTrigger value="admin">
             <ShieldCheck className="mr-1 size-4" /> Admin{pending > 0 ? ` (${pending})` : ""}
           </TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="reels">
           <ReelGame />
         </TabsContent>
         <TabsContent value="cards">
           <CardGame />
+        </TabsContent>
+        <TabsContent value="wallet">
+          <WalletView onDeposit={openDeposit} onWithdraw={openWithdraw} />
         </TabsContent>
         <TabsContent value="admin">
           <AdminConsole />
@@ -97,6 +120,7 @@ function Index() {
 
       <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
       <TopUpModal open={topUpOpen} onOpenChange={setTopUpOpen} />
+      <WithdrawModal open={withdrawOpen} onOpenChange={setWithdrawOpen} />
     </main>
   );
 }

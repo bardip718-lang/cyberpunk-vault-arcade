@@ -25,7 +25,10 @@ export type Order = {
   utr: string;
   status: "pending" | "approved" | "rejected";
   createdAt: number;
+  type?: "deposit" | "withdrawal";
+  destination?: string;
 };
+
 
 type Account = { email: string; password: string; name: string; balance: number };
 
@@ -60,6 +63,7 @@ type Ctx = {
   signOut: () => void;
   addScore: (delta: number) => void;
   submitOrder: (amount: number, utr: string) => void;
+  submitWithdrawal: (amount: number, destination: string) => void;
   resolveOrder: (id: string, status: "approved" | "rejected") => void;
 };
 
@@ -167,10 +171,30 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         utr,
         status: "pending",
         createdAt: Date.now(),
+        type: "deposit",
       };
       return { ...s, orders: [order, ...s.orders] };
     });
   }, []);
+
+  const submitWithdrawal = useCallback((amount: number, destination: string) => {
+    setState((s) => {
+      if (!s.user) return s;
+      const order: Order = {
+        id: uid(),
+        userId: s.user.id,
+        userName: s.user.guest ? `${s.user.name} (guest)` : `${s.user.name} · ${s.user.email}`,
+        amount,
+        utr: "—",
+        status: "pending",
+        createdAt: Date.now(),
+        type: "withdrawal",
+        destination,
+      };
+      return { ...s, orders: [order, ...s.orders] };
+    });
+  }, []);
+
 
   const resolveOrder = useCallback((id: string, status: "approved" | "rejected") => {
     setState((s) => {
@@ -180,17 +204,18 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       let accounts = s.accounts;
       let user = s.user;
       if (status === "approved") {
+        const delta = order.type === "withdrawal" ? -order.amount : order.amount;
         if (accounts[order.userId]) {
           accounts = {
             ...accounts,
             [order.userId]: {
               ...accounts[order.userId]!,
-              balance: accounts[order.userId]!.balance + order.amount,
+              balance: Math.max(0, accounts[order.userId]!.balance + delta),
             },
           };
         }
         if (user && user.id === order.userId) {
-          user = { ...user, balance: user.balance + order.amount };
+          user = { ...user, balance: Math.max(0, user.balance + delta) };
         }
       }
       return { orders, accounts, user };
@@ -208,6 +233,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       signOut,
       addScore,
       submitOrder,
+      submitWithdrawal,
       resolveOrder,
     }),
     [
@@ -220,6 +246,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       signOut,
       addScore,
       submitOrder,
+      submitWithdrawal,
       resolveOrder,
     ],
   );
