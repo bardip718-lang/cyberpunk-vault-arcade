@@ -171,10 +171,30 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         utr,
         status: "pending",
         createdAt: Date.now(),
+        type: "deposit",
       };
       return { ...s, orders: [order, ...s.orders] };
     });
   }, []);
+
+  const submitWithdrawal = useCallback((amount: number, destination: string) => {
+    setState((s) => {
+      if (!s.user) return s;
+      const order: Order = {
+        id: uid(),
+        userId: s.user.id,
+        userName: s.user.guest ? `${s.user.name} (guest)` : `${s.user.name} · ${s.user.email}`,
+        amount,
+        utr: "—",
+        status: "pending",
+        createdAt: Date.now(),
+        type: "withdrawal",
+        destination,
+      };
+      return { ...s, orders: [order, ...s.orders] };
+    });
+  }, []);
+
 
   const resolveOrder = useCallback((id: string, status: "approved" | "rejected") => {
     setState((s) => {
