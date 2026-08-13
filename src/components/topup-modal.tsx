@@ -61,8 +61,8 @@ export function TopUpModal({ open, onOpenChange }: { open: boolean; onOpenChange
           <img
             src={QR_SRC}
             alt={`UPI payment QR code for ${UPI_ID}`}
-            width={200}
-            height={200}
+            width={300}
+            height={300}
             loading="lazy"
             className="rounded-md bg-background p-2"
           />
