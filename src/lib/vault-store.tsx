@@ -204,17 +204,18 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       let accounts = s.accounts;
       let user = s.user;
       if (status === "approved") {
+        const delta = order.type === "withdrawal" ? -order.amount : order.amount;
         if (accounts[order.userId]) {
           accounts = {
             ...accounts,
             [order.userId]: {
               ...accounts[order.userId]!,
-              balance: accounts[order.userId]!.balance + order.amount,
+              balance: Math.max(0, accounts[order.userId]!.balance + delta),
             },
           };
         }
         if (user && user.id === order.userId) {
-          user = { ...user, balance: user.balance + order.amount };
+          user = { ...user, balance: Math.max(0, user.balance + delta) };
         }
       }
       return { orders, accounts, user };
