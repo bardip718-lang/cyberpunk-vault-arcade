@@ -63,6 +63,7 @@ type Ctx = {
   signOut: () => void;
   addScore: (delta: number) => void;
   submitOrder: (amount: number, utr: string) => void;
+  submitWithdrawal: (amount: number, destination: string) => void;
   resolveOrder: (id: string, status: "approved" | "rejected") => void;
 };
 
