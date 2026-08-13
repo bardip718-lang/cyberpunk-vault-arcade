@@ -43,7 +43,12 @@ function Index() {
   const { user, orders, signOut } = useVault();
   const [authOpen, setAuthOpen] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
   const pending = orders.filter((o) => o.status === "pending").length;
+
+  const openDeposit = () => (user ? setTopUpOpen(true) : setAuthOpen(true));
+  const openWithdraw = () => (user ? setWithdrawOpen(true) : setAuthOpen(true));
+
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-16 pt-6">
