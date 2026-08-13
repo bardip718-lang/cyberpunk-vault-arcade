@@ -90,7 +90,9 @@ export function AdminConsole() {
                 className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-4 py-2 text-sm"
               >
                 <span className="truncate">{o.userName}</span>
-                <span className="text-muted-foreground">UTR {o.utr}</span>
+                <span className="text-muted-foreground">
+                  {o.type === "withdrawal" ? `Payout ${o.destination}` : `UTR ${o.utr}`}
+                </span>
                 <span className="font-display">₹{o.amount}</span>
                 <StatusBadge status={o.status} />
               </li>
