@@ -35,10 +35,19 @@ export function AdminConsole() {
                 className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-secondary/40 p-4"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-display text-sm">{o.userName}</p>
+                  <p className="truncate font-display text-sm">
+                    <Badge variant={o.type === "withdrawal" ? "destructive" : "secondary"} className="mr-2">
+                      {o.type === "withdrawal" ? "Withdraw" : "Deposit"}
+                    </Badge>
+                    {o.userName}
+                  </p>
                   <p className="text-sm text-muted-foreground">
-                    UTR <span className="text-primary">{o.utr}</span> ·{" "}
-                    {new Date(o.createdAt).toLocaleString()}
+                    {o.type === "withdrawal" ? (
+                      <>Payout to <span className="text-primary">{o.destination}</span></>
+                    ) : (
+                      <>UTR <span className="text-primary">{o.utr}</span></>
+                    )}{" "}
+                    · {new Date(o.createdAt).toLocaleString()}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
