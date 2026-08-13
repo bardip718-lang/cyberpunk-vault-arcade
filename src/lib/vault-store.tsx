@@ -25,7 +25,10 @@ export type Order = {
   utr: string;
   status: "pending" | "approved" | "rejected";
   createdAt: number;
+  type?: "deposit" | "withdrawal";
+  destination?: string;
 };
+
 
 type Account = { email: string; password: string; name: string; balance: number };
 
