@@ -1,6 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Gamepad2, LogIn, LogOut, ShieldCheck, Wallet } from "lucide-react";
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Gamepad2,
+  LogIn,
+  LogOut,
+  ShieldCheck,
+  Wallet,
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ReelGame } from "@/components/reel-game";
