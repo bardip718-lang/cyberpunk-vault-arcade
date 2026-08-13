@@ -110,6 +110,9 @@ function Index() {
         <TabsContent value="cards">
           <CardGame />
         </TabsContent>
+        <TabsContent value="wallet">
+          <WalletView onDeposit={openDeposit} onWithdraw={openWithdraw} />
+        </TabsContent>
         <TabsContent value="admin">
           <AdminConsole />
         </TabsContent>
@@ -117,6 +120,7 @@ function Index() {
 
       <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
       <TopUpModal open={topUpOpen} onOpenChange={setTopUpOpen} />
+      <WithdrawModal open={withdrawOpen} onOpenChange={setWithdrawOpen} />
     </main>
   );
 }
