@@ -63,17 +63,18 @@ function Index() {
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Score balance</p>
             <p className="font-display text-xl text-primary">{user ? user.balance : 0}</p>
           </div>
+          <Button onClick={openDeposit} className="font-display tracking-wide">
+            <ArrowDownToLine className="size-4" /> Deposit
+          </Button>
+          <Button variant="secondary" onClick={openWithdraw} className="font-display tracking-wide">
+            <ArrowUpFromLine className="size-4" /> Withdraw
+          </Button>
           {user ? (
-            <>
-              <Button variant="secondary" onClick={() => setTopUpOpen(true)}>
-                <Wallet className="size-4" /> Top up
-              </Button>
-              <Button variant="ghost" onClick={signOut} aria-label="Sign out">
-                <LogOut className="size-4" /> {user.guest ? "Exit guest" : "Sign out"}
-              </Button>
-            </>
+            <Button variant="ghost" onClick={signOut} aria-label="Sign out">
+              <LogOut className="size-4" /> {user.guest ? "Exit guest" : "Sign out"}
+            </Button>
           ) : (
-            <Button onClick={() => setAuthOpen(true)}>
+            <Button variant="ghost" onClick={() => setAuthOpen(true)}>
               <LogIn className="size-4" /> Sign in
             </Button>
           )}
