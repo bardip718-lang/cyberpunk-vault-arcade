@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useVault } from "@/lib/vault-store";
 import { toast } from "sonner";
+import depositQrAsset from "@/assets/deposit-qr.png.asset.json";
 
 const UPI_ID = "7719254845@ybl";
-const QR_SRC = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi%3A%2F%2Fpay%3Fpa%3D7719254845%40ybl%26pn%3DGameVault%26cu%3DINR";
+const QR_SRC = depositQrAsset.url;
 const PRESETS = [100, 250, 500, 1000];
 
 export function TopUpModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
