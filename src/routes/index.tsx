@@ -90,15 +90,19 @@ function Index() {
       )}
 
       <Tabs defaultValue="reels">
-        <TabsList className="mb-5 grid w-full grid-cols-3 bg-secondary/60">
+        <TabsList className="mb-5 grid w-full grid-cols-4 bg-secondary/60">
           <TabsTrigger value="reels">
             <Gamepad2 className="mr-1 size-4" /> Reels
           </TabsTrigger>
           <TabsTrigger value="cards">Data Match</TabsTrigger>
+          <TabsTrigger value="wallet">
+            <Wallet className="mr-1 size-4" /> Wallet
+          </TabsTrigger>
           <TabsTrigger value="admin">
             <ShieldCheck className="mr-1 size-4" /> Admin{pending > 0 ? ` (${pending})` : ""}
           </TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="reels">
           <ReelGame />
