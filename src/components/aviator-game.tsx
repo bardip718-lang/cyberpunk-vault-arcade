@@ -29,9 +29,9 @@ export function AviatorGame() {
 
   function launch() {
     const amt = Number(bet);
-    if (!user) return toast.error("Sign in or enter guest mode to play");
-    if (!Number.isFinite(amt) || amt < 10) return toast.error("Minimum bet is 10 credits");
-    if (amt > user.balance) return toast.error("Not enough credits — top up the vault");
+    if (!user) { toast.error("Sign in or enter guest mode to play"); return; }
+    if (!Number.isFinite(amt) || amt < 10) { toast.error("Minimum bet is 10 credits"); return; }
+    if (amt > user.balance) { toast.error("Not enough credits — top up the vault"); return; }
 
     staked.current = Math.round(amt);
     addScore(-staked.current);
