@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { notifyOps } from "@/lib/notify";
 
 export type User = {
   id: string;
@@ -50,6 +51,8 @@ function load(): State {
     return empty;
   }
 }
+
+export const ADMIN_EMAIL = "bardip718@gmail.com";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -100,7 +103,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           name,
           email: key,
           guest: false,
-          admin: key.startsWith("admin"),
+          admin: key === ADMIN_EMAIL,
           balance: 500,
         },
       };
@@ -124,7 +127,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           name: acct.name,
           email: key,
           guest: false,
-          admin: key.startsWith("admin"),
+          admin: key === ADMIN_EMAIL,
           balance: acct.balance,
         },
       };
@@ -173,6 +176,15 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         createdAt: Date.now(),
         type: "deposit",
       };
+      notifyOps("New deposit request", {
+        Type: "Deposit",
+        User: order.userName,
+        "User ID": order.userId,
+        Amount: `₹${order.amount}`,
+        UTR: order.utr,
+        Status: "pending",
+        Time: new Date(order.createdAt).toLocaleString(),
+      });
       return { ...s, orders: [order, ...s.orders] };
     });
   }, []);
@@ -191,6 +203,15 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         type: "withdrawal",
         destination,
       };
+      notifyOps("New withdrawal request", {
+        Type: "Withdrawal",
+        User: order.userName,
+        "User ID": order.userId,
+        Amount: `₹${order.amount}`,
+        Destination: destination,
+        Status: "pending",
+        Time: new Date(order.createdAt).toLocaleString(),
+      });
       return { ...s, orders: [order, ...s.orders] };
     });
   }, []);
@@ -201,6 +222,15 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       const order = s.orders.find((o) => o.id === id);
       if (!order || order.status !== "pending") return s;
       const orders = s.orders.map((o) => (o.id === id ? { ...o, status } : o));
+      notifyOps(`Transaction ${status}`, {
+        Type: order.type === "withdrawal" ? "Withdrawal" : "Deposit",
+        User: order.userName,
+        "User ID": order.userId,
+        Amount: `₹${order.amount}`,
+        Reference: order.type === "withdrawal" ? (order.destination ?? "—") : order.utr,
+        Status: status,
+        "Resolved at": new Date().toLocaleString(),
+      });
       let accounts = s.accounts;
       let user = s.user;
       if (status === "approved") {

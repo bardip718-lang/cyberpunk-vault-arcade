@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useVault, type Order } from "@/lib/vault-store";
 import { toast } from "sonner";
+import { useEffect, useState } from "react";
+import { readNotificationLog, OPS_EMAIL, type NotificationEntry } from "@/lib/notify";
 
 function StatusBadge({ status }: { status: Order["status"] }) {
   if (status === "approved") return <Badge className="bg-success text-success-foreground">Approved</Badge>;
@@ -12,6 +14,15 @@ function StatusBadge({ status }: { status: Order["status"] }) {
 
 export function AdminConsole() {
   const { orders, resolveOrder } = useVault();
+  const [log, setLog] = useState<NotificationEntry[]>([]);
+
+  useEffect(() => {
+    const sync = () => setLog(readNotificationLog());
+    sync();
+    window.addEventListener("win1-notification", sync);
+    return () => window.removeEventListener("win1-notification", sync);
+  }, [orders]);
+
   const pending = orders.filter((o) => o.status === "pending");
   const history = orders.filter((o) => o.status !== "pending");
 
@@ -95,6 +106,29 @@ export function AdminConsole() {
                 </span>
                 <span className="font-display">₹{o.amount}</span>
                 <StatusBadge status={o.status} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div className="neon-panel rounded-xl p-5">
+        <h2 className="font-display text-xl neon-text">Notification log</h2>
+        <p className="mb-3 text-sm text-muted-foreground">
+          Every request and approval is reported to <span className="text-primary">{OPS_EMAIL}</span>.
+        </p>
+        {log.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No notifications yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {log.map((n) => (
+              <li key={n.id} className="rounded-md border border-border px-4 py-2 text-sm">
+                <p className="font-display">
+                  {n.subject}{" "}
+                  <span className="text-xs text-muted-foreground">
+                    · {new Date(n.createdAt).toLocaleString()}
+                  </span>
+                </p>
+                <pre className="mt-1 whitespace-pre-wrap font-sans text-xs text-muted-foreground">{n.body}</pre>
               </li>
             ))}
           </ul>
