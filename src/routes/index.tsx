@@ -8,6 +8,7 @@ import {
   LogOut,
   ShieldCheck,
   Wallet,
+  MessageCircle,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,10 @@ import { AuthModal } from "@/components/auth-modal";
 import { TopUpModal } from "@/components/topup-modal";
 import { WithdrawModal } from "@/components/withdraw-modal";
 import { WalletView } from "@/components/wallet-view";
-import { useVault } from "@/lib/vault-store";
+import { AviatorGame } from "@/components/aviator-game";
+import { MinesGame } from "@/components/mines-game";
+import { SUPPORT_WHATSAPP } from "@/lib/notify";
+import { useVault, ADMIN_EMAIL } from "@/lib/vault-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -44,6 +48,7 @@ function Index() {
   const [authOpen, setAuthOpen] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const isOperator = !!user && !user.guest && user.email === ADMIN_EMAIL;
   const pending = orders.filter((o) => o.status === "pending").length;
 
   const openDeposit = () => (user ? setTopUpOpen(true) : setAuthOpen(true));
@@ -69,6 +74,11 @@ function Index() {
           <Button variant="secondary" onClick={openWithdraw} className="font-display tracking-wide">
             <ArrowUpFromLine className="size-4" /> Withdraw
           </Button>
+          <Button variant="ghost" asChild>
+            <a href={SUPPORT_WHATSAPP} target="_blank" rel="noopener noreferrer">
+              <MessageCircle className="size-4" /> Support
+            </a>
+          </Button>
           {user ? (
             <Button variant="ghost" onClick={signOut} aria-label="Sign out">
               <LogOut className="size-4" /> {user.guest ? "Exit guest" : "Sign out"}
@@ -90,17 +100,21 @@ function Index() {
       )}
 
       <Tabs defaultValue="reels">
-        <TabsList className="mb-5 grid w-full grid-cols-4 bg-secondary/60">
+        <TabsList className={`mb-5 grid w-full ${isOperator ? "grid-cols-6" : "grid-cols-5"} bg-secondary/60`}>
           <TabsTrigger value="reels">
             <Gamepad2 className="mr-1 size-4" /> Reels
           </TabsTrigger>
           <TabsTrigger value="cards">Data Match</TabsTrigger>
+          <TabsTrigger value="aviator">Aviator</TabsTrigger>
+          <TabsTrigger value="mines">Mines</TabsTrigger>
           <TabsTrigger value="wallet">
             <Wallet className="mr-1 size-4" /> Wallet
           </TabsTrigger>
-          <TabsTrigger value="admin">
-            <ShieldCheck className="mr-1 size-4" /> Admin{pending > 0 ? ` (${pending})` : ""}
-          </TabsTrigger>
+          {isOperator && (
+            <TabsTrigger value="admin">
+              <ShieldCheck className="mr-1 size-4" /> Admin{pending > 0 ? ` (${pending})` : ""}
+            </TabsTrigger>
+          )}
         </TabsList>
 
 
@@ -110,13 +124,33 @@ function Index() {
         <TabsContent value="cards">
           <CardGame />
         </TabsContent>
+        <TabsContent value="aviator">
+          <AviatorGame />
+        </TabsContent>
+        <TabsContent value="mines">
+          <MinesGame />
+        </TabsContent>
         <TabsContent value="wallet">
           <WalletView onDeposit={openDeposit} onWithdraw={openWithdraw} />
         </TabsContent>
-        <TabsContent value="admin">
-          <AdminConsole />
-        </TabsContent>
+        {isOperator && (
+          <TabsContent value="admin">
+            <AdminConsole />
+          </TabsContent>
+        )}
       </Tabs>
+
+      <div className="neon-panel mt-8 rounded-xl p-5">
+        <h2 className="font-display text-xl neon-text">Help &amp; Support</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Payment stuck, UTR not matched or withdrawal delayed? Talk to a human operator on WhatsApp.
+        </p>
+        <Button asChild className="mt-4 font-display tracking-wide">
+          <a href={SUPPORT_WHATSAPP} target="_blank" rel="noopener noreferrer">
+            <MessageCircle className="size-4" /> WhatsApp Customer Support
+          </a>
+        </Button>
+      </div>
 
       <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
       <TopUpModal open={topUpOpen} onOpenChange={setTopUpOpen} />
