@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,12 +7,21 @@ import { useVault } from "@/lib/vault-store";
 import { toast } from "sonner";
 
 export function AuthModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const { signIn, signUp, playAsGuest } = useVault();
+  const { signIn, signUp, playAsGuest, settings } = useVault();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [referral, setReferral] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref) {
+      setReferral(ref.toUpperCase());
+      setMode("signup");
+    }
+  }, []);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -24,7 +33,7 @@ export function AuthModal({ open, onOpenChange }: { open: boolean; onOpenChange:
       setError("Enter your operator name.");
       return;
     }
-    const err = mode === "login" ? signIn(email, password) : signUp(name.trim(), email, password);
+    const err = mode === "login" ? signIn(email, password) : signUp(name.trim(), email, password, referral);
     if (err) {
       setError(err);
       return;
@@ -44,7 +53,7 @@ export function AuthModal({ open, onOpenChange }: { open: boolean; onOpenChange:
           <DialogDescription>
             {mode === "login"
               ? "Sign in to sync your score balance and top-ups."
-              : "New operators start with 500 credits. Emails starting with “admin” unlock the console."}
+              : `New operators receive a ${settings.signupBonus}-credit welcome bonus.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -53,6 +62,18 @@ export function AuthModal({ open, onOpenChange }: { open: boolean; onOpenChange:
             <div className="space-y-1.5">
               <Label htmlFor="name">Operator name</Label>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} />
+            </div>
+          )}
+          {mode === "signup" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="referral">Referral code (optional)</Label>
+              <Input
+                id="referral"
+                value={referral}
+                placeholder="WIN1ABCDE"
+                onChange={(e) => setReferral(e.target.value.toUpperCase())}
+                maxLength={12}
+              />
             </div>
           )}
           <div className="space-y-1.5">

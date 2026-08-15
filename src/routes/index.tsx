@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Wallet,
   MessageCircle,
+  Gift,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,8 @@ import { WalletView } from "@/components/wallet-view";
 import { AviatorGame } from "@/components/aviator-game";
 import { MinesGame } from "@/components/mines-game";
 import { SUPPORT_WHATSAPP } from "@/lib/notify";
+import { ReferralView } from "@/components/referral-view";
+import { toast } from "sonner";
 import { useVault, ADMIN_EMAIL } from "@/lib/vault-store";
 
 export const Route = createFileRoute("/")({
@@ -44,12 +47,18 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { user, orders, signOut } = useVault();
+  const { user, orders, signOut, clearNotices } = useVault();
   const [authOpen, setAuthOpen] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const isOperator = !!user && !user.guest && user.email === ADMIN_EMAIL;
   const pending = orders.filter((o) => o.status === "pending").length;
+
+  useEffect(() => {
+    if (!user || user.notices.length === 0) return;
+    user.notices.forEach((n) => toast.success(n, { duration: 6000 }));
+    clearNotices();
+  }, [user, clearNotices]);
 
   const openDeposit = () => (user ? setTopUpOpen(true) : setAuthOpen(true));
   const openWithdraw = () => (user ? setWithdrawOpen(true) : setAuthOpen(true));
@@ -65,8 +74,11 @@ function Index() {
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="rounded-lg border border-border bg-background/60 px-4 py-2 text-right">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Score balance</p>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">Total balance</p>
             <p className="font-display text-xl text-primary">{user ? user.balance : 0}</p>
+            <p className="text-[11px] text-muted-foreground">
+              Main {user ? user.main : 0} · Bonus {user ? user.bonus : 0}
+            </p>
           </div>
           <Button onClick={openDeposit} className="font-display tracking-wide">
             <ArrowDownToLine className="size-4" /> Deposit
@@ -100,7 +112,7 @@ function Index() {
       )}
 
       <Tabs defaultValue="reels">
-        <TabsList className={`mb-5 grid w-full ${isOperator ? "grid-cols-6" : "grid-cols-5"} bg-secondary/60`}>
+        <TabsList className={`mb-5 grid w-full ${isOperator ? "grid-cols-7" : "grid-cols-6"} bg-secondary/60`}>
           <TabsTrigger value="reels">
             <Gamepad2 className="mr-1 size-4" /> Reels
           </TabsTrigger>
@@ -109,6 +121,9 @@ function Index() {
           <TabsTrigger value="mines">Mines</TabsTrigger>
           <TabsTrigger value="wallet">
             <Wallet className="mr-1 size-4" /> Wallet
+          </TabsTrigger>
+          <TabsTrigger value="referral">
+            <Gift className="mr-1 size-4" /> Refer
           </TabsTrigger>
           {isOperator && (
             <TabsTrigger value="admin">
@@ -132,6 +147,9 @@ function Index() {
         </TabsContent>
         <TabsContent value="wallet">
           <WalletView onDeposit={openDeposit} onWithdraw={openWithdraw} />
+        </TabsContent>
+        <TabsContent value="referral">
+          <ReferralView onSignIn={() => setAuthOpen(true)} />
         </TabsContent>
         {isOperator && (
           <TabsContent value="admin">
