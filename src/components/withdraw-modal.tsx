@@ -20,12 +20,8 @@ export function WithdrawModal({ open, onOpenChange }: { open: boolean; onOpenCha
       setError("Minimum withdrawal is 100 credits.");
       return;
     }
-    if (user && amt > user.main) {
-      setError(
-        user.bonus > 0
-          ? "Bonus balance cannot be withdrawn directly. Play games to convert bonus credits into withdrawable cash winnings!"
-          : "Withdrawal exceeds your withdrawable balance.",
-      );
+    if (user && amt > user.balance) {
+      setError("Withdrawal exceeds your available balance.");
       return;
     }
     if (destination.trim().length < 6) {
@@ -50,12 +46,8 @@ export function WithdrawModal({ open, onOpenChange }: { open: boolean; onOpenCha
         </DialogHeader>
 
         <div className="rounded-lg border border-border bg-secondary/40 px-4 py-3 text-sm">
-          Withdrawable (main) balance{" "}
-          <span className="font-display text-lg text-primary">{user ? user.main : 0}</span>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Bonus balance {user ? user.bonus : 0} — non-withdrawable. Play games to convert bonus credits
-            into withdrawable cash winnings.
-          </p>
+          Available balance{" "}
+          <span className="font-display text-lg text-primary">{user ? user.balance : 0}</span>
         </div>
 
         <form onSubmit={submit} className="space-y-4">

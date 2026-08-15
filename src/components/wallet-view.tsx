@@ -22,20 +22,8 @@ export function WalletView({
   return (
     <section className="space-y-6">
       <div className="neon-panel rounded-xl p-5">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">Total playable balance</p>
+        <p className="text-xs uppercase tracking-widest text-muted-foreground">Vault balance</p>
         <p className="font-display text-4xl neon-text">{user ? user.balance : 0}</p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border border-border bg-secondary/40 p-4">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Main / real balance</p>
-            <p className="font-display text-2xl text-primary">{user ? user.main : 0}</p>
-            <p className="text-xs text-muted-foreground">Withdrawable</p>
-          </div>
-          <div className="rounded-lg border border-border bg-secondary/40 p-4">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Bonus balance</p>
-            <p className="font-display text-2xl text-accent">{user ? user.bonus : 0}</p>
-            <p className="text-xs text-muted-foreground">Promo credits — play to convert into cash winnings</p>
-          </div>
-        </div>
         <div className="mt-5 flex flex-wrap gap-3">
           <Button onClick={onDeposit} className="font-display tracking-wide">
             <ArrowDownToLine className="size-4" /> Deposit
