@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { useVault, type Order } from "@/lib/vault-store";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
+import { SettingsPanel } from "@/components/settings-panel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { readNotificationLog, OPS_EMAIL, type NotificationEntry } from "@/lib/notify";
 
 function StatusBadge({ status }: { status: Order["status"] }) {
@@ -27,6 +29,15 @@ export function AdminConsole() {
   const history = orders.filter((o) => o.status !== "pending");
 
   return (
+    <Tabs defaultValue="orders">
+      <TabsList className="mb-5 grid w-full grid-cols-2 bg-secondary/60">
+        <TabsTrigger value="orders">Orders</TabsTrigger>
+        <TabsTrigger value="settings">Payment &amp; App Settings</TabsTrigger>
+      </TabsList>
+      <TabsContent value="settings">
+        <SettingsPanel />
+      </TabsContent>
+      <TabsContent value="orders">
     <section className="space-y-6">
       <div className="neon-panel rounded-xl p-5">
         <h2 className="font-display text-xl neon-text">Pending Orders ({pending.length})</h2>
@@ -135,5 +146,7 @@ export function AdminConsole() {
         )}
       </div>
     </section>
+      </TabsContent>
+    </Tabs>
   );
 }

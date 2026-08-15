@@ -15,7 +15,16 @@ export type User = {
   email: string;
   guest: boolean;
   admin: boolean;
+  /** Withdrawable balance (deposits + winnings) */
+  main: number;
+  /** Non-withdrawable promo credits (signup + referral) */
+  bonus: number;
+  /** Total playable balance = main + bonus */
   balance: number;
+  referralCode: string;
+  referralCount: number;
+  referralEarned: number;
+  notices: string[];
 };
 
 export type Order = {
@@ -30,23 +39,58 @@ export type Order = {
   destination?: string;
 };
 
+export type AppSettings = {
+  upiId: string;
+  qrUrl: string;
+  displayName: string;
+  signupBonus: number;
+  referralBonus: number;
+};
 
-type Account = { email: string; password: string; name: string; balance: number };
+type Account = {
+  email: string;
+  password: string;
+  name: string;
+  main: number;
+  bonus: number;
+  referralCode: string;
+  referredBy?: string | undefined;
+  referralCount: number;
+  referralEarned: number;
+  firstDepositDone: boolean;
+  notices: string[];
+};
 
 type State = {
   user: User | null;
   accounts: Record<string, Account>;
   orders: Order[];
+  settings: AppSettings;
 };
 
 const KEY = "win1-vault-state";
-const empty: State = { user: null, accounts: {}, orders: [] };
+
+export const DEFAULT_SETTINGS: AppSettings = {
+  upiId: "7719254845@ybl",
+  qrUrl: "",
+  displayName: "WIN1 VAULT",
+  signupBonus: 50,
+  referralBonus: 50,
+};
+
+const empty: State = { user: null, accounts: {}, orders: [], settings: DEFAULT_SETTINGS };
 
 function load(): State {
   if (typeof window === "undefined") return empty;
   try {
     const raw = window.localStorage.getItem(KEY);
-    return raw ? { ...empty, ...(JSON.parse(raw) as State) } : empty;
+    if (!raw) return empty;
+    const parsed = JSON.parse(raw) as Partial<State>;
+    return {
+      ...empty,
+      ...parsed,
+      settings: { ...DEFAULT_SETTINGS, ...(parsed.settings ?? {}) },
+    } as State;
   } catch {
     return empty;
   }
@@ -55,12 +99,31 @@ function load(): State {
 export const ADMIN_EMAIL = "bardip718@gmail.com";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+const makeCode = () => `WIN1${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+
+function toUser(acct: Account): User {
+  return {
+    id: acct.email,
+    name: acct.name,
+    email: acct.email,
+    guest: false,
+    admin: acct.email === ADMIN_EMAIL,
+    main: acct.main,
+    bonus: acct.bonus,
+    balance: acct.main + acct.bonus,
+    referralCode: acct.referralCode,
+    referralCount: acct.referralCount,
+    referralEarned: acct.referralEarned,
+    notices: acct.notices ?? [],
+  };
+}
 
 type Ctx = {
   user: User | null;
   orders: Order[];
+  settings: AppSettings;
   ready: boolean;
-  signUp: (name: string, email: string, password: string) => string | null;
+  signUp: (name: string, email: string, password: string, referralCode?: string) => string | null;
   signIn: (email: string, password: string) => string | null;
   playAsGuest: () => void;
   signOut: () => void;
@@ -68,6 +131,8 @@ type Ctx = {
   submitOrder: (amount: number, utr: string) => void;
   submitWithdrawal: (amount: number, destination: string) => void;
   resolveOrder: (id: string, status: "approved" | "rejected") => void;
+  saveSettings: (next: AppSettings) => void;
+  clearNotices: () => void;
 };
 
 const VaultContext = createContext<Ctx | null>(null);
@@ -86,30 +151,67 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(KEY, JSON.stringify(state));
   }, [state, ready]);
 
-  const signUp = useCallback((name: string, email: string, password: string) => {
-    const key = email.trim().toLowerCase();
-    let err: string | null = null;
-    setState((s) => {
-      if (s.accounts[key]) {
-        err = "An account with that email already exists.";
-        return s;
+  // Cross-tab / real-time sync of settings and balances
+  useEffect(() => {
+    if (!ready) return;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue) as State;
+          setState((s) => ({
+            ...parsed,
+            user: s.user && !s.user.guest && parsed.accounts[s.user.id]
+              ? toUser(parsed.accounts[s.user.id]!)
+              : s.user,
+            settings: { ...DEFAULT_SETTINGS, ...parsed.settings },
+          }));
+        } catch {
+          /* ignore */
+        }
       }
-      const account: Account = { email: key, password, name, balance: 500 };
-      return {
-        ...s,
-        accounts: { ...s.accounts, [key]: account },
-        user: {
-          id: key,
-          name,
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [ready]);
+
+  const signUp = useCallback(
+    (name: string, email: string, password: string, referralCode?: string) => {
+      const key = email.trim().toLowerCase();
+      let err: string | null = null;
+      setState((s) => {
+        if (s.accounts[key]) {
+          err = "An account with that email already exists.";
+          return s;
+        }
+        const code = (referralCode ?? "").trim().toUpperCase();
+        let referrerKey: string | undefined;
+        if (code) {
+          referrerKey = Object.values(s.accounts).find((a) => a.referralCode === code)?.email;
+          if (!referrerKey) {
+            err = "That referral code is not valid.";
+            return s;
+          }
+        }
+        const bonus = s.settings.signupBonus;
+        const account: Account = {
           email: key,
-          guest: false,
-          admin: key === ADMIN_EMAIL,
-          balance: 500,
-        },
-      };
-    });
-    return err;
-  }, []);
+          password,
+          name,
+          main: 0,
+          bonus,
+          referralCode: makeCode(),
+          referredBy: referrerKey,
+          referralCount: 0,
+          referralEarned: 0,
+          firstDepositDone: false,
+          notices: [`Welcome Bonus Credited! 🎉 +${bonus} bonus credits`],
+        };
+        return { ...s, accounts: { ...s.accounts, [key]: account }, user: toUser(account) };
+      });
+      return err;
+    },
+    [],
+  );
 
   const signIn = useCallback((email: string, password: string) => {
     const key = email.trim().toLowerCase();
@@ -120,17 +222,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         err = "Invalid credentials. Check your email and password.";
         return s;
       }
-      return {
-        ...s,
-        user: {
-          id: key,
-          name: acct.name,
-          email: key,
-          guest: false,
-          admin: key === ADMIN_EMAIL,
-          balance: acct.balance,
-        },
-      };
+      return { ...s, user: toUser(acct) };
     });
     return err;
   }, []);
@@ -144,22 +236,49 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         email: "",
         guest: true,
         admin: false,
+        main: 0,
+        bonus: 250,
         balance: 250,
+        referralCode: "",
+        referralCount: 0,
+        referralEarned: 0,
+        notices: [],
       },
     }));
   }, []);
 
   const signOut = useCallback(() => setState((s) => ({ ...s, user: null })), []);
 
+  const clearNotices = useCallback(() => {
+    setState((s) => {
+      if (!s.user || s.user.notices.length === 0) return s;
+      const accounts = { ...s.accounts };
+      if (!s.user.guest && accounts[s.user.id]) {
+        accounts[s.user.id] = { ...accounts[s.user.id]!, notices: [] };
+      }
+      return { ...s, accounts, user: { ...s.user, notices: [] } };
+    });
+  }, []);
+
+  /** Bets (negative) drain bonus first, then main. Winnings (positive) go to main only. */
   const addScore = useCallback((delta: number) => {
     setState((s) => {
       if (!s.user) return s;
-      const balance = Math.max(0, s.user.balance + delta);
+      let { main, bonus } = s.user;
+      if (delta >= 0) {
+        main += delta;
+      } else {
+        let owed = -delta;
+        const fromBonus = Math.min(bonus, owed);
+        bonus -= fromBonus;
+        owed -= fromBonus;
+        main = Math.max(0, main - owed);
+      }
       const accounts = { ...s.accounts };
       if (!s.user.guest && accounts[s.user.id]) {
-        accounts[s.user.id] = { ...accounts[s.user.id]!, balance };
+        accounts[s.user.id] = { ...accounts[s.user.id]!, main, bonus };
       }
-      return { ...s, accounts, user: { ...s.user, balance } };
+      return { ...s, accounts, user: { ...s.user, main, bonus, balance: main + bonus } };
     });
   }, []);
 
@@ -216,7 +335,6 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-
   const resolveOrder = useCallback((id: string, status: "approved" | "rejected") => {
     setState((s) => {
       const order = s.orders.find((o) => o.id === id);
@@ -231,31 +349,66 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         Status: status,
         "Resolved at": new Date().toLocaleString(),
       });
-      let accounts = s.accounts;
+
+      const accounts = { ...s.accounts };
       let user = s.user;
+
       if (status === "approved") {
-        const delta = order.type === "withdrawal" ? -order.amount : order.amount;
-        if (accounts[order.userId]) {
-          accounts = {
-            ...accounts,
-            [order.userId]: {
-              ...accounts[order.userId]!,
-              balance: Math.max(0, accounts[order.userId]!.balance + delta),
-            },
-          };
-        }
-        if (user && user.id === order.userId) {
-          user = { ...user, balance: Math.max(0, user.balance + delta) };
+        const isWithdrawal = order.type === "withdrawal";
+        const target = accounts[order.userId];
+        if (target) {
+          const main = isWithdrawal
+            ? Math.max(0, target.main - order.amount)
+            : target.main + order.amount;
+          accounts[order.userId] = { ...target, main };
+
+          // Referral payout on the referred friend's FIRST approved deposit
+          if (!isWithdrawal && !target.firstDepositDone) {
+            accounts[order.userId] = { ...accounts[order.userId]!, firstDepositDone: true };
+            const refKey = target.referredBy;
+            const referrer = refKey ? accounts[refKey] : undefined;
+            if (refKey && referrer) {
+              const reward = s.settings.referralBonus;
+              accounts[refKey] = {
+                ...referrer,
+                bonus: referrer.bonus + reward,
+                referralCount: referrer.referralCount + 1,
+                referralEarned: referrer.referralEarned + reward,
+                notices: [
+                  ...(referrer.notices ?? []),
+                  `Your friend deposited! You received a Referral Bonus! 🎁 +${reward} credits`,
+                ],
+              };
+              notifyOps("Referral bonus credited", {
+                Referrer: refKey,
+                Friend: order.userId,
+                Bonus: `${reward} credits`,
+                Time: new Date().toLocaleString(),
+              });
+            }
+          }
+        } else if (user && user.id === order.userId) {
+          const main = isWithdrawal
+            ? Math.max(0, user.main - order.amount)
+            : user.main + order.amount;
+          user = { ...user, main, balance: main + user.bonus };
         }
       }
-      return { orders, accounts, user };
+
+      if (user && !user.guest && accounts[user.id]) user = toUser(accounts[user.id]!);
+      return { ...s, orders, accounts, user };
     });
+  }, []);
+
+  const saveSettings = useCallback((next: AppSettings) => {
+    setState((s) => ({ ...s, settings: { ...DEFAULT_SETTINGS, ...next } }));
   }, []);
 
   const value = useMemo<Ctx>(
     () => ({
       user: state.user,
       orders: state.orders,
+      settings: state.settings,
       ready,
       signUp,
       signIn,
@@ -265,10 +418,13 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       submitOrder,
       submitWithdrawal,
       resolveOrder,
+      saveSettings,
+      clearNotices,
     }),
     [
       state.user,
       state.orders,
+      state.settings,
       ready,
       signUp,
       signIn,
@@ -278,6 +434,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       submitOrder,
       submitWithdrawal,
       resolveOrder,
+      saveSettings,
+      clearNotices,
     ],
   );
 

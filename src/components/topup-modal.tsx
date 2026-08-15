@@ -8,12 +8,13 @@ import { useVault } from "@/lib/vault-store";
 import { toast } from "sonner";
 import depositQrAsset from "@/assets/deposit-qr.png.asset.json";
 
-const UPI_ID = "7719254845@ybl";
-const QR_SRC = depositQrAsset.url;
 const PRESETS = [100, 250, 500, 1000];
 
 export function TopUpModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const { submitOrder } = useVault();
+  const { submitOrder, settings } = useVault();
+  const UPI_ID = settings.upiId || "7719254845@ybl";
+  const QR_SRC = settings.qrUrl || depositQrAsset.url;
+  const DISPLAY_NAME = settings.displayName || "WIN1 VAULT";
   const [amount, setAmount] = useState("250");
   const [utr, setUtr] = useState("");
   const [copied, setCopied] = useState(false);
@@ -54,11 +55,14 @@ export function TopUpModal({ open, onOpenChange }: { open: boolean; onOpenChange
         <DialogHeader>
           <DialogTitle className="font-display text-2xl neon-text">Vault Top-Up</DialogTitle>
           <DialogDescription>
-            Pay via UPI, then submit your 12-digit reference number for approval.
+            Pay {DISPLAY_NAME} via UPI, then submit your 12-digit reference number for approval.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-secondary/40 p-4">
+          <p className="font-display text-sm uppercase tracking-widest text-muted-foreground">
+            {DISPLAY_NAME}
+          </p>
           <img
             src={QR_SRC}
             alt={`UPI payment QR code for ${UPI_ID}`}
