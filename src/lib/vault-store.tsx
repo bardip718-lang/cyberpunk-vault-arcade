@@ -54,7 +54,7 @@ type Account = {
   main: number;
   bonus: number;
   referralCode: string;
-  referredBy?: string;
+  referredBy?: string | undefined;
   referralCount: number;
   referralEarned: number;
   firstDepositDone: boolean;
