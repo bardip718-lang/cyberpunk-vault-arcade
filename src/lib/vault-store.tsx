@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { notifyOps } from "@/lib/notify";
+import depositQrAsset from "@/assets/deposit-qr.png.asset.json";
 
 export type User = {
   id: string;
@@ -33,20 +34,39 @@ export type Order = {
 
 type Account = { email: string; password: string; name: string; balance: number };
 
+export type PaymentSettings = {
+  upiId: string;
+  displayName: string;
+  qrUrl: string;
+};
+
+export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
+  upiId: "7719254845@ybl",
+  displayName: "WIN1 VAULT",
+  qrUrl: depositQrAsset.url,
+};
+
 type State = {
   user: User | null;
   accounts: Record<string, Account>;
   orders: Order[];
+  payment: PaymentSettings;
 };
 
 const KEY = "win1-vault-state";
-const empty: State = { user: null, accounts: {}, orders: [] };
+const empty: State = { user: null, accounts: {}, orders: [], payment: DEFAULT_PAYMENT_SETTINGS };
 
 function load(): State {
   if (typeof window === "undefined") return empty;
   try {
     const raw = window.localStorage.getItem(KEY);
-    return raw ? { ...empty, ...(JSON.parse(raw) as State) } : empty;
+    if (!raw) return empty;
+    const parsed = JSON.parse(raw) as Partial<State>;
+    return {
+      ...empty,
+      ...parsed,
+      payment: { ...DEFAULT_PAYMENT_SETTINGS, ...(parsed.payment ?? {}) },
+    };
   } catch {
     return empty;
   }
@@ -68,6 +88,8 @@ type Ctx = {
   submitOrder: (amount: number, utr: string) => void;
   submitWithdrawal: (amount: number, destination: string) => void;
   resolveOrder: (id: string, status: "approved" | "rejected") => void;
+  payment: PaymentSettings;
+  updatePaymentSettings: (next: Partial<PaymentSettings>) => void;
 };
 
 const VaultContext = createContext<Ctx | null>(null);
@@ -248,8 +270,12 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           user = { ...user, balance: Math.max(0, user.balance + delta) };
         }
       }
-      return { orders, accounts, user };
+      return { ...s, orders, accounts, user };
     });
+  }, []);
+
+  const updatePaymentSettings = useCallback((next: Partial<PaymentSettings>) => {
+    setState((s) => ({ ...s, payment: { ...DEFAULT_PAYMENT_SETTINGS, ...s.payment, ...next } }));
   }, []);
 
   const value = useMemo<Ctx>(
@@ -265,6 +291,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       submitOrder,
       submitWithdrawal,
       resolveOrder,
+      payment: state.payment ?? DEFAULT_PAYMENT_SETTINGS,
+      updatePaymentSettings,
     }),
     [
       state.user,
@@ -278,6 +306,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       submitOrder,
       submitWithdrawal,
       resolveOrder,
+      state.payment,
+      updatePaymentSettings,
     ],
   );
 
