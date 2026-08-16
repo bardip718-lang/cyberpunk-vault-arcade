@@ -1,25 +1,43 @@
 import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useVault, DEFAULT_PAYMENT_SETTINGS } from "@/lib/vault-store";
+import { useVault } from "@/lib/vault-store";
+import { savePaymentSettings } from "@/lib/payment-settings.functions";
+import { paymentSettingsQuery, PAYMENT_SETTINGS_KEY } from "@/lib/payment-settings-query";
 import { toast } from "sonner";
 
 export function PaymentSettingsPanel() {
-  const { payment, updatePaymentSettings } = useVault();
-  const current = { ...DEFAULT_PAYMENT_SETTINGS, ...(payment ?? {}) };
-  const [upiId, setUpiId] = useState(current.upiId);
-  const [displayName, setDisplayName] = useState(current.displayName);
-  const [qrUrl, setQrUrl] = useState(current.qrUrl);
+  const { user } = useVault();
+  const queryClient = useQueryClient();
+  const { data: settings } = useQuery(paymentSettingsQuery);
+  const save = useServerFn(savePaymentSettings);
+
+  const [upiId, setUpiId] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [qrUrl, setQrUrl] = useState("");
 
   useEffect(() => {
-    setUpiId(current.upiId);
-    setDisplayName(current.displayName);
-    setQrUrl(current.qrUrl);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payment]);
+    if (!settings) return;
+    setUpiId(settings.upiId);
+    setDisplayName(settings.displayName);
+    setQrUrl(settings.qrUrl);
+  }, [settings]);
 
-  function save(e: React.FormEvent) {
+  const mutation = useMutation({
+    mutationFn: (vars: { upiId: string; displayName: string; qrUrl: string }) =>
+      save({ data: { ...vars, adminEmail: user?.email ?? "" } }),
+    onSuccess: async (row) => {
+      queryClient.setQueryData(PAYMENT_SETTINGS_KEY, row);
+      await queryClient.invalidateQueries({ queryKey: PAYMENT_SETTINGS_KEY });
+      toast.success("Payment settings saved for all players");
+    },
+    onError: (e: Error) => toast.error(e.message || "Could not save settings"),
+  });
+
+  function submit(e: React.FormEvent) {
     e.preventDefault();
     const id = upiId.trim();
     if (id.length < 5 || id.length > 100 || !/^[\w.\-]{2,}@[\w.\-]{2,}$/.test(id)) {
@@ -35,21 +53,16 @@ export function PaymentSettingsPanel() {
       toast.error("QR image URL must start with http(s):// or /");
       return;
     }
-    updatePaymentSettings({
-      upiId: id,
-      displayName: displayName.trim(),
-      qrUrl: qr || DEFAULT_PAYMENT_SETTINGS.qrUrl,
-    });
-    toast.success("Payment settings saved");
+    mutation.mutate({ upiId: id, displayName: displayName.trim(), qrUrl: qr });
   }
 
   return (
     <section className="neon-panel rounded-xl p-5">
       <h2 className="font-display text-xl neon-text">Payment Settings</h2>
       <p className="mb-4 text-sm text-muted-foreground">
-        These values power the Deposit modal for every player.
+        Stored in the shared database — the Deposit modal reads these values live for every player.
       </p>
-      <form onSubmit={save} className="grid gap-4 sm:grid-cols-2">
+      <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="set-upi">UPI ID</Label>
           <Input
@@ -81,8 +94,8 @@ export function PaymentSettingsPanel() {
           />
         </div>
         <div className="sm:col-span-2 flex flex-wrap items-center gap-4">
-          <Button type="submit" className="font-display tracking-wide">
-            Save Settings
+          <Button type="submit" disabled={mutation.isPending} className="font-display tracking-wide">
+            {mutation.isPending ? "Saving…" : "Save Settings"}
           </Button>
           {qrUrl.trim() && (
             <img
