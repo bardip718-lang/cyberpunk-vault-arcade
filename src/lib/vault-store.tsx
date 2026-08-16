@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { notifyOps } from "@/lib/notify";
+import depositQrAsset from "@/assets/deposit-qr.png.asset.json";
 
 export type User = {
   id: string;
@@ -87,6 +88,8 @@ type Ctx = {
   submitOrder: (amount: number, utr: string) => void;
   submitWithdrawal: (amount: number, destination: string) => void;
   resolveOrder: (id: string, status: "approved" | "rejected") => void;
+  payment: PaymentSettings;
+  updatePaymentSettings: (next: Partial<PaymentSettings>) => void;
 };
 
 const VaultContext = createContext<Ctx | null>(null);
@@ -267,8 +270,12 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           user = { ...user, balance: Math.max(0, user.balance + delta) };
         }
       }
-      return { orders, accounts, user };
+      return { ...s, orders, accounts, user };
     });
+  }, []);
+
+  const updatePaymentSettings = useCallback((next: Partial<PaymentSettings>) => {
+    setState((s) => ({ ...s, payment: { ...DEFAULT_PAYMENT_SETTINGS, ...s.payment, ...next } }));
   }, []);
 
   const value = useMemo<Ctx>(
@@ -284,6 +291,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       submitOrder,
       submitWithdrawal,
       resolveOrder,
+      payment: state.payment ?? DEFAULT_PAYMENT_SETTINGS,
+      updatePaymentSettings,
     }),
     [
       state.user,
@@ -297,6 +306,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       submitOrder,
       submitWithdrawal,
       resolveOrder,
+      state.payment,
+      updatePaymentSettings,
     ],
   );
 
