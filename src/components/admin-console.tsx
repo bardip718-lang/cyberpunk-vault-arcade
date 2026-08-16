@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { useVault, type Order } from "@/lib/vault-store";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
+import { PaymentSettingsPanel } from "@/components/payment-settings";
 import { readNotificationLog, OPS_EMAIL, type NotificationEntry } from "@/lib/notify";
 
 function StatusBadge({ status }: { status: Order["status"] }) {
@@ -28,6 +29,7 @@ export function AdminConsole() {
 
   return (
     <section className="space-y-6">
+      <PaymentSettingsPanel />
       <div className="neon-panel rounded-xl p-5">
         <h2 className="font-display text-xl neon-text">Pending Orders ({pending.length})</h2>
         <p className="mb-4 text-sm text-muted-foreground">
