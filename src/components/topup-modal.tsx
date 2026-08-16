@@ -4,16 +4,17 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useVault } from "@/lib/vault-store";
+import { useVault, DEFAULT_PAYMENT_SETTINGS } from "@/lib/vault-store";
 import { toast } from "sonner";
-import depositQrAsset from "@/assets/deposit-qr.png.asset.json";
 
-const UPI_ID = "7719254845@ybl";
-const QR_SRC = depositQrAsset.url;
 const PRESETS = [100, 250, 500, 1000];
 
 export function TopUpModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const { submitOrder } = useVault();
+  const { submitOrder, payment } = useVault();
+  const settings = { ...DEFAULT_PAYMENT_SETTINGS, ...(payment ?? {}) };
+  const UPI_ID = settings.upiId?.trim() || DEFAULT_PAYMENT_SETTINGS.upiId;
+  const QR_SRC = settings.qrUrl?.trim() || DEFAULT_PAYMENT_SETTINGS.qrUrl;
+  const DISPLAY_NAME = settings.displayName?.trim() || DEFAULT_PAYMENT_SETTINGS.displayName;
   const [amount, setAmount] = useState("250");
   const [utr, setUtr] = useState("");
   const [copied, setCopied] = useState(false);
@@ -67,6 +68,7 @@ export function TopUpModal({ open, onOpenChange }: { open: boolean; onOpenChange
             loading="lazy"
             className="rounded-md bg-background p-2"
           />
+          <p className="font-display text-sm text-accent">{DISPLAY_NAME}</p>
           <div className="flex w-full items-center gap-2">
             <code className="flex-1 truncate rounded-md bg-background px-3 py-2 text-sm text-primary">
               {UPI_ID}
