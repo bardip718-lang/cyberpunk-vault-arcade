@@ -1,28 +1,39 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Copy, Check } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useVault, DEFAULT_PAYMENT_SETTINGS } from "@/lib/vault-store";
+import { useVault } from "@/lib/vault-store";
+import { paymentSettingsQuery, PAYMENT_SETTINGS_KEY, FALLBACK_QR } from "@/lib/payment-settings-query";
 import { toast } from "sonner";
 
 const PRESETS = [100, 250, 500, 1000];
 
 export function TopUpModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const { submitOrder, payment } = useVault();
-  const settings = { ...DEFAULT_PAYMENT_SETTINGS, ...(payment ?? {}) };
-  const UPI_ID = settings.upiId?.trim() || DEFAULT_PAYMENT_SETTINGS.upiId;
-  const QR_SRC = settings.qrUrl?.trim() || DEFAULT_PAYMENT_SETTINGS.qrUrl;
-  const DISPLAY_NAME = settings.displayName?.trim() || DEFAULT_PAYMENT_SETTINGS.displayName;
+  const { submitOrder } = useVault();
+  const queryClient = useQueryClient();
+  const { data: settings, isLoading } = useQuery(paymentSettingsQuery);
+
+  // Refetch the live settings every time the modal opens.
+  useEffect(() => {
+    if (open) queryClient.invalidateQueries({ queryKey: PAYMENT_SETTINGS_KEY });
+  }, [open, queryClient]);
+
+  const upiId = settings?.upiId ?? "";
+  const displayName = settings?.displayName ?? "";
+  const qrSrc = settings?.qrUrl?.trim() ? settings.qrUrl.trim() : FALLBACK_QR;
+
   const [amount, setAmount] = useState("250");
   const [utr, setUtr] = useState("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function copyId() {
+    if (!upiId) return;
     try {
-      await navigator.clipboard.writeText(UPI_ID);
+      await navigator.clipboard.writeText(upiId);
       setCopied(true);
       toast.success("UPI ID copied");
       setTimeout(() => setCopied(false), 1800);
@@ -61,19 +72,26 @@ export function TopUpModal({ open, onOpenChange }: { open: boolean; onOpenChange
 
         <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-secondary/40 p-4">
           <img
-            src={QR_SRC}
-            alt={`UPI payment QR code for ${UPI_ID}`}
+            src={qrSrc}
+            alt={upiId ? `UPI payment QR code for ${upiId}` : "UPI payment QR code"}
             width={300}
             height={300}
             loading="lazy"
             className="rounded-md bg-background p-2"
           />
-          <p className="font-display text-sm text-accent">{DISPLAY_NAME}</p>
+          <p className="font-display text-sm text-accent">{displayName}</p>
           <div className="flex w-full items-center gap-2">
             <code className="flex-1 truncate rounded-md bg-background px-3 py-2 text-sm text-primary">
-              {UPI_ID}
+              {isLoading ? "Loading payment details…" : upiId || "No UPI ID configured yet"}
             </code>
-            <Button type="button" variant="secondary" size="icon" onClick={copyId} aria-label="Copy UPI ID">
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              disabled={!upiId}
+              onClick={copyId}
+              aria-label="Copy UPI ID"
+            >
               {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
             </Button>
           </div>
