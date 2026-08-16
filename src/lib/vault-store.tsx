@@ -33,20 +33,39 @@ export type Order = {
 
 type Account = { email: string; password: string; name: string; balance: number };
 
+export type PaymentSettings = {
+  upiId: string;
+  displayName: string;
+  qrUrl: string;
+};
+
+export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
+  upiId: "7719254845@ybl",
+  displayName: "WIN1 VAULT",
+  qrUrl: depositQrAsset.url,
+};
+
 type State = {
   user: User | null;
   accounts: Record<string, Account>;
   orders: Order[];
+  payment: PaymentSettings;
 };
 
 const KEY = "win1-vault-state";
-const empty: State = { user: null, accounts: {}, orders: [] };
+const empty: State = { user: null, accounts: {}, orders: [], payment: DEFAULT_PAYMENT_SETTINGS };
 
 function load(): State {
   if (typeof window === "undefined") return empty;
   try {
     const raw = window.localStorage.getItem(KEY);
-    return raw ? { ...empty, ...(JSON.parse(raw) as State) } : empty;
+    if (!raw) return empty;
+    const parsed = JSON.parse(raw) as Partial<State>;
+    return {
+      ...empty,
+      ...parsed,
+      payment: { ...DEFAULT_PAYMENT_SETTINGS, ...(parsed.payment ?? {}) },
+    };
   } catch {
     return empty;
   }
