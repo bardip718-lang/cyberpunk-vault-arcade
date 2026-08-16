@@ -14,7 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      payment_settings: {
+        Row: {
+          display_name: string
+          id: string
+          qr_code_url: string
+          updated_at: string
+          upi_id: string
+        }
+        Insert: {
+          display_name: string
+          id?: string
+          qr_code_url?: string
+          updated_at?: string
+          upi_id: string
+        }
+        Update: {
+          display_name?: string
+          id?: string
+          qr_code_url?: string
+          updated_at?: string
+          upi_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
