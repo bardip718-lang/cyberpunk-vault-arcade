@@ -9,6 +9,7 @@ import {
 } from "react";
 import { notifyOps } from "@/lib/notify";
 import depositQrAsset from "@/assets/deposit-qr.png.asset.json";
+import { submitRequest, type VaultRequest } from "@/lib/requests.functions";
 
 export type User = {
   id: string;
@@ -18,19 +19,6 @@ export type User = {
   admin: boolean;
   balance: number;
 };
-
-export type Order = {
-  id: string;
-  userId: string;
-  userName: string;
-  amount: number;
-  utr: string;
-  status: "pending" | "approved" | "rejected";
-  createdAt: number;
-  type?: "deposit" | "withdrawal";
-  destination?: string;
-};
-
 
 type Account = { email: string; password: string; name: string; balance: number };
 
@@ -49,12 +37,13 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
 type State = {
   user: User | null;
   accounts: Record<string, Account>;
-  orders: Order[];
   payment: PaymentSettings;
+  /** IDs of resolved requests already reflected in the local balance. */
+  applied: string[];
 };
 
 const KEY = "win1-vault-state";
-const empty: State = { user: null, accounts: {}, orders: [], payment: DEFAULT_PAYMENT_SETTINGS };
+const empty: State = { user: null, accounts: {}, payment: DEFAULT_PAYMENT_SETTINGS, applied: [] };
 
 function load(): State {
   if (typeof window === "undefined") return empty;
@@ -65,6 +54,7 @@ function load(): State {
     return {
       ...empty,
       ...parsed,
+      applied: parsed.applied ?? [],
       payment: { ...DEFAULT_PAYMENT_SETTINGS, ...(parsed.payment ?? {}) },
     };
   } catch {
@@ -78,16 +68,16 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 
 type Ctx = {
   user: User | null;
-  orders: Order[];
   ready: boolean;
   signUp: (name: string, email: string, password: string) => string | null;
   signIn: (email: string, password: string) => string | null;
   playAsGuest: () => void;
   signOut: () => void;
   addScore: (delta: number) => void;
-  submitOrder: (amount: number, utr: string) => void;
-  submitWithdrawal: (amount: number, destination: string) => void;
-  resolveOrder: (id: string, status: "approved" | "rejected") => void;
+  submitOrder: (amount: number, utr: string) => Promise<void>;
+  submitWithdrawal: (amount: number, destination: string) => Promise<void>;
+  /** Applies a resolved request's balance effect exactly once. */
+  applyResolved: (requests: VaultRequest[]) => void;
   payment: PaymentSettings;
   updatePaymentSettings: (next: Partial<PaymentSettings>) => void;
 };
@@ -173,106 +163,101 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => setState((s) => ({ ...s, user: null })), []);
 
-  const addScore = useCallback((delta: number) => {
-    setState((s) => {
-      if (!s.user) return s;
-      const balance = Math.max(0, s.user.balance + delta);
-      const accounts = { ...s.accounts };
-      if (!s.user.guest && accounts[s.user.id]) {
-        accounts[s.user.id] = { ...accounts[s.user.id]!, balance };
-      }
-      return { ...s, accounts, user: { ...s.user, balance } };
-    });
+  const adjust = useCallback((s: State, delta: number): State => {
+    if (!s.user) return s;
+    const balance = Math.max(0, s.user.balance + delta);
+    const accounts = { ...s.accounts };
+    if (!s.user.guest && accounts[s.user.id]) {
+      accounts[s.user.id] = { ...accounts[s.user.id]!, balance };
+    }
+    return { ...s, accounts, user: { ...s.user, balance } };
   }, []);
 
-  const submitOrder = useCallback((amount: number, utr: string) => {
-    setState((s) => {
-      if (!s.user) return s;
-      const order: Order = {
-        id: uid(),
-        userId: s.user.id,
-        userName: s.user.guest ? `${s.user.name} (guest)` : `${s.user.name} · ${s.user.email}`,
-        amount,
-        utr,
-        status: "pending",
-        createdAt: Date.now(),
-        type: "deposit",
-      };
+  const addScore = useCallback((delta: number) => setState((s) => adjust(s, delta)), [adjust]);
+
+  const submitOrder = useCallback(
+    async (amount: number, utr: string) => {
+      const user = state.user;
+      if (!user) throw new Error("Sign in first.");
+      const created = await submitRequest({
+        data: {
+          kind: "deposit",
+          userKey: user.id,
+          userName: user.guest ? `${user.name} (guest)` : user.name,
+          userEmail: user.email,
+          amount,
+          utr,
+          destination: "",
+        },
+      });
       notifyOps("New deposit request", {
         Type: "Deposit",
-        User: order.userName,
-        "User ID": order.userId,
-        Amount: `₹${order.amount}`,
-        UTR: order.utr,
+        User: created.userName,
+        "User ID": created.userKey,
+        Amount: `₹${created.amount}`,
+        UTR: created.utr,
         Status: "pending",
-        Time: new Date(order.createdAt).toLocaleString(),
+        Time: new Date(created.createdAt).toLocaleString(),
       });
-      return { ...s, orders: [order, ...s.orders] };
-    });
-  }, []);
+    },
+    [state.user],
+  );
 
-  const submitWithdrawal = useCallback((amount: number, destination: string) => {
-    setState((s) => {
-      if (!s.user) return s;
-      const order: Order = {
-        id: uid(),
-        userId: s.user.id,
-        userName: s.user.guest ? `${s.user.name} (guest)` : `${s.user.name} · ${s.user.email}`,
-        amount,
-        utr: "—",
-        status: "pending",
-        createdAt: Date.now(),
-        type: "withdrawal",
-        destination,
-      };
+  const submitWithdrawal = useCallback(
+    async (amount: number, destination: string) => {
+      const user = state.user;
+      if (!user) throw new Error("Sign in first.");
+      const created = await submitRequest({
+        data: {
+          kind: "withdrawal",
+          userKey: user.id,
+          userName: user.guest ? `${user.name} (guest)` : user.name,
+          userEmail: user.email,
+          amount,
+          utr: "",
+          destination,
+        },
+      });
+      // Lock the requested amount until the operator resolves the request.
+      setState((s) => adjust({ ...s, applied: [...s.applied, created.id] }, -amount));
       notifyOps("New withdrawal request", {
         Type: "Withdrawal",
-        User: order.userName,
-        "User ID": order.userId,
-        Amount: `₹${order.amount}`,
+        User: created.userName,
+        "User ID": created.userKey,
+        Amount: `₹${created.amount}`,
         Destination: destination,
         Status: "pending",
-        Time: new Date(order.createdAt).toLocaleString(),
+        Time: new Date(created.createdAt).toLocaleString(),
       });
-      return { ...s, orders: [order, ...s.orders] };
-    });
-  }, []);
+    },
+    [state.user, adjust],
+  );
 
-
-  const resolveOrder = useCallback((id: string, status: "approved" | "rejected") => {
-    setState((s) => {
-      const order = s.orders.find((o) => o.id === id);
-      if (!order || order.status !== "pending") return s;
-      const orders = s.orders.map((o) => (o.id === id ? { ...o, status } : o));
-      notifyOps(`Transaction ${status}`, {
-        Type: order.type === "withdrawal" ? "Withdrawal" : "Deposit",
-        User: order.userName,
-        "User ID": order.userId,
-        Amount: `₹${order.amount}`,
-        Reference: order.type === "withdrawal" ? (order.destination ?? "—") : order.utr,
-        Status: status,
-        "Resolved at": new Date().toLocaleString(),
+  const applyResolved = useCallback(
+    (requests: VaultRequest[]) => {
+      setState((s) => {
+        if (!s.user) return s;
+        const appliedSet = new Set(s.applied);
+        let next = s;
+        let changed = false;
+        for (const r of requests) {
+          if (r.status === "pending") continue;
+          if (r.userKey !== s.user.id) continue;
+          // Deposits credit on approval; withdrawals were locked at submit time,
+          // so a rejection refunds the locked amount.
+          const key = `${r.id}:${r.status}`;
+          if (appliedSet.has(key)) continue;
+          let delta = 0;
+          if (r.kind === "deposit" && r.status === "approved") delta = r.amount;
+          if (r.kind === "withdrawal" && r.status === "rejected") delta = r.amount;
+          next = { ...adjust(next, delta), applied: [...next.applied, key] };
+          changed = true;
+        }
+        return changed ? next : s;
       });
-      let accounts = s.accounts;
-      let user = s.user;
-      if (status === "approved") {
-        const delta = order.type === "withdrawal" ? -order.amount : order.amount;
-        if (accounts[order.userId]) {
-          accounts = {
-            ...accounts,
-            [order.userId]: {
-              ...accounts[order.userId]!,
-              balance: Math.max(0, accounts[order.userId]!.balance + delta),
-            },
-          };
-        }
-        if (user && user.id === order.userId) {
-          user = { ...user, balance: Math.max(0, user.balance + delta) };
-        }
-      }
-      return { ...s, orders, accounts, user };
-    });
-  }, []);
+    },
+    [adjust],
+  );
 
   const updatePaymentSettings = useCallback((next: Partial<PaymentSettings>) => {
     setState((s) => ({ ...s, payment: { ...DEFAULT_PAYMENT_SETTINGS, ...s.payment, ...next } }));
@@ -281,7 +266,6 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Ctx>(
     () => ({
       user: state.user,
-      orders: state.orders,
       ready,
       signUp,
       signIn,
@@ -290,13 +274,12 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       addScore,
       submitOrder,
       submitWithdrawal,
-      resolveOrder,
+      applyResolved,
       payment: state.payment ?? DEFAULT_PAYMENT_SETTINGS,
       updatePaymentSettings,
     }),
     [
       state.user,
-      state.orders,
       ready,
       signUp,
       signIn,
@@ -305,7 +288,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       addScore,
       submitOrder,
       submitWithdrawal,
-      resolveOrder,
+      applyResolved,
       state.payment,
       updatePaymentSettings,
     ],
