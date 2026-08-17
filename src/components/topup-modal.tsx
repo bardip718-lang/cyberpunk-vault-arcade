@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useVault } from "@/lib/vault-store";
 import { paymentSettingsQuery, PAYMENT_SETTINGS_KEY, FALLBACK_QR } from "@/lib/payment-settings-query";
+import { REQUESTS_KEY } from "@/lib/requests-query";
 import { toast } from "sonner";
 
 const PRESETS = [100, 250, 500, 1000];
