@@ -44,12 +44,14 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { user, orders, signOut } = useVault();
+  const { user, signOut } = useVault();
+  const { requests } = useVaultRequests();
+  useRequestBalanceSync();
   const [authOpen, setAuthOpen] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const isOperator = !!user && !user.guest && user.email === ADMIN_EMAIL;
-  const pending = orders.filter((o) => o.status === "pending").length;
+  const pending = requests.filter((r) => r.status === "pending").length;
 
   const openDeposit = () => (user ? setTopUpOpen(true) : setAuthOpen(true));
   const openWithdraw = () => (user ? setWithdrawOpen(true) : setAuthOpen(true));
