@@ -30,6 +30,7 @@ export function TopUpModal({ open, onOpenChange }: { open: boolean; onOpenChange
   const [utr, setUtr] = useState("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   async function copyId() {
     if (!upiId) return;
