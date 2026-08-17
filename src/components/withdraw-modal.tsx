@@ -13,7 +13,10 @@ export function WithdrawModal({ open, onOpenChange }: { open: boolean; onOpenCha
   const [destination, setDestination] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  function submit(e: React.FormEvent) {
+  const [submitting, setSubmitting] = useState(false);
+  const queryClient = useQueryClient();
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     const amt = Number(amount);
     if (!Number.isFinite(amt) || amt < 100) {
@@ -28,11 +31,21 @@ export function WithdrawModal({ open, onOpenChange }: { open: boolean; onOpenCha
       setError("Enter a valid UPI ID or bank account details.");
       return;
     }
-    submitWithdrawal(Math.round(amt), destination.trim());
-    setError(null);
-    setDestination("");
-    toast.success("Withdrawal request sent for operator approval");
-    onOpenChange(false);
+    setSubmitting(true);
+    try {
+      await submitWithdrawal(Math.round(amt), destination.trim());
+      await queryClient.invalidateQueries({ queryKey: REQUESTS_KEY });
+      setError(null);
+      setDestination("");
+      toast.success("Request Submitted — awaiting operator approval");
+      onOpenChange(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not submit withdrawal";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
