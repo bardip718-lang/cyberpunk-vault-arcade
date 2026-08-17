@@ -42,7 +42,7 @@ export function TopUpModal({ open, onOpenChange }: { open: boolean; onOpenChange
     }
   }
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     const amt = Number(amount);
     if (!Number.isFinite(amt) || amt < 10 || amt > 100000) {
@@ -53,11 +53,21 @@ export function TopUpModal({ open, onOpenChange }: { open: boolean; onOpenChange
       setError("Reference/UTR must be exactly 12 digits.");
       return;
     }
-    submitOrder(Math.round(amt), utr.trim());
-    setError(null);
-    setUtr("");
-    toast.success("Order queued — awaiting operator approval");
-    onOpenChange(false);
+    setSubmitting(true);
+    try {
+      await submitOrder(Math.round(amt), utr.trim());
+      await queryClient.invalidateQueries({ queryKey: REQUESTS_KEY });
+      setError(null);
+      setUtr("");
+      toast.success("Request Submitted — awaiting operator approval");
+      onOpenChange(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not submit your deposit";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
