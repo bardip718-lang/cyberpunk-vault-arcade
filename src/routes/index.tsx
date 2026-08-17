@@ -23,6 +23,7 @@ import { AviatorGame } from "@/components/aviator-game";
 import { MinesGame } from "@/components/mines-game";
 import { SUPPORT_WHATSAPP } from "@/lib/notify";
 import { useVault, ADMIN_EMAIL } from "@/lib/vault-store";
+import { useVaultRequests, useRequestBalanceSync } from "@/lib/use-vault-requests";
 
 export const Route = createFileRoute("/")({
   head: () => ({
