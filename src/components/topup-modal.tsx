@@ -146,8 +146,8 @@ export function TopUpModal({ open, onOpenChange }: { open: boolean; onOpenChange
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
-          <Button type="submit" className="w-full font-display tracking-wide">
-            Submit Order
+          <Button type="submit" disabled={submitting} className="w-full font-display tracking-wide">
+            {submitting ? "Submitting…" : "Submit Order"}
           </Button>
         </form>
       </DialogContent>
