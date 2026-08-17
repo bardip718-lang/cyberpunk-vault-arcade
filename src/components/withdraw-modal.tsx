@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useQueryClient } from "@tanstack/react-query";
+import { REQUESTS_KEY } from "@/lib/requests-query";
 import { useVault } from "@/lib/vault-store";
 import { toast } from "sonner";
 
@@ -13,7 +15,10 @@ export function WithdrawModal({ open, onOpenChange }: { open: boolean; onOpenCha
   const [destination, setDestination] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  function submit(e: React.FormEvent) {
+  const [submitting, setSubmitting] = useState(false);
+  const queryClient = useQueryClient();
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     const amt = Number(amount);
     if (!Number.isFinite(amt) || amt < 100) {
@@ -28,11 +33,21 @@ export function WithdrawModal({ open, onOpenChange }: { open: boolean; onOpenCha
       setError("Enter a valid UPI ID or bank account details.");
       return;
     }
-    submitWithdrawal(Math.round(amt), destination.trim());
-    setError(null);
-    setDestination("");
-    toast.success("Withdrawal request sent for operator approval");
-    onOpenChange(false);
+    setSubmitting(true);
+    try {
+      await submitWithdrawal(Math.round(amt), destination.trim());
+      await queryClient.invalidateQueries({ queryKey: REQUESTS_KEY });
+      setError(null);
+      setDestination("");
+      toast.success("Request Submitted — awaiting operator approval");
+      onOpenChange(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not submit withdrawal";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -74,8 +89,8 @@ export function WithdrawModal({ open, onOpenChange }: { open: boolean; onOpenCha
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
-          <Button type="submit" className="w-full font-display tracking-wide">
-            Submit Withdrawal
+          <Button type="submit" disabled={submitting} className="w-full font-display tracking-wide">
+            {submitting ? "Submitting…" : "Submit Withdrawal"}
           </Button>
         </form>
       </DialogContent>

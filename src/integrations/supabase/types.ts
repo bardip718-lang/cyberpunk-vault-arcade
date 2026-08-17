@@ -38,6 +38,51 @@ export type Database = {
         }
         Relationships: []
       }
+      transaction_requests: {
+        Row: {
+          amount: number
+          created_at: string
+          destination: string
+          id: string
+          kind: string
+          resolved_at: string | null
+          status: string
+          updated_at: string
+          user_email: string
+          user_key: string
+          user_name: string
+          utr: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          destination?: string
+          id?: string
+          kind: string
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+          user_email?: string
+          user_key: string
+          user_name: string
+          utr?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          destination?: string
+          id?: string
+          kind?: string
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+          user_email?: string
+          user_key?: string
+          user_name?: string
+          utr?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

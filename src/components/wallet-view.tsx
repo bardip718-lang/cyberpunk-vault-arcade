@@ -1,9 +1,11 @@
 import { ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useVault, type Order } from "@/lib/vault-store";
+import { useVault } from "@/lib/vault-store";
+import { useVaultRequests } from "@/lib/use-vault-requests";
+import type { RequestStatus } from "@/lib/requests.functions";
 
-function StatusBadge({ status }: { status: Order["status"] }) {
+function StatusBadge({ status }: { status: RequestStatus }) {
   if (status === "approved") return <Badge className="bg-success text-success-foreground">Approved</Badge>;
   if (status === "rejected") return <Badge variant="destructive">Rejected</Badge>;
   return <Badge variant="secondary">Pending</Badge>;
@@ -16,8 +18,9 @@ export function WalletView({
   onDeposit: () => void;
   onWithdraw: () => void;
 }) {
-  const { user, orders } = useVault();
-  const mine = user ? orders.filter((o) => o.userId === user.id) : [];
+  const { user } = useVault();
+  const { requests } = useVaultRequests();
+  const mine = user ? requests.filter((r) => r.userKey === user.id) : [];
 
   return (
     <section className="space-y-6">
@@ -43,19 +46,19 @@ export function WalletView({
           <p className="mt-3 text-sm text-muted-foreground">No deposits or withdrawals yet.</p>
         ) : (
           <ul className="mt-3 space-y-2">
-            {mine.map((o) => (
+            {mine.map((r) => (
               <li
-                key={o.id}
+                key={r.id}
                 className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-4 py-2 text-sm"
               >
                 <span className="font-display uppercase tracking-wide">
-                  {o.type === "withdrawal" ? "Withdraw" : "Deposit"}
+                  {r.kind === "withdrawal" ? "Withdraw" : "Deposit"}
                 </span>
                 <span className="truncate text-muted-foreground">
-                  {o.type === "withdrawal" ? o.destination : `UTR ${o.utr}`}
+                  {r.kind === "withdrawal" ? r.destination : `UTR ${r.utr}`}
                 </span>
-                <span className="font-display">₹{o.amount}</span>
-                <StatusBadge status={o.status} />
+                <span className="font-display">₹{r.amount}</span>
+                <StatusBadge status={r.status} />
               </li>
             ))}
           </ul>
