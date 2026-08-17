@@ -89,8 +89,8 @@ export function WithdrawModal({ open, onOpenChange }: { open: boolean; onOpenCha
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
-          <Button type="submit" className="w-full font-display tracking-wide">
-            Submit Withdrawal
+          <Button type="submit" disabled={submitting} className="w-full font-display tracking-wide">
+            {submitting ? "Submitting…" : "Submit Withdrawal"}
           </Button>
         </form>
       </DialogContent>
