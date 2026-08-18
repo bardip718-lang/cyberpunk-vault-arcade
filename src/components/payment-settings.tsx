@@ -18,16 +18,18 @@ export function PaymentSettingsPanel() {
   const [upiId, setUpiId] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [qrUrl, setQrUrl] = useState("");
+  const [referralBonus, setReferralBonus] = useState("50");
 
   useEffect(() => {
     if (!settings) return;
     setUpiId(settings.upiId);
     setDisplayName(settings.displayName);
     setQrUrl(settings.qrUrl);
+    setReferralBonus(String(settings.referralBonus ?? 50));
   }, [settings]);
 
   const mutation = useMutation({
-    mutationFn: (vars: { upiId: string; displayName: string; qrUrl: string }) =>
+    mutationFn: (vars: { upiId: string; displayName: string; qrUrl: string; referralBonus: number }) =>
       save({ data: { ...vars, adminEmail: user?.email ?? "" } }),
     onSuccess: async (row) => {
       queryClient.setQueryData(PAYMENT_SETTINGS_KEY, row);
@@ -53,7 +55,12 @@ export function PaymentSettingsPanel() {
       toast.error("QR image URL must start with http(s):// or /");
       return;
     }
-    mutation.mutate({ upiId: id, displayName: displayName.trim(), qrUrl: qr });
+    const bonus = Number(referralBonus);
+    if (!Number.isInteger(bonus) || bonus < 0 || bonus > 100000) {
+      toast.error("Referral bonus must be a whole number between 0 and 100000");
+      return;
+    }
+    mutation.mutate({ upiId: id, displayName: displayName.trim(), qrUrl: qr, referralBonus: bonus });
   }
 
   return (
@@ -91,6 +98,18 @@ export function PaymentSettingsPanel() {
             maxLength={500}
             placeholder="https://example.com/qr.png"
             onChange={(e) => setQrUrl(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="set-bonus">Referral Bonus Amount (credits)</Label>
+          <Input
+            id="set-bonus"
+            type="number"
+            min={0}
+            max={100000}
+            value={referralBonus}
+            placeholder="50"
+            onChange={(e) => setReferralBonus(e.target.value)}
           />
         </div>
         <div className="sm:col-span-2 flex flex-wrap items-center gap-4">
