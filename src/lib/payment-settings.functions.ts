@@ -7,6 +7,7 @@ export type PaymentSettingsRow = {
   upiId: string;
   displayName: string;
   qrUrl: string;
+  referralBonus: number;
   updatedAt: string;
 };
 
@@ -31,7 +32,7 @@ export const getPaymentSettings = createServerFn({ method: "GET" }).handler(
 
     const { data, error } = await supabasePublic
       .from("payment_settings")
-      .select("upi_id, display_name, qr_code_url, updated_at")
+      .select("upi_id, display_name, qr_code_url, referral_bonus, updated_at")
       .eq("id", "default")
       .maybeSingle();
 
@@ -41,6 +42,7 @@ export const getPaymentSettings = createServerFn({ method: "GET" }).handler(
       upiId: data.upi_id,
       displayName: data.display_name,
       qrUrl: data.qr_code_url,
+      referralBonus: data.referral_bonus,
       updatedAt: data.updated_at,
     };
   },
@@ -51,6 +53,7 @@ const saveSchema = z.object({
   upiId: z.string().min(5).max(100),
   displayName: z.string().min(1).max(60),
   qrUrl: z.string().max(500),
+  referralBonus: z.number().int().min(0).max(100000),
 });
 
 export const savePaymentSettings = createServerFn({ method: "POST" })
@@ -67,9 +70,10 @@ export const savePaymentSettings = createServerFn({ method: "POST" })
         upi_id: data.upiId.trim(),
         display_name: data.displayName.trim(),
         qr_code_url: data.qrUrl.trim(),
+        referral_bonus: data.referralBonus,
         updated_at: new Date().toISOString(),
       })
-      .select("upi_id, display_name, qr_code_url, updated_at")
+      .select("upi_id, display_name, qr_code_url, referral_bonus, updated_at")
       .single();
 
     if (error) throw new Error(error.message);
@@ -77,6 +81,7 @@ export const savePaymentSettings = createServerFn({ method: "POST" })
       upiId: row.upi_id,
       displayName: row.display_name,
       qrUrl: row.qr_code_url,
+      referralBonus: row.referral_bonus,
       updatedAt: row.updated_at,
     };
   });

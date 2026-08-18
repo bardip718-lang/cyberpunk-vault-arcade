@@ -142,5 +142,10 @@ export const resolveRequest = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Request already resolved.");
-    return mapRow(row as Row);
+    const mapped = mapRow(row as Row);
+    if (mapped.kind === "deposit" && mapped.status === "approved") {
+      const { payReferralBonusIfFirstDeposit } = await import("@/lib/referral-reward.server");
+      await payReferralBonusIfFirstDeposit(mapped.userKey);
+    }
+    return mapped;
   });
