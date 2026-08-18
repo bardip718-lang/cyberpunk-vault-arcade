@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Wallet,
   MessageCircle,
+  Gift,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,8 @@ import { MinesGame } from "@/components/mines-game";
 import { SUPPORT_WHATSAPP } from "@/lib/notify";
 import { useVault, ADMIN_EMAIL } from "@/lib/vault-store";
 import { useVaultRequests, useRequestBalanceSync } from "@/lib/use-vault-requests";
+import { ReferEarn } from "@/components/refer-earn";
+import { useReferralBonusSync } from "@/lib/use-referral";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -48,6 +51,7 @@ function Index() {
   const { user, signOut } = useVault();
   const { requests } = useVaultRequests();
   useRequestBalanceSync();
+  useReferralBonusSync();
   const [authOpen, setAuthOpen] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
@@ -103,7 +107,7 @@ function Index() {
       )}
 
       <Tabs defaultValue="reels">
-        <TabsList className={`mb-5 grid w-full ${isOperator ? "grid-cols-6" : "grid-cols-5"} bg-secondary/60`}>
+        <TabsList className={`mb-5 grid w-full ${isOperator ? "grid-cols-7" : "grid-cols-6"} bg-secondary/60`}>
           <TabsTrigger value="reels">
             <Gamepad2 className="mr-1 size-4" /> Reels
           </TabsTrigger>
@@ -112,6 +116,9 @@ function Index() {
           <TabsTrigger value="mines">Mines</TabsTrigger>
           <TabsTrigger value="wallet">
             <Wallet className="mr-1 size-4" /> Wallet
+          </TabsTrigger>
+          <TabsTrigger value="refer">
+            <Gift className="mr-1 size-4" /> Refer
           </TabsTrigger>
           {isOperator && (
             <TabsTrigger value="admin">
@@ -135,6 +142,9 @@ function Index() {
         </TabsContent>
         <TabsContent value="wallet">
           <WalletView onDeposit={openDeposit} onWithdraw={openWithdraw} />
+        </TabsContent>
+        <TabsContent value="refer">
+          <ReferEarn onSignIn={() => setAuthOpen(true)} />
         </TabsContent>
         {isOperator && (
           <TabsContent value="admin">

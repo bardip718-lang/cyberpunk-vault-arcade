@@ -40,10 +40,18 @@ type State = {
   payment: PaymentSettings;
   /** IDs of resolved requests already reflected in the local balance. */
   applied: string[];
+  /** Total referral bonus already credited to the local balance, per user key. */
+  bonusApplied: Record<string, number>;
 };
 
 const KEY = "win1-vault-state";
-const empty: State = { user: null, accounts: {}, payment: DEFAULT_PAYMENT_SETTINGS, applied: [] };
+const empty: State = {
+  user: null,
+  accounts: {},
+  payment: DEFAULT_PAYMENT_SETTINGS,
+  applied: [],
+  bonusApplied: {},
+};
 
 function load(): State {
   if (typeof window === "undefined") return empty;
@@ -55,6 +63,7 @@ function load(): State {
       ...empty,
       ...parsed,
       applied: parsed.applied ?? [],
+      bonusApplied: parsed.bonusApplied ?? {},
       payment: { ...DEFAULT_PAYMENT_SETTINGS, ...(parsed.payment ?? {}) },
     };
   } catch {
@@ -78,6 +87,8 @@ type Ctx = {
   submitWithdrawal: (amount: number, destination: string) => Promise<void>;
   /** Applies a resolved request's balance effect exactly once. */
   applyResolved: (requests: VaultRequest[]) => void;
+  /** Credits any not-yet-applied referral bonus; returns the credited delta. */
+  applyReferralBonus: (totalEarned: number) => number;
   payment: PaymentSettings;
   updatePaymentSettings: (next: Partial<PaymentSettings>) => void;
 };
@@ -259,6 +270,23 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     [adjust],
   );
 
+  const applyReferralBonus = useCallback(
+    (totalEarned: number) => {
+      let credited = 0;
+      setState((s) => {
+        if (!s.user) return s;
+        const already = s.bonusApplied[s.user.id] ?? 0;
+        const delta = Math.max(0, totalEarned - already);
+        if (delta === 0) return s;
+        credited = delta;
+        const next = adjust(s, delta);
+        return { ...next, bonusApplied: { ...s.bonusApplied, [s.user.id]: totalEarned } };
+      });
+      return credited;
+    },
+    [adjust],
+  );
+
   const updatePaymentSettings = useCallback((next: Partial<PaymentSettings>) => {
     setState((s) => ({ ...s, payment: { ...DEFAULT_PAYMENT_SETTINGS, ...s.payment, ...next } }));
   }, []);
@@ -275,6 +303,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       submitOrder,
       submitWithdrawal,
       applyResolved,
+      applyReferralBonus,
       payment: state.payment ?? DEFAULT_PAYMENT_SETTINGS,
       updatePaymentSettings,
     }),
@@ -289,6 +318,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       submitOrder,
       submitWithdrawal,
       applyResolved,
+      applyReferralBonus,
       state.payment,
       updatePaymentSettings,
     ],

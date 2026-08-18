@@ -19,6 +19,7 @@ export type Database = {
           display_name: string
           id: string
           qr_code_url: string
+          referral_bonus: number
           updated_at: string
           upi_id: string
         }
@@ -26,6 +27,7 @@ export type Database = {
           display_name: string
           id?: string
           qr_code_url?: string
+          referral_bonus?: number
           updated_at?: string
           upi_id: string
         }
@@ -33,8 +35,48 @@ export type Database = {
           display_name?: string
           id?: string
           qr_code_url?: string
+          referral_bonus?: number
           updated_at?: string
           upi_id?: string
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          bonus_earned: number
+          code: string
+          created_at: string
+          invited_count: number
+          referred_by_code: string | null
+          reward_paid: boolean
+          updated_at: string
+          user_email: string
+          user_key: string
+          user_name: string
+        }
+        Insert: {
+          bonus_earned?: number
+          code: string
+          created_at?: string
+          invited_count?: number
+          referred_by_code?: string | null
+          reward_paid?: boolean
+          updated_at?: string
+          user_email?: string
+          user_key: string
+          user_name?: string
+        }
+        Update: {
+          bonus_earned?: number
+          code?: string
+          created_at?: string
+          invited_count?: number
+          referred_by_code?: string | null
+          reward_paid?: boolean
+          updated_at?: string
+          user_email?: string
+          user_key?: string
+          user_name?: string
         }
         Relationships: []
       }

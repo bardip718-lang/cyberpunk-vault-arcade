@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useVault } from "@/lib/vault-store";
+import { ensureReferralProfile } from "@/lib/referral.functions";
 import { toast } from "sonner";
 
 export function AuthModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
@@ -13,6 +14,18 @@ export function AuthModal({ open, onOpenChange }: { open: boolean; onOpenChange:
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [referral, setReferral] = useState("");
+  const [refLocked, setRefLocked] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref) {
+      setReferral(ref.trim().toUpperCase());
+      setRefLocked(true);
+      setMode("signup");
+    }
+  }, []);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,6 +43,17 @@ export function AuthModal({ open, onOpenChange }: { open: boolean; onOpenChange:
       return;
     }
     setError(null);
+    if (mode === "signup") {
+      const key = email.trim().toLowerCase();
+      void ensureReferralProfile({
+        data: {
+          userKey: key,
+          userName: name.trim(),
+          userEmail: key,
+          referredByCode: referral.trim().toUpperCase() || null,
+        },
+      }).catch(() => undefined);
+    }
     toast.success(mode === "login" ? "Welcome back to win1" : "Vault created — 500 credits granted");
     onOpenChange(false);
   }
@@ -65,6 +89,22 @@ export function AuthModal({ open, onOpenChange }: { open: boolean; onOpenChange:
               maxLength={120}
             />
           </div>
+          {mode === "signup" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="referral">Referral Code (Optional)</Label>
+              <Input
+                id="referral"
+                value={referral}
+                readOnly={refLocked}
+                maxLength={20}
+                placeholder="FRIEND123"
+                onChange={(e) => setReferral(e.target.value.toUpperCase())}
+              />
+              {refLocked && (
+                <p className="text-xs text-muted-foreground">Applied from your invite link.</p>
+              )}
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="password">Password</Label>
             <Input
