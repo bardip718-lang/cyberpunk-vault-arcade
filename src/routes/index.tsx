@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+        import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -10,13 +10,13 @@ import {
   Wallet,
   MessageCircle,
   Gift,
+  Phone,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ReelGame } from "@/components/reel-game";
 import { CardGame } from "@/components/card-game";
 import { AdminConsole } from "@/components/admin-console";
-import { AuthModal } from "@/components/auth-modal";
 import { TopUpModal } from "@/components/topup-modal";
 import { WithdrawModal } from "@/components/withdraw-modal";
 import { WalletView } from "@/components/wallet-view";
@@ -48,19 +48,68 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { user, signOut } = useVault();
+  const { user, signOut, signInAsGuest } = useVault();
   const { requests } = useVaultRequests();
   useRequestBalanceSync();
   useReferralBonusSync();
-  const [authOpen, setAuthOpen] = useState(false);
+
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
-  const isOperator = !!user && !user.guest && user.email === ADMIN_EMAIL;
+  const [mobileAuthOpen, setMobileAuthOpen] = useState(false);
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [activeUserMobile, setActiveUserMobile] = useState<string | null>(null);
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
+
+  // Auto load guest session or saved phone session
+  useEffect(() => {
+    const savedPhone = localStorage.getItem("win1_user_phone");
+    if (savedPhone) {
+      setActiveUserMobile(savedPhone);
+    } else if (!user && typeof signInAsGuest === "function") {
+      signInAsGuest();
+    }
+  }, [user, signInAsGuest]);
+
+  const handlePhoneLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanNumber = mobileNumber.replace(/\D/g, "");
+    if (cleanNumber.length !== 10) {
+      alert("Please enter a valid 10-digit mobile number");
+      return;
+    }
+    localStorage.setItem("win1_user_phone", cleanNumber);
+    setActiveUserMobile(cleanNumber);
+    setMobileAuthOpen(false);
+    alert("Logged in successfully with +91 " + cleanNumber);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("win1_user_phone");
+    setActiveUserMobile(null);
+    if (signOut) signOut();
+  };
+
+  const isOperator = isAdminUnlocked || (!!user && !user.guest && user.email === ADMIN_EMAIL);
   const pending = requests.filter((r) => r.status === "pending").length;
 
-  const openDeposit = () => (user ? setTopUpOpen(true) : setAuthOpen(true));
-  const openWithdraw = () => (user ? setWithdrawOpen(true) : setAuthOpen(true));
+  const openDeposit = () => setTopUpOpen(true);
+  const openWithdraw = () => {
+    if (!activeUserMobile) {
+      setMobileAuthOpen(true);
+      return;
+    }
+    setWithdrawOpen(true);
+  };
 
+  const handleAdminAccess = () => {
+    if (isAdminUnlocked) return;
+    const pin = window.prompt("Enter Admin Secret PIN:");
+    if (pin === "789012") {
+      setIsAdminUnlocked(true);
+    } else if (pin !== null) {
+      alert("Invalid Security PIN");
+    }
+  };
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-16 pt-6">
@@ -86,28 +135,74 @@ function Index() {
               <MessageCircle className="size-4" /> Support
             </a>
           </Button>
-          {user ? (
-            <Button variant="ghost" onClick={signOut} aria-label="Sign out">
-              <LogOut className="size-4" /> {user.guest ? "Exit guest" : "Sign out"}
+          {activeUserMobile ? (
+            <Button variant="ghost" onClick={handleLogout} aria-label="Sign out">
+              <LogOut className="size-4" /> Sign out
             </Button>
           ) : (
-            <Button variant="ghost" onClick={() => setAuthOpen(true)}>
+            <Button variant="ghost" onClick={() => setMobileAuthOpen(true)}>
               <LogIn className="size-4" /> Sign in
             </Button>
           )}
         </div>
       </header>
 
-      {user && (
-        <p className="mb-4 text-sm text-muted-foreground">
-          Logged in as <span className="text-foreground">{user.name}</span>
-          {user.guest ? " · guest session" : ` · ${user.email}`}
-          {user.admin && " · operator"}
-        </p>
+      {/* Status Bar */}
+      <p className="mb-4 text-sm text-muted-foreground">
+        {activeUserMobile ? (
+          <>
+            Logged in: <span className="font-bold text-foreground">+91 {activeUserMobile}</span>
+          </>
+        ) : (
+          <>Playing as <span className="text-foreground">Guest Player</span> (Instant 1-Tap Play)</>
+        )}
+        {isOperator && " · Operator"}
+      </p>
+
+      {/* Mobile Login Modal */}
+      {mobileAuthOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+          <div className="neon-panel w-full max-w-md rounded-xl p-6 shadow-2xl border border-primary/30">
+            <div className="flex items-center gap-2 mb-2">
+              <Phone className="size-5 text-primary" />
+              <h2 className="font-display text-xl neon-text">Mobile Sign In / Sign Up</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Enter your 10-digit mobile number for instant play and fast withdrawals. No password or email needed.
+            </p>
+            <form onSubmit={handlePhoneLogin} className="space-y-4">
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-background/80 px-3 py-2">
+                <span className="font-display text-sm text-muted-foreground">+91</span>
+                <input
+                  type="tel"
+                  maxLength={10}
+                  placeholder="Enter 10-digit Mobile Number"
+                  value={mobileNumber}
+                  onChange={(e) => setMobileNumber(e.target.value)}
+                  className="w-full bg-transparent font-display outline-none text-foreground"
+                  autoFocus
+                  required
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" className="w-full font-display">
+                  Continue &amp; Play
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setMobileAuthOpen(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       <Tabs defaultValue="reels">
-        <TabsList className={`mb-5 grid w-full ${isOperator ? "grid-cols-7" : "grid-cols-6"} bg-secondary/60`}>
+        <TabsList className="mb-5 grid w-full grid-cols-6 bg-secondary/60">
           <TabsTrigger value="reels">
             <Gamepad2 className="mr-1 size-4" /> Reels
           </TabsTrigger>
@@ -120,13 +215,7 @@ function Index() {
           <TabsTrigger value="refer">
             <Gift className="mr-1 size-4" /> Refer
           </TabsTrigger>
-          {isOperator && (
-            <TabsTrigger value="admin">
-              <ShieldCheck className="mr-1 size-4" /> Admin{pending > 0 ? ` (${pending})` : ""}
-            </TabsTrigger>
-          )}
         </TabsList>
-
 
         <TabsContent value="reels">
           <ReelGame />
@@ -144,30 +233,49 @@ function Index() {
           <WalletView onDeposit={openDeposit} onWithdraw={openWithdraw} />
         </TabsContent>
         <TabsContent value="refer">
-          <ReferEarn onSignIn={() => setAuthOpen(true)} />
+          <ReferEarn onSignIn={() => setMobileAuthOpen(true)} />
         </TabsContent>
-        {isOperator && (
-          <TabsContent value="admin">
-            <AdminConsole />
-          </TabsContent>
-        )}
       </Tabs>
+
+      {/* Admin Panel Access */}
+      {isOperator ? (
+        <div className="neon-panel mt-8 rounded-xl p-5 border border-primary/40">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-xl neon-text flex items-center gap-2">
+              <ShieldCheck className="size-5 text-primary" /> Admin Operator Console
+            </h2>
+            {pending > 0 && (
+              <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded font-bold">
+                {pending} Pending Request(s)
+              </span>
+            )}
+          </div>
+          <AdminConsole />
+        </div>
+      ) : null}
 
       <div className="neon-panel mt-8 rounded-xl p-5">
         <h2 className="font-display text-xl neon-text">Help &amp; Support</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Payment stuck, UTR not matched or withdrawal delayed? Talk to a human operator on WhatsApp.
         </p>
-        <Button asChild className="mt-4 font-display tracking-wide">
-          <a href={SUPPORT_WHATSAPP} target="_blank" rel="noopener noreferrer">
-            <MessageCircle className="size-4" /> WhatsApp Customer Support
-          </a>
-        </Button>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Button asChild className="font-display tracking-wide">
+            <a href={SUPPORT_WHATSAPP} target="_blank" rel="noopener noreferrer">
+              <MessageCircle className="size-4" /> WhatsApp Customer Support
+            </a>
+          </Button>
+          {!isOperator && (
+            <Button variant="ghost" onClick={handleAdminAccess} className="text-xs text-muted-foreground">
+              Operator Portal
+            </Button>
+          )}
+        </div>
       </div>
 
-      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
       <TopUpModal open={topUpOpen} onOpenChange={setTopUpOpen} />
       <WithdrawModal open={withdrawOpen} onOpenChange={setWithdrawOpen} />
     </main>
   );
-}
+            }
+              
