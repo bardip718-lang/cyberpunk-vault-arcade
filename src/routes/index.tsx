@@ -1,4 +1,3 @@
-
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import {
@@ -408,7 +407,6 @@ function Index() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-16 pt-6">
-      {/* Top Header */}
       <header className="neon-panel mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl p-4">
         <div className="cursor-pointer" onClick={() => setActiveTab("lobby")}>
           <h1 className="font-display text-3xl neon-text">win1</h1>
@@ -443,7 +441,6 @@ function Index() {
         </div>
       </header>
 
-      {/* User Info Bar */}
       <div className="mb-6 flex items-center justify-between text-sm text-muted-foreground">
         <p>
           {activeUserMobile ? (
@@ -461,7 +458,6 @@ function Index() {
         )}
       </div>
 
-      {/* Navigation Quick Bar */}
       <div className="mb-6 flex flex-wrap gap-2">
         <Button
           variant={activeTab === "lobby" ? "default" : "secondary"}
@@ -486,7 +482,6 @@ function Index() {
         </Button>
       </div>
 
-      {/* VIEW: GAME LOBBY */}
       {activeTab === "lobby" && (
         <div>
           <div className="mb-4 flex items-center justify-between">
@@ -536,7 +531,6 @@ function Index() {
         </div>
       )}
 
-      {/* VIEW: INDIVIDUAL GAMES */}
       {activeTab === "roulette" && <NeonRoulette />}
       {activeTab === "reels" && <ReelGame />}
       {activeTab === "cards" && <CardGame />}
@@ -545,7 +539,13 @@ function Index() {
       {activeTab === "wallet" && <WalletView onDeposit={openDeposit} onWithdraw={openWithdraw} />}
       {activeTab === "refer" && <ReferEarn onSignIn={() => setMobileAuthOpen(true)} />}
 
-      {/* Admin Panel Access */}
       {isOperator ? (
-        <div className="neon-panel mt-
-              
+        <div className="neon-panel mt-10 rounded-xl p-5 border border-primary/40">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-xl neon-text flex items-center g
+
+
+
+                
+                  
+  
