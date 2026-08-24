@@ -1,45 +1,25 @@
-export const SUPPORT_WHATSAPP = "https://wa.me/918317848513";
-export const OPS_EMAIL = "bardip718@gmail.com";
+export const SUPPORT_WHATSAPP = "https://wa.me/918317848513?text=Hi%2C%20I%20need%20help%20with%20win1%20vault";
 
-const LOG_KEY = "win1-notification-log";
+export async function notifyTelegram(message: string): Promise<boolean> {
+  const BOT_TOKEN = "8263590059:AAEQE966r5O2H52Z0H-s_vWfJj3y_r5k6E4"; // default placeholder / fallback
+  const CHAT_ID = "6190823451";
 
-export type NotificationEntry = {
-  id: string;
-  to: string;
-  subject: string;
-  body: string;
-  createdAt: number;
-};
-
-export function readNotificationLog(): NotificationEntry[] {
-  if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(LOG_KEY);
-    return raw ? (JSON.parse(raw) as NotificationEntry[]) : [];
-  } catch {
-    return [];
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+    await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        text: message,
+        parse_mode: "Markdown",
+      }),
+    });
+    return true;
+  } catch (error) {
+    console.warn("Telegram notification skipped or failed:", error);
+    return false;
   }
-}
-
-/** Logs a full transaction report addressed to the operator email. */
-export function notifyOps(subject: string, details: Record<string, string | number>) {
-  if (typeof window === "undefined") return;
-  const body = Object.entries(details)
-    .map(([k, v]) => `${k}: ${v}`)
-    .join("\n");
-  const entry: NotificationEntry = {
-    id: Math.random().toString(36).slice(2, 10),
-    to: OPS_EMAIL,
-    subject,
-    body,
-    createdAt: Date.now(),
-  };
-  const next = [entry, ...readNotificationLog()].slice(0, 200);
-  try {
-    window.localStorage.setItem(LOG_KEY, JSON.stringify(next));
-  } catch {
-    /* ignore quota errors */
-  }
-  console.info(`[win1 notification → ${OPS_EMAIL}] ${subject}\n${body}`);
-  window.dispatchEvent(new CustomEvent("win1-notification"));
 }
