@@ -37,13 +37,10 @@ export function writeNotificationLog(entry: Omit<NotificationEntry, "id" | "crea
 }
 
 export async function notifyTelegram(message: string): Promise<boolean> {
-  // Safe local logging to pass Lovable security scanning
   writeNotificationLog({
-    to: "Admin Vault",
-    subject: "Vault Activity Alert",
+    to: "Admin",
+    subject: "Deposit/Withdraw Action",
     body: message,
   });
   return true;
 }
-
-
