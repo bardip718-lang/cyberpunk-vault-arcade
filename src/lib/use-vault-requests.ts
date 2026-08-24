@@ -1,22 +1,73 @@
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { requestsQuery } from "@/lib/requests-query";
-import { useVault } from "@/lib/vault-store";
-import type { VaultRequest } from "@/lib/requests.functions";
+import { useState, useEffect } from "react";
 
-/** Live list of every deposit/withdrawal request from the shared database. */
-export function useVaultRequests() {
-  const { data, isLoading } = useQuery(requestsQuery);
-  return { requests: (data ?? []) as VaultRequest[], isLoading };
+export interface VaultRequest {
+  id: string;
+  type: "topup" | "withdraw";
+  amount: number;
+  utr?: string;
+  upiId?: string;
+  userEmail?: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
 }
 
-/** Keeps the signed-in player's local balance in sync with resolved requests. */
-export function useRequestBalanceSync() {
-  const { requests } = useVaultRequests();
-  const { user, applyResolved } = useVault();
+const STORAGE_KEY = "win1_vault_requests_v1";
+
+export function useVaultRequests() {
+  const [requests, setRequests] = useState<VaultRequest[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   useEffect(() => {
-    if (!user || requests.length === 0) return;
-    applyResolved(requests);
-  }, [requests, user, applyResolved]);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
+    } catch {
+      // ignore
+    }
+  }, [requests]);
+
+  const createRequest = async (data: {
+    type: "topup" | "withdraw";
+    amount: number;
+    utr?: string;
+    upiId?: string;
+    userEmail?: string;
+  }) => {
+    const newReq: VaultRequest = {
+      id: "req_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
+      type: data.type,
+      amount: Number(data.amount),
+      utr: data.utr,
+      upiId: data.upiId,
+      userEmail: data.userEmail || "Guest Player",
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
+
+    setRequests((prev) => [newReq, ...prev]);
+    return newReq;
+  };
+
+  const updateRequestStatus = (id: string, status: "approved" | "rejected") => {
+    setRequests((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, status } : r))
+    );
+  };
+
+  const clearAllRequests = () => {
+    setRequests([]);
+    localStorage.removeItem(STORAGE_KEY);
+  };
+
+  return {
+    requests,
+    createRequest,
+    updateRequestStatus,
+    clearAllRequests,
+  };
 }
