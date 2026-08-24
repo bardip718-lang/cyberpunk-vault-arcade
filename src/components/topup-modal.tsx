@@ -22,7 +22,7 @@ interface TopUpModalProps {
 }
 
 export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
-  const { config } = useVault();
+  const { config, user } = useVault();
   const { createRequest } = useVaultRequests();
   const [amount, setAmount] = useState<number>(250);
   const [utr, setUtr] = useState("");
@@ -56,7 +56,7 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
 
     setSubmitting(true);
     const savedPhone = localStorage.getItem("win1_user_phone");
-    const userIdentifier = savedPhone ? `+91 ${savedPhone}` : "Guest Player";
+    const userIdentifier = savedPhone ? `+91 ${savedPhone}` : user?.email || "Guest Player";
 
     try {
       if (typeof createRequest === "function") {
@@ -64,6 +64,7 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
           type: "topup",
           amount: Number(amount),
           utr: cleanUtr,
+          userEmail: userIdentifier,
         });
       }
 
@@ -192,8 +193,11 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
         )}
       </DialogContent>
     </Dialog>
-  );
-              }
+    );
+}
+
+
+      
                 
     
 
