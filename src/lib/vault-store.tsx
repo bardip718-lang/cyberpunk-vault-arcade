@@ -9,7 +9,7 @@ import {
 } from "react";
 import { notifyOps } from "@/lib/notify";
 import depositQrAsset from "@/assets/deposit-qr.png.asset.json";
-import { submitRequest, type VaultRequest } from "@/lib/requests.functions";
+import { submitRequest, listRequests, type VaultRequest } from "@/lib/requests.functions";
 
 export type User = {
   id: string;
@@ -145,7 +145,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           email: key,
           guest: false,
           admin: key === ADMIN_EMAIL,
-          balance: acct.balance,
+          balance: acct.balance ?? 500,
         },
       };
     });
@@ -173,7 +173,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
   const adjust = useCallback((s: State, delta: number): State => {
     if (!s.user) return s;
-    const balance = Math.max(0, (s.user.balance || 0) + delta);
+    const balance = Math.max(0, (s.user.balance ?? 0) + delta);
     const accounts = { ...s.accounts };
     if (!s.user.guest && accounts[s.user.id]) {
       accounts[s.user.id] = { ...accounts[s.user.id]!, balance };
@@ -261,12 +261,19 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           if (accounts[r.userKey]) {
             accounts[r.userKey] = {
               ...accounts[r.userKey]!,
-              balance: Math.max(0, accounts[r.userKey]!.balance + delta),
+              balance: Math.max(0, (accounts[r.userKey]!.balance ?? 0) + delta),
             };
           }
 
-          if (currentUser && (currentUser.id === r.userKey || (currentUser.guest && r.userKey.startsWith("guest")))) {
-            currentUser.balance = Math.max(0, (currentUser.balance || 0) + delta);
+          if (currentUser) {
+            const isTargetUser =
+              currentUser.id === r.userKey ||
+              (currentUser.guest && r.userKey.startsWith("guest")) ||
+              currentUser.admin;
+
+            if (isTargetUser) {
+              currentUser.balance = Math.max(0, (currentUser.balance ?? 0) + delta);
+            }
           }
 
           appliedList.push(key);
@@ -285,6 +292,24 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     },
     [],
   );
+
+  // Background Auto-Sync for Live Balance Updates
+  useEffect(() => {
+    if (!ready || !state.user) return;
+    const sync = async () => {
+      try {
+        const all = await listRequests();
+        if (all && all.length > 0) {
+          applyResolved(all);
+        }
+      } catch {
+        // silent fail
+      }
+    };
+    sync();
+    const timer = setInterval(sync, 2500);
+    return () => clearInterval(timer);
+  }, [ready, state.user, applyResolved]);
 
   const applyReferralBonus = useCallback(
     (totalEarned: number) => {
@@ -347,8 +372,8 @@ export function useVault() {
   const ctx = useContext(VaultContext);
   if (!ctx) throw new Error("useVault must be used inside VaultProvider");
   return ctx;
-                             }
-        
+  }
+             
   
 
 
