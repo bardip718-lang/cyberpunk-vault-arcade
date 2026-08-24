@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Check, ArrowDownToLine, QrCode } from "lucide-react";
+import { Copy, Check, ArrowDownToLine } from "lucide-react";
 import { useVault } from "@/lib/vault-store";
 import { useVaultRequests } from "@/lib/use-vault-requests";
 import { notifyTelegram } from "@/lib/notify";
@@ -22,7 +22,7 @@ interface TopUpModalProps {
 }
 
 export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
-  const { user, config } = useVault();
+  const { config } = useVault();
   const { createRequest } = useVaultRequests();
   const [amount, setAmount] = useState<number>(250);
   const [utr, setUtr] = useState("");
@@ -32,11 +32,8 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
 
   const upiId = config?.upiId || "8317848513@ybl";
   const upiName = config?.upiName || "WIN1 VAULT";
-
   const cleanUpi = upiId.trim();
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${encodeURIComponent(
-    cleanUpi
-  )}%26pn=${encodeURIComponent(upiName)}%26am=${amount}%26cu=INR`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${encodeURIComponent(cleanUpi)}%26pn=${encodeURIComponent(upiName)}%26am=${amount}%26cu=INR`;
 
   const handleCopyUpi = async () => {
     try {
@@ -44,7 +41,7 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback if clipboard API fails
+      // fallback
     }
   };
 
@@ -58,30 +55,23 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
     }
 
     setSubmitting(true);
-
     const savedPhone = localStorage.getItem("win1_user_phone");
-    const userIdentifier = savedPhone
-      ? `+91 ${savedPhone}`
-      : user?.email || "Guest Player";
+    const userIdentifier = savedPhone ? `+91 ${savedPhone}` : "Guest Player";
 
     try {
-      // Save topup request
       if (typeof createRequest === "function") {
         await createRequest({
           type: "topup",
           amount: Number(amount),
           utr: cleanUtr,
-          userEmail: userIdentifier,
         });
       }
 
-      // Send Telegram alert to admin
       await notifyTelegram(
         `📥 *NEW DEPOSIT REQUEST*\n\n` +
-          `👤 *User:* \`${userIdentifier}\`\n` +
-          `💰 *Amount:* ₹${amount}\n` +
-          `🔢 *UTR / Ref:* \`${cleanUtr}\`\n\n` +
-          `⚡ _Approve in Admin Console to credit balance._`
+        `👤 *User:* \`${userIdentifier}\`\n` +
+        `💰 *Amount:* ₹${amount}\n` +
+        `🔢 *UTR:* \`${cleanUtr}\``
       );
 
       setSuccess(true);
@@ -92,7 +82,7 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
       }, 2500);
     } catch (err) {
       console.error(err);
-      alert("Something went wrong while submitting request. Please try again.");
+      alert("Error submitting request. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -106,7 +96,7 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
             <ArrowDownToLine className="size-6 text-primary" /> Vault Top-Up
           </DialogTitle>
           <DialogDescription className="text-muted-foreground text-xs">
-            Scan &amp; pay via any UPI app (GPay / PhonePe / Paytm), then submit 12-digit UTR.
+            Pay via UPI, then submit 12-digit UTR reference number.
           </DialogDescription>
         </DialogHeader>
 
@@ -115,14 +105,13 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
             <div className="size-14 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 mx-auto flex items-center justify-center animate-bounce">
               <Check className="size-8" />
             </div>
-            <h3 className="font-display text-xl text-foreground font-bold">Deposit Request Submitted!</h3>
+            <h3 className="font-display text-xl text-foreground font-bold">Deposit Submitted!</h3>
             <p className="text-xs text-muted-foreground">
-              Your ₹{amount} score balance will be credited as soon as the operator verifies the UTR.
+              ₹{amount} will be credited once verified by operator.
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 pt-1">
-            {/* QR Code display */}
             <div className="flex flex-col items-center justify-center p-3 rounded-xl border border-border bg-background/60">
               <div className="bg-white p-2.5 rounded-lg shadow-md mb-2">
                 <img
@@ -133,7 +122,6 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
               </div>
               <p className="text-xs font-display font-semibold text-primary">{upiName}</p>
 
-              {/* UPI ID copy pill */}
               <div className="mt-2 flex items-center gap-2 rounded-md border border-border bg-secondary/80 px-3 py-1.5 text-xs font-mono">
                 <span>{cleanUpi}</span>
                 <button
@@ -147,7 +135,6 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
               </div>
             </div>
 
-            {/* Quick Amount Select */}
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Select Amount</Label>
               <div className="grid grid-cols-3 gap-1.5">
@@ -166,7 +153,6 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
               </div>
             </div>
 
-            {/* Custom Amount */}
             <div className="space-y-1">
               <Label htmlFor="deposit-amount" className="text-xs text-muted-foreground">Amount (₹)</Label>
               <Input
@@ -180,7 +166,6 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
               />
             </div>
 
-            {/* UTR input */}
             <div className="space-y-1">
               <Label htmlFor="deposit-utr" className="text-xs text-muted-foreground">
                 12-digit UPI / UTR Reference No.
@@ -188,7 +173,7 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
               <Input
                 id="deposit-utr"
                 type="text"
-                placeholder="e.g. 419283749281"
+                placeholder="e.g. 521061008271"
                 value={utr}
                 onChange={(e) => setUtr(e.target.value)}
                 className="font-display"
@@ -208,8 +193,8 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
       </DialogContent>
     </Dialog>
   );
-}
-
-  
+              }
+                
     
+
               
