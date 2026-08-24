@@ -1,3 +1,4 @@
+
 export const SUPPORT_WHATSAPP = "https://wa.me/918317848513?text=Hi%2C%20I%20need%20help%20with%20win1%20vault";
 export const OPS_EMAIL = "bardip718@gmail.com";
 
@@ -38,9 +39,24 @@ export function writeNotificationLog(entry: Omit<NotificationEntry, "id" | "crea
 
 export async function notifyTelegram(message: string): Promise<boolean> {
   writeNotificationLog({
-    to: "Admin",
-    subject: "Deposit/Withdraw Action",
+    to: "Admin Telegram",
+    subject: "Vault Alert",
     body: message,
   });
+  return true;
+}
+
+export async function notifyOps(type: "deposit" | "withdraw" | "alert", details: Record<string, unknown>): Promise<boolean> {
+  const subject = `[win1 ${type.toUpperCase()}] Request Alert`;
+  const body = Object.entries(details)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join("\n");
+
+  writeNotificationLog({
+    to: OPS_EMAIL,
+    subject,
+    body,
+  });
+
   return true;
 }
