@@ -1,4 +1,3 @@
-
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import {
@@ -17,11 +16,13 @@ import {
   Layers,
   Bomb,
   Plane,
+  Disc,
   ChevronLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReelGame } from "@/components/reel-game";
 import { CardGame } from "@/components/card-game";
+import { RouletteGame } from "@/components/roulette-game";
 import { AdminConsole } from "@/components/admin-console";
 import { TopUpModal } from "@/components/topup-modal";
 import { WithdrawModal } from "@/components/withdraw-modal";
@@ -40,7 +41,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "win1 is a neon cyberpunk reward vault: spin reels, crash aviator, sweep mines and top up by UPI.",
+          "win1 is a neon cyberpunk reward vault: spin reels, crash aviator, sweep mines and play roulette.",
       },
     ],
   }),
@@ -48,6 +49,16 @@ export const Route = createFileRoute("/")({
 });
 
 const GAMES = [
+  {
+    id: "roulette",
+    name: "Neon Roulette",
+    tagline: "Red, Black & 14x Green Wheel",
+    badge: "NEW",
+    badgeColor: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+    icon: Disc,
+    players: "1,890 Playing",
+    gradient: "from-purple-500/20 via-primary/10 to-transparent",
+  },
   {
     id: "aviator",
     name: "Aviator Crash",
@@ -153,7 +164,6 @@ function Index() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-16 pt-6">
-      {/* Top Header */}
       <header className="neon-panel mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl p-4">
         <div className="cursor-pointer" onClick={() => setActiveTab("lobby")}>
           <h1 className="font-display text-3xl neon-text">win1</h1>
@@ -188,7 +198,6 @@ function Index() {
         </div>
       </header>
 
-      {/* User Info Bar */}
       <div className="mb-6 flex items-center justify-between text-sm text-muted-foreground">
         <p>
           {activeUserMobile ? (
@@ -206,7 +215,6 @@ function Index() {
         )}
       </div>
 
-      {/* Navigation Quick Bar */}
       <div className="mb-6 flex flex-wrap gap-2">
         <Button
           variant={activeTab === "lobby" ? "default" : "secondary"}
@@ -231,7 +239,6 @@ function Index() {
         </Button>
       </div>
 
-      {/* VIEW: GAME LOBBY */}
       {activeTab === "lobby" && (
         <div>
           <div className="mb-4 flex items-center justify-between">
@@ -241,7 +248,7 @@ function Index() {
             <span className="text-xs text-muted-foreground">Select a game to start</span>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {GAMES.map((g) => {
               const IconComp = g.icon;
               return (
@@ -281,7 +288,7 @@ function Index() {
         </div>
       )}
 
-      {/* VIEW: INDIVIDUAL GAMES */}
+      {activeTab === "roulette" && <RouletteGame />}
       {activeTab === "reels" && <ReelGame />}
       {activeTab === "cards" && <CardGame />}
       {activeTab === "aviator" && <AviatorGame />}
@@ -289,7 +296,6 @@ function Index() {
       {activeTab === "wallet" && <WalletView onDeposit={openDeposit} onWithdraw={openWithdraw} />}
       {activeTab === "refer" && <ReferEarn onSignIn={() => setMobileAuthOpen(true)} />}
 
-      {/* Admin Panel Access */}
       {isOperator ? (
         <div className="neon-panel mt-10 rounded-xl p-5 border border-primary/40">
           <div className="flex items-center justify-between mb-4">
@@ -306,7 +312,6 @@ function Index() {
         </div>
       ) : null}
 
-      {/* Help Section */}
       <div className="neon-panel mt-8 rounded-xl p-5">
         <h2 className="font-display text-xl neon-text">Help &amp; Support</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -326,7 +331,6 @@ function Index() {
         </div>
       </div>
 
-      {/* Mobile Login Modal */}
       {mobileAuthOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
           <div className="neon-panel w-full max-w-md rounded-xl p-6 shadow-2xl border border-primary/30">
@@ -372,4 +376,6 @@ function Index() {
       <WithdrawModal open={withdrawOpen} onOpenChange={setWithdrawOpen} />
     </main>
   );
-}
+          }
+
+
