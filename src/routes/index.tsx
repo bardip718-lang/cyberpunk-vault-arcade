@@ -11,17 +11,18 @@ import {
   MessageCircle,
   Gift,
   Phone,
-  Flame,
   Sparkles,
   Zap,
   Layers,
   Bomb,
   Plane,
+  Disc,
   ChevronLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReelGame } from "@/components/reel-game";
 import { CardGame } from "@/components/card-game";
+import { RouletteGame } from "@/components/roulette-game";
 import { AdminConsole } from "@/components/admin-console";
 import { TopUpModal } from "@/components/topup-modal";
 import { WithdrawModal } from "@/components/withdraw-modal";
@@ -41,7 +42,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "win1 is a neon cyberpunk reward vault: spin reels, crash aviator, sweep mines and top up by UPI.",
+          "win1 is a neon cyberpunk reward vault: spin reels, crash aviator, sweep mines and play roulette.",
       },
     ],
   }),
@@ -49,6 +50,16 @@ export const Route = createFileRoute("/")({
 });
 
 const GAMES = [
+  {
+    id: "roulette",
+    name: "Neon Roulette",
+    tagline: "Red, Black & 14x Green Wheel",
+    badge: "NEW",
+    badgeColor: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+    icon: Disc,
+    players: "1,890 Playing",
+    gradient: "from-purple-500/20 via-primary/10 to-transparent",
+  },
   {
     id: "aviator",
     name: "Aviator Crash",
@@ -244,7 +255,7 @@ function Index() {
             <span className="text-xs text-muted-foreground">Select a game to start</span>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {GAMES.map((g) => {
               const IconComp = g.icon;
               return (
@@ -285,6 +296,7 @@ function Index() {
       )}
 
       {/* VIEW: INDIVIDUAL GAMES */}
+      {activeTab === "roulette" && <RouletteGame />}
       {activeTab === "reels" && <ReelGame />}
       {activeTab === "cards" && <CardGame />}
       {activeTab === "aviator" && <AviatorGame />}
@@ -375,5 +387,5 @@ function Index() {
       <WithdrawModal open={withdrawOpen} onOpenChange={setWithdrawOpen} />
     </main>
   );
-          }
-              
+                                         }
+            
