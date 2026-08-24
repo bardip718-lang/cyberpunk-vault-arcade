@@ -193,12 +193,7 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
         )}
       </DialogContent>
     </Dialog>
-    );
-}
+  );
+              }
 
-
-      
-                
-    
-
-              
+          
