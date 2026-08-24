@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+  import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import {
   ArrowDownToLine,
@@ -31,9 +31,8 @@ import { AviatorGame } from "@/components/aviator-game";
 import { MinesGame } from "@/components/mines-game";
 import { SUPPORT_WHATSAPP } from "@/lib/notify";
 import { useVault, ADMIN_EMAIL } from "@/lib/vault-store";
-import { useVaultRequests, useRequestBalanceSync } from "@/lib/use-vault-requests";
+import { useVaultRequests } from "@/lib/use-vault-requests";
 import { ReferEarn } from "@/components/refer-earn";
-import { useReferralBonusSync } from "@/lib/use-referral";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -105,8 +104,6 @@ const GAMES = [
 function Index() {
   const { user, signOut, signInAsGuest } = useVault();
   const { requests } = useVaultRequests();
-  useRequestBalanceSync();
-  useReferralBonusSync();
 
   const [activeTab, setActiveTab] = useState<string>("lobby");
   const [topUpOpen, setTopUpOpen] = useState(false);
@@ -144,7 +141,7 @@ function Index() {
   };
 
   const isOperator = isAdminUnlocked || (!!user && !user.guest && user.email === ADMIN_EMAIL);
-  const pending = requests.filter((r) => r.status === "pending").length;
+  const pending = requests?.filter((r) => r.status === "pending")?.length || 0;
 
   const openDeposit = () => setTopUpOpen(true);
   const openWithdraw = () => {
@@ -387,5 +384,5 @@ function Index() {
       <WithdrawModal open={withdrawOpen} onOpenChange={setWithdrawOpen} />
     </main>
   );
-                                         }
-            
+}
+  
