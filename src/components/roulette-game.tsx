@@ -150,5 +150,5 @@ export function RouletteGame() {
       </div>
     </div>
   );
-}                 }
+                }
 
