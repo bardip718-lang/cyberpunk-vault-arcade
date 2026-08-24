@@ -1,189 +1,195 @@
-import { Check, X, Loader2 } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useVault } from "@/lib/vault-store";
-import { toast } from "sonner";
-import { useEffect, useState } from "react";
-import { PaymentSettingsPanel } from "@/components/payment-settings";
-import { readNotificationLog, notifyOps, OPS_EMAIL, type NotificationEntry } from "@/lib/notify";
-import { useVaultRequests } from "@/lib/use-vault-requests";
-import { REQUESTS_KEY } from "@/lib/requests-query";
-import { resolveRequest, type VaultRequest, type RequestStatus } from "@/lib/requests.functions";
-
-function StatusBadge({ status }: { status: RequestStatus }) {
-  if (status === "approved") return <Badge className="bg-success text-success-foreground">Approved</Badge>;
-  if (status === "rejected") return <Badge variant="destructive">Rejected</Badge>;
-  return <Badge variant="secondary">Pending</Badge>;
-}
-
-function label(r: VaultRequest) {
-  return r.userEmail ? `${r.userName} · ${r.userEmail}` : r.userName;
-}
+import { useVaultRequests, VaultRequest } from "@/lib/use-vault-requests";
+import { Check, X, ShieldCheck, RefreshCw, Smartphone, QrCode } from "lucide-react";
 
 export function AdminConsole() {
-  const { user } = useVault();
-  const { requests, isLoading } = useVaultRequests();
-  const queryClient = useQueryClient();
-  const resolveFn = useServerFn(resolveRequest);
-  const [log, setLog] = useState<NotificationEntry[]>([]);
+  const { config, setConfig, updateBalance } = useVault();
+  const { requests, updateRequestStatus, clearAllRequests } = useVaultRequests();
 
-  useEffect(() => {
-    const sync = () => setLog(readNotificationLog());
-    sync();
-    window.addEventListener("win1-notification", sync);
-    return () => window.removeEventListener("win1-notification", sync);
-  }, [requests]);
+  const [upiId, setUpiId] = useState(config?.upiId || "8317848513@ybl");
+  const [upiName, setUpiName] = useState(config?.upiName || "WIN1 VAULT");
+  const [savedMsg, setSavedMsg] = useState(false);
 
-  const resolve = useMutation({
-    mutationFn: (vars: { id: string; status: "approved" | "rejected" }) =>
-      resolveFn({ data: { adminEmail: user?.email ?? "", id: vars.id, status: vars.status } }),
-    onSuccess: (row) => {
-      notifyOps(`Transaction ${row.status}`, {
-        Type: row.kind === "withdrawal" ? "Withdrawal" : "Deposit",
-        User: label(row),
-        "User ID": row.userKey,
-        Amount: `₹${row.amount}`,
-        Reference: row.kind === "withdrawal" ? row.destination || "—" : row.utr,
-        Status: row.status,
-        "Resolved at": new Date().toLocaleString(),
+  const pendingRequests = requests.filter((r) => r.status === "pending");
+  const historyRequests = requests.filter((r) => r.status !== "pending").slice(0, 10);
+
+  const handleSavePaymentSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (typeof setConfig === "function") {
+      setConfig({
+        upiId: upiId.trim(),
+        upiName: upiName.trim(),
       });
-      queryClient.invalidateQueries({ queryKey: REQUESTS_KEY });
-      toast.success(`${row.kind === "withdrawal" ? "Withdrawal" : "Deposit"} ${row.status} successfully`);
-    },
-    onError: (e: Error) => toast.error(e.message || "Could not update this request"),
-  });
+    }
+    setSavedMsg(true);
+    setTimeout(() => setSavedMsg(false), 2500);
+  };
 
-  const pendingDeposits = requests.filter((r) => r.status === "pending" && r.kind === "deposit");
-  const pendingWithdrawals = requests.filter((r) => r.status === "pending" && r.kind === "withdrawal");
-  const history = requests.filter((r) => r.status !== "pending");
+  const handleApprove = async (req: VaultRequest) => {
+    // 1. Status Approved karo
+    if (typeof updateRequestStatus === "function") {
+      updateRequestStatus(req.id, "approved");
+    }
 
-  function renderRow(r: VaultRequest) {
-    return (
-      <li
-        key={r.id}
-        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-secondary/40 p-4"
-      >
-        <div className="min-w-0">
-          <p className="truncate font-display text-sm">{label(r)}</p>
-          <p className="text-sm text-muted-foreground">
-            {r.kind === "withdrawal" ? (
-              <>Payout to <span className="text-primary">{r.destination}</span></>
-            ) : (
-              <>UTR <span className="text-primary">{r.utr}</span></>
-            )}{" "}
-            · {new Date(r.createdAt).toLocaleString()}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="font-display text-lg text-accent">₹{r.amount}</span>
-          <Button
-            size="sm"
-            disabled={resolve.isPending}
-            onClick={() => resolve.mutate({ id: r.id, status: "approved" })}
-          >
-            <Check className="size-4" /> Approve
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            disabled={resolve.isPending}
-            onClick={() => resolve.mutate({ id: r.id, status: "rejected" })}
-          >
-            <X className="size-4" /> Reject
-          </Button>
-        </div>
-      </li>
-    );
-  }
+    // 2. Direct score balance credit karo
+    if (req.type === "topup" && typeof updateBalance === "function") {
+      updateBalance(Number(req.amount));
+    }
+
+    alert(`✅ Deposit of ₹${req.amount} approved! Balance credited instantly.`);
+  };
+
+  const handleReject = async (req: VaultRequest) => {
+    if (typeof updateRequestStatus === "function") {
+      updateRequestStatus(req.id, "rejected");
+    }
+
+    // Agar withdrawal reject hua toh amount wapas user wallet me refund karo
+    if (req.type === "withdraw" && typeof updateBalance === "function") {
+      updateBalance(Number(req.amount));
+    }
+
+    alert(`❌ Request of ₹${req.amount} marked as rejected.`);
+  };
 
   return (
-    <section className="space-y-6">
-      <PaymentSettingsPanel />
-
-      <div className="neon-panel rounded-xl p-5">
-        <h2 className="font-display text-xl neon-text">
-          Pending Deposits ({pendingDeposits.length})
-        </h2>
-        <p className="mb-4 text-sm text-muted-foreground">
-          Approving credits the player&apos;s balance automatically.
-        </p>
-        {isLoading ? (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Loading live requests…
-          </p>
-        ) : pendingDeposits.length === 0 ? (
-          <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            No pending deposit requests.
-          </p>
-        ) : (
-          <ul className="space-y-3">{pendingDeposits.map(renderRow)}</ul>
-        )}
+    <div className="space-y-6">
+      {/* 1. Payment Gateway Settings */}
+      <div className="rounded-xl border border-border bg-background/50 p-4">
+        <h3 className="font-display text-lg text-primary flex items-center gap-2 mb-3">
+          <QrCode className="size-4" /> UPI Payment Receiver Setup
+        </h3>
+        <form onSubmit={handleSavePaymentSettings} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Admin Receiving UPI ID</Label>
+            <Input
+              value={upiId}
+              onChange={(e) => setUpiId(e.target.value)}
+              placeholder="e.g. yourname@upi"
+              className="font-display"
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Merchant / Receiver Name</Label>
+            <Input
+              value={upiName}
+              onChange={(e) => setUpiName(e.target.value)}
+              placeholder="e.g. WIN1 VAULT"
+              className="font-display"
+              required
+            />
+          </div>
+          <div className="sm:col-span-2 flex items-center justify-between mt-2">
+            <Button type="submit" size="sm" className="font-display font-bold">
+              Save Payment Settings
+            </Button>
+            {savedMsg && <span className="text-xs text-emerald-400 font-bold">Saved successfully!</span>}
+          </div>
+        </form>
       </div>
 
-      <div className="neon-panel rounded-xl p-5">
-        <h2 className="font-display text-xl neon-text">
-          Pending Withdrawals ({pendingWithdrawals.length})
-        </h2>
-        <p className="mb-4 text-sm text-muted-foreground">
-          The amount is already locked; rejecting refunds it to the player.
-        </p>
-        {pendingWithdrawals.length === 0 ? (
-          <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            No pending withdrawal requests.
-          </p>
-        ) : (
-          <ul className="space-y-3">{pendingWithdrawals.map(renderRow)}</ul>
-        )}
-      </div>
+      {/* 2. Pending Requests */}
+      <div className="rounded-xl border border-border bg-background/50 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-display text-lg text-foreground flex items-center gap-2">
+            <Smartphone className="size-4 text-primary" /> Pending User Requests ({pendingRequests.length})
+          </h3>
+          {requests.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (window.confirm("Clear all logs?")) clearAllRequests?.();
+              }}
+              className="text-xs text-muted-foreground"
+            >
+              Clear Logs
+            </Button>
+          )}
+        </div>
 
-      <div className="neon-panel rounded-xl p-5">
-        <h2 className="font-display text-xl neon-text">Processed history</h2>
-        {history.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">Nothing processed yet.</p>
+        {pendingRequests.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-4 text-center">No pending deposit or withdrawal requests.</p>
         ) : (
-          <ul className="mt-3 space-y-2">
-            {history.map((r) => (
-              <li
-                key={r.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-4 py-2 text-sm"
+          <div className="space-y-2">
+            {pendingRequests.map((req) => (
+              <div
+                key={req.id}
+                className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border border-border bg-secondary/40"
               >
-                <span className="truncate">{label(r)}</span>
-                <span className="text-muted-foreground">
-                  {r.kind === "withdrawal" ? `Payout ${r.destination}` : `UTR ${r.utr}`}
-                </span>
-                <span className="font-display">₹{r.amount}</span>
-                <StatusBadge status={r.status} />
-              </li>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                        req.type === "topup" ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
+                      }`}
+                    >
+                      {req.type === "topup" ? "DEPOSIT" : "WITHDRAW"}
+                    </span>
+                    <span className="font-display font-bold text-foreground">₹{req.amount}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    User: <span className="text-foreground font-mono">{req.userEmail || "Guest"}</span>
+                  </p>
+                  {req.utr && (
+                    <p className="text-xs text-muted-foreground">
+                      UTR / Ref: <span className="font-mono text-primary font-bold">{req.utr}</span>
+                    </p>
+                  )}
+                  {req.upiId && (
+                    <p className="text-xs text-muted-foreground">
+                      Pay to UPI: <span className="font-mono text-cyan-400 font-bold">{req.upiId}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleApprove(req)}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-display text-xs"
+                  >
+                    <Check className="size-3.5 mr-1" /> Approve &amp; Credit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleReject(req)}
+                    className="border-rose-500/40 text-rose-400 hover:bg-rose-500/20 text-xs font-display"
+                  >
+                    <X className="size-3.5 mr-1" /> Reject
+                  </Button>
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
 
-      <div className="neon-panel rounded-xl p-5">
-        <h2 className="font-display text-xl neon-text">Notification log</h2>
-        <p className="mb-3 text-sm text-muted-foreground">
-          Every request and approval is reported to <span className="text-primary">{OPS_EMAIL}</span>.
-        </p>
-        {log.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No notifications yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {log.map((n) => (
-              <li key={n.id} className="rounded-md border border-border px-4 py-2 text-sm">
-                <p className="font-display">
-                  {n.subject}{" "}
-                  <span className="text-xs text-muted-foreground">
-                    · {new Date(n.createdAt).toLocaleString()}
-                  </span>
-                </p>
-                <pre className="mt-1 whitespace-pre-wrap font-sans text-xs text-muted-foreground">{n.body}</pre>
-              </li>
+      {/* 3. History */}
+      {historyRequests.length > 0 && (
+        <div className="rounded-xl border border-border bg-background/30 p-4">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Recent Completed Actions</h4>
+          <div className="space-y-1.5">
+            {historyRequests.map((h) => (
+              <div key={h.id} className="flex items-center justify-between text-xs py-1 border-b border-border/40">
+                <span className="font-mono">{h.userEmail} · ₹{h.amount}</span>
+                <span className={`font-bold uppercase ${h.status === "approved" ? "text-emerald-400" : "text-rose-400"}`}>
+                  {h.status}
+                </span>
+              </div>
             ))}
-          </ul>
-        )}
-      </div>
-    </section>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
+
+      
+            
