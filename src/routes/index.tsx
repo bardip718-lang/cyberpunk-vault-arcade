@@ -1,4 +1,5 @@
-  import { createFileRoute } from "@tanstack/react-router";
+
+import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import {
   ArrowDownToLine,
@@ -49,7 +50,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-/* --- ROULETTE COMPONENT --- */
+/* --- ROULETTE WHEEL COMPONENT --- */
 const ROULETTE_NUMBERS = [
   { num: 0, color: "green" },
   { num: 32, color: "red" },
@@ -166,7 +167,7 @@ function NeonRoulette() {
           <h2 className="font-display text-2xl neon-text flex items-center gap-2">
             <Disc className="size-6 text-primary" /> Neon Roulette Wheel
           </h2>
-          <p className="text-xs text-muted-foreground">Pick a color/condition, spin and claim up to 14x rewards.</p>
+          <p className="text-xs text-muted-foreground">Pick a color or condition, spin and claim up to 14x rewards.</p>
         </div>
       </div>
 
@@ -546,6 +547,5 @@ function Index() {
 
       {/* Admin Panel Access */}
       {isOperator ? (
-        <div className="neon-panel mt-10 rounde
-  
-          
+        <div className="neon-panel mt-
+              
