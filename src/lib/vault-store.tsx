@@ -38,9 +38,7 @@ type State = {
   user: User | null;
   accounts: Record<string, Account>;
   payment: PaymentSettings;
-  /** IDs of resolved requests already reflected in the local balance. */
   applied: string[];
-  /** Total referral bonus already credited to the local balance, per user key. */
   bonusApplied: Record<string, number>;
 };
 
@@ -73,8 +71,6 @@ function load(): State {
 
 export const ADMIN_EMAIL = "bardip718@gmail.com";
 
-const uid = () => Math.random().toString(36).slice(2, 10);
-
 type Ctx = {
   user: User | null;
   ready: boolean;
@@ -85,9 +81,7 @@ type Ctx = {
   addScore: (delta: number) => void;
   submitOrder: (amount: number, utr: string) => Promise<void>;
   submitWithdrawal: (amount: number, destination: string) => Promise<void>;
-  /** Applies a resolved request's balance effect exactly once. */
   applyResolved: (requests: VaultRequest[]) => void;
-  /** Credits any not-yet-applied referral bonus; returns the credited delta. */
   applyReferralBonus: (totalEarned: number) => number;
   payment: PaymentSettings;
   updatePaymentSettings: (next: Partial<PaymentSettings>) => void;
@@ -159,24 +153,27 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const playAsGuest = useCallback(() => {
-    setState((s) => ({
-      ...s,
-      user: {
-        id: `guest-${uid()}`,
-        name: "Guest Runner",
-        email: "",
-        guest: true,
-        admin: false,
-        balance: 250,
-      },
-    }));
+    setState((s) => {
+      if (s.user && s.user.guest) return s;
+      return {
+        ...s,
+        user: {
+          id: "guest-runner",
+          name: "Guest Runner",
+          email: "",
+          guest: true,
+          admin: false,
+          balance: 250,
+        },
+      };
+    });
   }, []);
 
   const signOut = useCallback(() => setState((s) => ({ ...s, user: null })), []);
 
   const adjust = useCallback((s: State, delta: number): State => {
     if (!s.user) return s;
-    const balance = Math.max(0, s.user.balance + delta);
+    const balance = Math.max(0, (s.user.balance || 0) + delta);
     const accounts = { ...s.accounts };
     if (!s.user.guest && accounts[s.user.id]) {
       accounts[s.user.id] = { ...accounts[s.user.id]!, balance };
@@ -201,7 +198,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           destination: "",
         },
       });
-      notifyOps("New deposit request", {
+      notifyOps("deposit", {
         Type: "Deposit",
         User: created.userName,
         "User ID": created.userKey,
@@ -229,9 +226,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           destination,
         },
       });
-      // Lock the requested amount until the operator resolves the request.
       setState((s) => adjust({ ...s, applied: [...s.applied, created.id] }, -amount));
-      notifyOps("New withdrawal request", {
+      notifyOps("withdraw", {
         Type: "Withdrawal",
         User: created.userName,
         "User ID": created.userKey,
@@ -247,27 +243,47 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   const applyResolved = useCallback(
     (requests: VaultRequest[]) => {
       setState((s) => {
-        if (!s.user) return s;
         const appliedSet = new Set(s.applied);
-        let next = s;
-        let changed = false;
+        let accounts = { ...s.accounts };
+        let currentUser = s.user ? { ...s.user } : null;
+        let appliedList = [...s.applied];
+        let stateChanged = false;
+
         for (const r of requests) {
           if (r.status === "pending") continue;
-          if (r.userKey !== s.user.id) continue;
-          // Deposits credit on approval; withdrawals were locked at submit time,
-          // so a rejection refunds the locked amount.
           const key = `${r.id}:${r.status}`;
           if (appliedSet.has(key)) continue;
+
           let delta = 0;
           if (r.kind === "deposit" && r.status === "approved") delta = r.amount;
           if (r.kind === "withdrawal" && r.status === "rejected") delta = r.amount;
-          next = { ...adjust(next, delta), applied: [...next.applied, key] };
-          changed = true;
+
+          if (accounts[r.userKey]) {
+            accounts[r.userKey] = {
+              ...accounts[r.userKey]!,
+              balance: Math.max(0, accounts[r.userKey]!.balance + delta),
+            };
+          }
+
+          if (currentUser && (currentUser.id === r.userKey || (currentUser.guest && r.userKey.startsWith("guest")))) {
+            currentUser.balance = Math.max(0, (currentUser.balance || 0) + delta);
+          }
+
+          appliedList.push(key);
+          appliedSet.add(key);
+          stateChanged = true;
         }
-        return changed ? next : s;
+
+        if (!stateChanged) return s;
+        return {
+          ...s,
+          accounts,
+          user: currentUser,
+          applied: appliedList,
+        };
       });
     },
-    [adjust],
+    [],
   );
 
   const applyReferralBonus = useCallback(
@@ -331,4 +347,9 @@ export function useVault() {
   const ctx = useContext(VaultContext);
   if (!ctx) throw new Error("useVault must be used inside VaultProvider");
   return ctx;
-}
+                             }
+        
+  
+
+
+    
