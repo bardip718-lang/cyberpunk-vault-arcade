@@ -1,5 +1,5 @@
 
-  import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import {
   ArrowDownToLine,
@@ -17,10 +17,7 @@ import {
   Layers,
   Bomb,
   Plane,
-  Disc,
   ChevronLeft,
-  RotateCcw,
-  Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReelGame } from "@/components/reel-game";
@@ -37,171 +34,20 @@ import { useVaultRequests } from "@/lib/use-vault-requests";
 import { ReferEarn } from "@/components/refer-earn";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "win1 — Cyberpunk Gaming & Reward Vault" },
+      {
+        name: "description",
+        content:
+          "win1 is a neon cyberpunk reward vault: spin reels, crash aviator, sweep mines and top up by UPI.",
+      },
+    ],
+  }),
   component: Index,
 });
 
-const ROULETTE_NUMS = [
-  { num: 0, color: "green" }, { num: 32, color: "red" }, { num: 15, color: "black" },
-  { num: 19, color: "red" }, { num: 4, color: "black" }, { num: 21, color: "red" },
-  { num: 2, color: "black" }, { num: 25, color: "red" }, { num: 17, color: "black" },
-  { num: 34, color: "red" }, { num: 6, color: "black" }, { num: 27, color: "red" },
-  { num: 13, color: "black" }, { num: 36, color: "red" }, { num: 11, color: "black" },
-  { num: 30, color: "red" }, { num: 8, color: "black" }, { num: 23, color: "red" },
-  { num: 10, color: "black" }, { num: 5, color: "red" }, { num: 24, color: "black" }
-];
-
-function NeonRoulette() {
-  const { user, updateBalance } = useVault();
-  const [betAmount, setBetAmount] = useState<number>(20);
-  const [selectedBet, setSelectedBet] = useState<string>("red");
-  const [spinning, setSpinning] = useState(false);
-  const [lastResult, setLastResult] = useState<{ num: number; color: string } | null>(null);
-  const [winMsg, setWinMsg] = useState<string | null>(null);
-  const [rot, setRot] = useState(0);
-
-  const handleSpin = () => {
-    if ((user?.balance || 0) < betAmount) {
-      alert("Insufficient score balance! Please deposit.");
-      return;
-    }
-    if (typeof updateBalance === "function") {
-      updateBalance(-betAmount);
-    }
-
-    setSpinning(true);
-    setWinMsg(null);
-    const idx = Math.floor(Math.random() * ROULETTE_NUMS.length);
-    setRot((prev) => prev + 1800 + idx * (360 / ROULETTE_NUMS.length));
-
-    setTimeout(() => {
-      const out = ROULETTE_NUMS[idx];
-      setLastResult(out);
-      setSpinning(false);
-      let won = false;
-      let mult = 2;
-      if (selectedBet === out.color) {
-        won = true;
-        if (out.color === "green") mult = 14;
-      }
-      if (won) {
-        const amt = betAmount * mult;
-        if (typeof updateBalance === "function") updateBalance(amt);
-        setWinMsg(`Won +₹${amt}! (${mult}x payout)`);
-      } else {
-        setWinMsg(`Landed on ${out.num} ${out.color.toUpperCase()}`);
-      }
-    }, 3000);
-  };
-
-  return (
-    <div className="neon-panel rounded-xl p-5 border border-border">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="font-display text-2xl neon-text flex items-center gap-2">
-            <Disc className="size-6 text-primary" /> Neon Roulette Wheel
-          </h2>
-          <p className="text-xs text-muted-foreground">Select color &amp; spin up to 14x multipliers.</p>
-        </div>
-      </div>
-
-      <div className="flex flex-col items-center justify-center my-6">
-        <div className="relative flex items-center justify-center size-56 rounded-full border-4 border-primary/40 bg-background/90 shadow-xl overflow-hidden">
-          <div
-            className="w-full h-full rounded-full transition-transform duration-[3000ms] ease-out flex items-center justify-center"
-            style={{ transform: `rotate(${rot}deg)` }}
-          >
-            <Sparkles className="size-12 text-primary/30 animate-pulse" />
-          </div>
-          <div className="absolute z-10 flex flex-col items-center justify-center size-24 rounded-full border border-border bg-secondary/90 shadow-md">
-            {lastResult ? (
-              <span className={`text-2xl font-bold font-display ${lastResult.color === "red" ? "text-rose-400" : lastResult.color === "black" ? "text-slate-300" : "text-emerald-400"}`}>
-                {lastResult.num}
-              </span>
-            ) : (
-              <span className="text-xs font-display text-muted-foreground">SPIN</span>
-            )}
-          </div>
-        </div>
-        {winMsg && (
-          <div className="mt-3 text-sm font-display font-bold text-primary flex items-center gap-1 animate-bounce">
-            <Trophy className="size-4"/>{winMsg}
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        <div className="text-xs uppercase tracking-wider font-bold text-muted-foreground">1. Choose Color</div>
-        <div className="grid grid-cols-3 gap-2">
-          <Button
-            type="button"
-            variant={selectedBet === "red" ? "default" : "secondary"}
-            onClick={() => setSelectedBet("red")}
-            className="font-display font-bold text-rose-300"
-          >
-            RED (2x)
-          </Button>
-          <Button
-            type="button"
-            variant={selectedBet === "black" ? "default" : "secondary"}
-            onClick={() => setSelectedBet("black")}
-            className="font-display font-bold text-slate-300"
-          >
-            BLACK (2x)
-          </Button>
-          <Button
-            type="button"
-            variant={selectedBet === "green" ? "default" : "secondary"}
-            onClick={() => setSelectedBet("green")}
-            className="font-display font-bold text-emerald-300"
-          >
-            GREEN (14x)
-          </Button>
-        </div>
-
-        <div className="text-xs uppercase tracking-wider font-bold text-muted-foreground">2. Bet Amount</div>
-        <div className="flex flex-wrap gap-2">
-          {[10, 20, 50, 100, 500].map((a) => (
-            <Button
-              key={a}
-              size="sm"
-              variant={betAmount === a ? "default" : "outline"}
-              onClick={() => setBetAmount(a)}
-              className="font-display"
-            >
-              ₹{a}
-            </Button>
-          ))}
-        </div>
-
-        <Button
-          onClick={handleSpin}
-          disabled={spinning}
-          className="w-full py-6 text-base font-display font-bold tracking-widest uppercase mt-2"
-        >
-          {spinning ? (
-            <span className="flex items-center gap-2">
-              <RotateCcw className="size-5 animate-spin" /> Wheel Spinning...
-            </span>
-          ) : (
-            `Spin for ₹${betAmount}`
-          )}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 const GAMES = [
-  {
-    id: "roulette",
-    name: "Neon Roulette",
-    tagline: "Red, Black & 14x Green Wheel",
-    badge: "NEW",
-    badgeColor: "bg-purple-500/20 text-purple-400 border-purple-500/30",
-    icon: Disc,
-    players: "1,890 Playing",
-    gradient: "from-purple-500/20 via-primary/10 to-transparent",
-  },
   {
     id: "aviator",
     name: "Aviator Crash",
@@ -247,7 +93,8 @@ const GAMES = [
 function Index() {
   const { user, signOut, signInAsGuest } = useVault();
   const { requests } = useVaultRequests();
-  const [activeTab, setActiveTab] = useState("lobby");
+
+  const [activeTab, setActiveTab] = useState<string>("lobby");
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [mobileAuthOpen, setMobileAuthOpen] = useState(false);
@@ -256,9 +103,9 @@ function Index() {
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("win1_user_phone");
-    if (saved) {
-      setActiveUserMobile(saved);
+    const savedPhone = localStorage.getItem("win1_user_phone");
+    if (savedPhone) {
+      setActiveUserMobile(savedPhone);
     } else if (!user && typeof signInAsGuest === "function") {
       signInAsGuest();
     }
@@ -266,21 +113,47 @@ function Index() {
 
   const handlePhoneLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const clean = mobileNumber.replace(/\D/g, "");
-    if (clean.length !== 10) {
-      alert("Please enter a valid 10-digit number");
+    const cleanNumber = mobileNumber.replace(/\D/g, "");
+    if (cleanNumber.length !== 10) {
+      alert("Please enter a valid 10-digit mobile number");
       return;
     }
-    localStorage.setItem("win1_user_phone", clean);
-    setActiveUserMobile(clean);
+    localStorage.setItem("win1_user_phone", cleanNumber);
+    setActiveUserMobile(cleanNumber);
     setMobileAuthOpen(false);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("win1_user_phone");
+    setActiveUserMobile(null);
+    if (signOut) signOut();
+  };
+
   const isOperator = isAdminUnlocked || (!!user && !user.guest && user.email === ADMIN_EMAIL);
-  const pending = requests?.filter((r) => r.status === "pending")?.length || 0;
+  const pending = requests ? requests.filter((r) => r.status === "pending").length : 0;
+
+  const openDeposit = () => setTopUpOpen(true);
+  const openWithdraw = () => {
+    if (!activeUserMobile) {
+      setMobileAuthOpen(true);
+      return;
+    }
+    setWithdrawOpen(true);
+  };
+
+  const handleAdminAccess = () => {
+    if (isAdminUnlocked) return;
+    const pin = window.prompt("Enter Admin Secret PIN:");
+    if (pin === "789012") {
+      setIsAdminUnlocked(true);
+    } else if (pin !== null) {
+      alert("Invalid Security PIN");
+    }
+  };
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-16 pt-6">
+      {/* Top Header */}
       <header className="neon-panel mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl p-4">
         <div className="cursor-pointer" onClick={() => setActiveTab("lobby")}>
           <h1 className="font-display text-3xl neon-text">win1</h1>
@@ -292,14 +165,10 @@ function Index() {
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Score Balance</p>
             <p className="font-display text-xl text-primary">{user ? user.balance : 0}</p>
           </div>
-          <Button onClick={() => setTopUpOpen(true)} className="font-display tracking-wide">
+          <Button onClick={openDeposit} className="font-display tracking-wide">
             <ArrowDownToLine className="size-4" /> Deposit
           </Button>
-          <Button
-            variant="secondary"
-            onClick={() => (activeUserMobile ? setWithdrawOpen(true) : setMobileAuthOpen(true))}
-            className="font-display tracking-wide"
-          >
+          <Button variant="secondary" onClick={openWithdraw} className="font-display tracking-wide">
             <ArrowUpFromLine className="size-4" /> Withdraw
           </Button>
           <Button variant="ghost" asChild>
@@ -308,15 +177,7 @@ function Index() {
             </a>
           </Button>
           {activeUserMobile ? (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                localStorage.removeItem("win1_user_phone");
-                setActiveUserMobile(null);
-                if (signOut) signOut();
-              }}
-              aria-label="Sign out"
-            >
+            <Button variant="ghost" onClick={handleLogout} aria-label="Sign out">
               <LogOut className="size-4" /> Sign out
             </Button>
           ) : (
@@ -327,12 +188,13 @@ function Index() {
         </div>
       </header>
 
+      {/* User Info Bar */}
       <div className="mb-6 flex items-center justify-between text-sm text-muted-foreground">
         <p>
           {activeUserMobile ? (
             <>Logged in: <span className="font-bold text-foreground">+91 {activeUserMobile}</span></>
           ) : (
-            <>Playing as <span className="text-foreground">Guest Player</span></>
+            <>Playing as <span className="text-foreground">Guest Player</span> (1-Tap Play)</>
           )}
           {isOperator && " · Operator Mode"}
         </p>
@@ -344,6 +206,7 @@ function Index() {
         )}
       </div>
 
+      {/* Navigation Quick Bar */}
       <div className="mb-6 flex flex-wrap gap-2">
         <Button
           variant={activeTab === "lobby" ? "default" : "secondary"}
@@ -368,6 +231,7 @@ function Index() {
         </Button>
       </div>
 
+      {/* VIEW: GAME LOBBY */}
       {activeTab === "lobby" && (
         <div>
           <div className="mb-4 flex items-center justify-between">
@@ -377,7 +241,7 @@ function Index() {
             <span className="text-xs text-muted-foreground">Select a game to start</span>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {GAMES.map((g) => {
               const IconComp = g.icon;
               return (
@@ -417,16 +281,15 @@ function Index() {
         </div>
       )}
 
-      {activeTab === "roulette" && <NeonRoulette />}
+      {/* VIEW: INDIVIDUAL GAMES */}
       {activeTab === "reels" && <ReelGame />}
       {activeTab === "cards" && <CardGame />}
       {activeTab === "aviator" && <AviatorGame />}
       {activeTab === "mines" && <MinesGame />}
-      {activeTab === "wallet" && (
-        <WalletView onDeposit={() => setTopUpOpen(true)} onWithdraw={() => setWithdrawOpen(true)} />
-      )}
+      {activeTab === "wallet" && <WalletView onDeposit={openDeposit} onWithdraw={openWithdraw} />}
       {activeTab === "refer" && <ReferEarn onSignIn={() => setMobileAuthOpen(true)} />}
 
+      {/* Admin Panel Access */}
       {isOperator ? (
         <div className="neon-panel mt-10 rounded-xl p-5 border border-primary/40">
           <div className="flex items-center justify-between mb-4">
@@ -443,10 +306,11 @@ function Index() {
         </div>
       ) : null}
 
+      {/* Help Section */}
       <div className="neon-panel mt-8 rounded-xl p-5">
         <h2 className="font-display text-xl neon-text">Help &amp; Support</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Need quick support with deposit or withdrawals? Contact us directly.
+          Payment stuck, UTR not matched or withdrawal delayed? Talk to a human operator on WhatsApp.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Button asChild className="font-display tracking-wide">
@@ -455,21 +319,14 @@ function Index() {
             </a>
           </Button>
           {!isOperator && (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                const pin = window.prompt("Enter Admin Secret PIN:");
-                if (pin === "789012") setIsAdminUnlocked(true);
-                else if (pin !== null) alert("Invalid PIN");
-              }}
-              className="text-xs text-muted-foreground"
-            >
+            <Button variant="ghost" onClick={handleAdminAccess} className="text-xs text-muted-foreground">
               Operator Portal
             </Button>
           )}
         </div>
       </div>
 
+      {/* Mobile Login Modal */}
       {mobileAuthOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
           <div className="neon-panel w-full max-w-md rounded-xl p-6 shadow-2xl border border-primary/30">
@@ -509,15 +366,10 @@ function Index() {
             </form>
           </div>
         </div>
-   
-)}
+      )}
 
       <TopUpModal open={topUpOpen} onOpenChange={setTopUpOpen} />
       <WithdrawModal open={withdrawOpen} onOpenChange={setWithdrawOpen} />
     </main>
   );
 }
-  
-  
-                  
-            
