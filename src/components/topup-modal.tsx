@@ -11,10 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Copy, Check, ArrowDownToLine } from "lucide-react";
 import { useVault } from "@/lib/vault-store";
-import { useVaultRequests } from "@/lib/use-vault-requests";
 import { notifyTelegram } from "@/lib/notify";
 
 const PRESET_AMOUNTS = [100, 250, 500, 1000, 2000, 5000];
+const STORAGE_KEY = "win1_vault_requests_v1";
 
 interface TopUpModalProps {
   open: boolean;
@@ -23,7 +23,6 @@ interface TopUpModalProps {
 
 export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
   const { config, user } = useVault();
-  const { createRequest } = useVaultRequests();
   const [amount, setAmount] = useState<number>(250);
   const [utr, setUtr] = useState("");
   const [copied, setCopied] = useState(false);
@@ -41,7 +40,7 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback
+      // ignore
     }
   };
 
@@ -50,7 +49,7 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
     const cleanUtr = utr.trim();
 
     if (!cleanUtr || cleanUtr.length < 6) {
-      alert("Please enter a valid 12-digit UPI / UTR Transaction ID");
+      alert("Please enter a valid 12-digit UPI / UTR Reference Number");
       return;
     }
 
@@ -59,21 +58,32 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
     const userIdentifier = savedPhone ? `+91 ${savedPhone}` : user?.email || "Guest Player";
 
     try {
-      if (typeof createRequest === "function") {
-        await createRequest({
-          type: "topup",
-          amount: Number(amount),
-          utr: cleanUtr,
-          userEmail: userIdentifier,
-        });
-      }
+      // 1. Direct LocalStorage Save (Admin Console ke liye)
+      const existing = localStorage.getItem(STORAGE_KEY);
+      const list = existing ? JSON.parse(existing) : [];
+      const newReq = {
+        id: "req_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
+        type: "topup",
+        amount: Number(amount),
+        utr: cleanUtr,
+        userEmail: userIdentifier,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      };
+      list.unshift(newReq);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
 
-      await notifyTelegram(
-        `📥 *NEW DEPOSIT REQUEST*\n\n` +
-        `👤 *User:* \`${userIdentifier}\`\n` +
-        `💰 *Amount:* ₹${amount}\n` +
-        `🔢 *UTR:* \`${cleanUtr}\``
-      );
+      // 2. Telegram Alert
+      try {
+        await notifyTelegram(
+          `📥 *NEW DEPOSIT REQUEST*\n\n` +
+          `👤 *User:* \`${userIdentifier}\`\n` +
+          `💰 *Amount:* ₹${amount}\n` +
+          `🔢 *UTR:* \`${cleanUtr}\``
+        );
+      } catch {
+        // ignore notification error
+      }
 
       setSuccess(true);
       setUtr("");
@@ -83,7 +93,7 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
       }, 2500);
     } catch (err) {
       console.error(err);
-      alert("Error submitting request. Please try again.");
+      alert("Failed to submit deposit. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -97,7 +107,7 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
             <ArrowDownToLine className="size-6 text-primary" /> Vault Top-Up
           </DialogTitle>
           <DialogDescription className="text-muted-foreground text-xs">
-            Pay via UPI, then submit 12-digit UTR reference number.
+            Scan &amp; pay via any UPI app, then submit 12-digit UTR reference.
           </DialogDescription>
         </DialogHeader>
 
@@ -187,13 +197,15 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
               disabled={submitting}
               className="w-full py-5 font-display tracking-wider uppercase font-bold"
             >
-              {submitting ? "Submitting Request..." : `Submit Deposit (₹${amount})`}
+              {submitting ? "Submitting..." : `Submit Deposit (₹${amount})`}
             </Button>
           </form>
         )}
       </DialogContent>
     </Dialog>
   );
-              }
+      }
 
+  
+          
           
