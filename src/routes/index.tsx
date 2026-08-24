@@ -18,11 +18,12 @@ import {
   Plane,
   Disc,
   ChevronLeft,
+  RotateCcw,
+  Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReelGame } from "@/components/reel-game";
 import { CardGame } from "@/components/card-game";
-import { RouletteGame } from "@/components/roulette-game";
 import { AdminConsole } from "@/components/admin-console";
 import { TopUpModal } from "@/components/topup-modal";
 import { WithdrawModal } from "@/components/withdraw-modal";
@@ -48,6 +49,248 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
+/* --- ROULETTE COMPONENT --- */
+const ROULETTE_NUMBERS = [
+  { num: 0, color: "green" },
+  { num: 32, color: "red" },
+  { num: 15, color: "black" },
+  { num: 19, color: "red" },
+  { num: 4, color: "black" },
+  { num: 21, color: "red" },
+  { num: 2, color: "black" },
+  { num: 25, color: "red" },
+  { num: 17, color: "black" },
+  { num: 34, color: "red" },
+  { num: 6, color: "black" },
+  { num: 27, color: "red" },
+  { num: 13, color: "black" },
+  { num: 36, color: "red" },
+  { num: 11, color: "black" },
+  { num: 30, color: "red" },
+  { num: 8, color: "black" },
+  { num: 23, color: "red" },
+  { num: 10, color: "black" },
+  { num: 5, color: "red" },
+  { num: 24, color: "black" },
+  { num: 16, color: "red" },
+  { num: 33, color: "black" },
+  { num: 1, color: "red" },
+  { num: 20, color: "black" },
+  { num: 14, color: "red" },
+  { num: 31, color: "black" },
+  { num: 9, color: "red" },
+  { num: 22, color: "black" },
+  { num: 18, color: "red" },
+  { num: 29, color: "black" },
+  { num: 7, color: "red" },
+  { num: 28, color: "black" },
+  { num: 12, color: "red" },
+  { num: 35, color: "black" },
+  { num: 3, color: "red" },
+  { num: 26, color: "black" },
+];
+
+function NeonRoulette() {
+  const { user, updateBalance } = useVault();
+  const [betAmount, setBetAmount] = useState<number>(20);
+  const [selectedBet, setSelectedBet] = useState<string | null>(null);
+  const [spinning, setSpinning] = useState(false);
+  const [lastResult, setLastResult] = useState<{ num: number; color: string } | null>(null);
+  const [winMessage, setWinMessage] = useState<string | null>(null);
+  const [rotation, setRotation] = useState(0);
+
+  const handleSpin = () => {
+    if (!selectedBet) {
+      alert("Please select a bet (Red, Black, Green, Even, or Odd) first!");
+      return;
+    }
+    const currentBalance = user?.balance || 0;
+    if (currentBalance < betAmount) {
+      alert("Insufficient score balance. Please deposit!");
+      return;
+    }
+
+    if (typeof updateBalance === "function") {
+      updateBalance(-betAmount);
+    }
+
+    setSpinning(true);
+    setWinMessage(null);
+
+    const randomIndex = Math.floor(Math.random() * ROULETTE_NUMBERS.length);
+    const degreesPerSlice = 360 / ROULETTE_NUMBERS.length;
+    const targetDegree = 360 * 5 + randomIndex * degreesPerSlice;
+    setRotation((prev) => prev + targetDegree);
+
+    setTimeout(() => {
+      const outcome = ROULETTE_NUMBERS[randomIndex];
+      setLastResult(outcome);
+      setSpinning(false);
+
+      let won = false;
+      let multiplier = 0;
+
+      if (selectedBet === "red" && outcome.color === "red") {
+        won = true;
+        multiplier = 2;
+      } else if (selectedBet === "black" && outcome.color === "black") {
+        won = true;
+        multiplier = 2;
+      } else if (selectedBet === "green" && outcome.color === "green") {
+        won = true;
+        multiplier = 14;
+      } else if (selectedBet === "even" && outcome.num !== 0 && outcome.num % 2 === 0) {
+        won = true;
+        multiplier = 2;
+      } else if (selectedBet === "odd" && outcome.num % 2 !== 0) {
+        won = true;
+        multiplier = 2;
+      }
+
+      if (won) {
+        const winAmount = betAmount * multiplier;
+        if (typeof updateBalance === "function") {
+          updateBalance(winAmount);
+        }
+        setWinMessage(`Won +₹${winAmount}! (${multiplier}x payout)`);
+      } else {
+        setWinMessage(`Landed on ${outcome.num} (${outcome.color.toUpperCase()}). Try again!`);
+      }
+    }, 3500);
+  };
+
+  return (
+    <div className="neon-panel rounded-xl p-6 border border-border">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="font-display text-2xl neon-text flex items-center gap-2">
+            <Disc className="size-6 text-primary" /> Neon Roulette Wheel
+          </h2>
+          <p className="text-xs text-muted-foreground">Pick a color/condition, spin and claim up to 14x rewards.</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center justify-center my-6">
+        <div className="relative flex items-center justify-center size-56 sm:size-64 rounded-full border-4 border-primary/40 bg-background/90 shadow-[0_0_30px_rgba(0,255,200,0.15)] overflow-hidden">
+          <div
+            className="w-full h-full rounded-full transition-transform duration-[3500ms] ease-out flex items-center justify-center"
+            style={{ transform: `rotate(${rotation}deg)` }}
+          >
+            <div className="absolute inset-2 rounded-full border border-dashed border-primary/30 flex items-center justify-center">
+              <Sparkles className="size-10 text-primary/40" />
+            </div>
+          </div>
+
+          <div className="absolute z-10 flex flex-col items-center justify-center size-24 rounded-full border border-border bg-secondary/90 shadow-lg text-center">
+            {lastResult ? (
+              <>
+                <span
+                  className={`text-2xl font-bold font-display ${
+                    lastResult.color === "red"
+                      ? "text-rose-400"
+                      : lastResult.color === "black"
+                      ? "text-slate-300"
+                      : "text-emerald-400"
+                  }`}
+                >
+                  {lastResult.num}
+                </span>
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                  {lastResult.color}
+                </span>
+              </>
+            ) : (
+              <span className="text-xs font-display text-muted-foreground">SPIN</span>
+            )}
+          </div>
+        </div>
+
+        {winMessage && (
+          <div className="mt-4 flex items-center gap-2 text-sm font-display font-semibold text-primary animate-bounce">
+            <Trophy className="size-4" /> {winMessage}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        <div className="text-xs uppercase tracking-wider font-bold text-muted-foreground">1. Choose Bet Type</div>
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          <Button
+            type="button"
+            variant={selectedBet === "red" ? "default" : "secondary"}
+            onClick={() => setSelectedBet("red")}
+            className="border-rose-500/50 hover:bg-rose-500/20 text-rose-300 font-display font-bold"
+          >
+            RED (2x)
+          </Button>
+          <Button
+            type="button"
+            variant={selectedBet === "black" ? "default" : "secondary"}
+            onClick={() => setSelectedBet("black")}
+            className="border-slate-500/50 hover:bg-slate-500/20 text-slate-300 font-display font-bold"
+          >
+            BLACK (2x)
+          </Button>
+          <Button
+            type="button"
+            variant={selectedBet === "green" ? "default" : "secondary"}
+            onClick={() => setSelectedBet("green")}
+            className="border-emerald-500/50 hover:bg-emerald-500/20 text-emerald-300 font-display font-bold"
+          >
+            GREEN (14x)
+          </Button>
+          <Button
+            type="button"
+            variant={selectedBet === "even" ? "default" : "secondary"}
+            onClick={() => setSelectedBet("even")}
+            className="font-display font-bold"
+          >
+            EVEN (2x)
+          </Button>
+          <Button
+            type="button"
+            variant={selectedBet === "odd" ? "default" : "secondary"}
+            onClick={() => setSelectedBet("odd")}
+            className="font-display font-bold"
+          >
+            ODD (2x)
+          </Button>
+        </div>
+
+        <div className="text-xs uppercase tracking-wider font-bold text-muted-foreground pt-2">2. Bet Amount</div>
+        <div className="flex flex-wrap items-center gap-2">
+          {[10, 20, 50, 100, 500].map((amt) => (
+            <Button
+              key={amt}
+              size="sm"
+              variant={betAmount === amt ? "default" : "outline"}
+              onClick={() => setBetAmount(amt)}
+              className="font-display"
+            >
+              ₹{amt}
+            </Button>
+          ))}
+        </div>
+
+        <Button
+          onClick={handleSpin}
+          disabled={spinning}
+          className="w-full mt-4 py-6 text-lg font-display tracking-widest uppercase font-bold"
+        >
+          {spinning ? (
+            <span className="flex items-center gap-2">
+              <RotateCcw className="size-5 animate-spin" /> Wheel Spinning...
+            </span>
+          ) : (
+            `Spin for ₹${betAmount}`
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* --- GAMES CONFIG --- */
 const GAMES = [
   {
     id: "roulette",
@@ -293,7 +536,7 @@ function Index() {
       )}
 
       {/* VIEW: INDIVIDUAL GAMES */}
-      {activeTab === "roulette" && <RouletteGame />}
+      {activeTab === "roulette" && <NeonRoulette />}
       {activeTab === "reels" && <ReelGame />}
       {activeTab === "cards" && <CardGame />}
       {activeTab === "aviator" && <AviatorGame />}
@@ -303,86 +546,6 @@ function Index() {
 
       {/* Admin Panel Access */}
       {isOperator ? (
-        <div className="neon-panel mt-10 rounded-xl p-5 border border-primary/40">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display text-xl neon-text flex items-center gap-2">
-              <ShieldCheck className="size-5 text-primary" /> Admin Operator Console
-            </h2>
-            {pending > 0 && (
-              <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded font-bold">
-                {pending} Pending Request(s)
-              </span>
-            )}
-          </div>
-          <AdminConsole />
-        </div>
-      ) : null}
-
-      {/* Help Section */}
-      <div className="neon-panel mt-8 rounded-xl p-5">
-        <h2 className="font-display text-xl neon-text">Help &amp; Support</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Payment stuck, UTR not matched or withdrawal delayed? Talk to a human operator on WhatsApp.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Button asChild className="font-display tracking-wide">
-            <a href={SUPPORT_WHATSAPP} target="_blank" rel="noopener noreferrer">
-              <MessageCircle className="size-4" /> WhatsApp Customer Support
-            </a>
-          </Button>
-          {!isOperator && (
-            <Button variant="ghost" onClick={handleAdminAccess} className="text-xs text-muted-foreground">
-              Operator Portal
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Mobile Login Modal */}
-      {mobileAuthOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-          <div className="neon-panel w-full max-w-md rounded-xl p-6 shadow-2xl border border-primary/30">
-            <div className="flex items-center gap-2 mb-2">
-              <Phone className="size-5 text-primary" />
-              <h2 className="font-display text-xl neon-text">Mobile Sign In / Sign Up</h2>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Enter your 10-digit mobile number for instant play and fast withdrawals. No password or email needed.
-            </p>
-            <form onSubmit={handlePhoneLogin} className="space-y-4">
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-background/80 px-3 py-2">
-                <span className="font-display text-sm text-muted-foreground">+91</span>
-                <input
-                  type="tel"
-                  maxLength={10}
-                  placeholder="Enter 10-digit Mobile Number"
-                  value={mobileNumber}
-                  onChange={(e) => setMobileNumber(e.target.value)}
-                  className="w-full bg-transparent font-display outline-none text-foreground"
-                  autoFocus
-                  required
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button type="submit" className="w-full font-display">
-                  Continue &amp; Play
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setMobileAuthOpen(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      <TopUpModal open={topUpOpen} onOpenChange={setTopUpOpen} />
-      <WithdrawModal open={withdrawOpen} onOpenChange={setWithdrawOpen} />
-    </main>
-  );
-}
+        <div className="neon-panel mt-10 rounde
   
+          
