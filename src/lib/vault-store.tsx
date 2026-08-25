@@ -44,7 +44,14 @@ type State = {
 
 const KEY = "win1-vault-state-v2";
 const empty: State = {
-  user: null,
+  user: {
+    id: "guest-player",
+    name: "Guest Player",
+    email: "",
+    guest: true,
+    admin: false,
+    balance: 250,
+  },
   accounts: {},
   payment: DEFAULT_PAYMENT_SETTINGS,
   applied: [],
@@ -60,6 +67,7 @@ function load(): State {
     return {
       ...empty,
       ...parsed,
+      user: parsed.user ?? empty.user,
       applied: parsed.applied ?? [],
       bonusApplied: parsed.bonusApplied ?? {},
       payment: { ...DEFAULT_PAYMENT_SETTINGS, ...(parsed.payment ?? {}) },
@@ -153,25 +161,33 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const playAsGuest = useCallback(() => {
-    setState((s) => {
-      if (s.user && s.user.guest) return s;
-      return {
-        ...s,
-        user: {
-          id: "guest-player",
-          name: "Guest Player",
-          email: "",
-          guest: true,
-          admin: false,
-          balance: 250,
-        },
-      };
-    });
+    setState((s) => ({
+      ...s,
+      user: {
+        id: "guest-player",
+        name: "Guest Player",
+        email: "",
+        guest: true,
+        admin: false,
+        balance: 250,
+      },
+    }));
   }, []);
 
-  const signOut = useCallback(() => setState((s) => ({ ...s, user: null })), []);
+  const signOut = useCallback(() => {
+    setState((s) => ({
+      ...s,
+      user: {
+        id: "guest-player",
+        name: "Guest Player",
+        email: "",
+        guest: true,
+        admin: false,
+        balance: 250,
+      },
+    }));
+  }, []);
 
-  // Real-time Balance Cut / Add Logic for Gameplay
   const addScore = useCallback((delta: number) => {
     setState((s) => {
       if (!s.user) return s;
@@ -196,62 +212,86 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
   const submitOrder = useCallback(
     async (amount: number, utr: string) => {
-      const user = state.user;
-      if (!user) throw new Error("Sign in first.");
+      const currentUser = state.user ?? {
+        id: "guest-player",
+        name: "Guest Player",
+        email: "",
+        guest: true,
+        admin: false,
+        balance: 250,
+      };
+
       const created = await submitRequest({
         data: {
           kind: "deposit",
-          userKey: user.id,
-          userName: user.guest ? `${user.name} (guest)` : user.name,
-          userEmail: user.email,
+          userKey: currentUser.id,
+          userName: currentUser.guest ? `${currentUser.name} (guest)` : currentUser.name,
+          userEmail: currentUser.email,
           amount,
           utr,
           destination: "",
         },
       });
-      notifyOps("deposit", {
-        Type: "Deposit",
-        User: created.userName,
-        "User ID": created.userKey,
-        Amount: `₹${created.amount}`,
-        UTR: created.utr,
-        Status: "pending",
-        Time: new Date(created.createdAt).toLocaleString(),
-      });
+
+      try {
+        notifyOps("deposit", {
+          Type: "Deposit",
+          User: created.userName,
+          "User ID": created.userKey,
+          Amount: `₹${created.amount}`,
+          UTR: created.utr,
+          Status: "pending",
+          Time: new Date(created.createdAt).toLocaleString(),
+        });
+      } catch {
+        // notify fallback
+      }
     },
     [state.user],
   );
 
   const submitWithdrawal = useCallback(
     async (amount: number, destination: string) => {
-      const user = state.user;
-      if (!user) throw new Error("Sign in first.");
+      const currentUser = state.user ?? {
+        id: "guest-player",
+        name: "Guest Player",
+        email: "",
+        guest: true,
+        admin: false,
+        balance: 250,
+      };
+
       const created = await submitRequest({
         data: {
           kind: "withdrawal",
-          userKey: user.id,
-          userName: user.guest ? `${user.name} (guest)` : user.name,
-          userEmail: user.email,
+          userKey: currentUser.id,
+          userName: currentUser.guest ? `${currentUser.name} (guest)` : currentUser.name,
+          userEmail: currentUser.email,
           amount,
           utr: "",
           destination,
         },
       });
+
       addScore(-amount);
-      notifyOps("withdraw", {
-        Type: "Withdrawal",
-        User: created.userName,
-        "User ID": created.userKey,
-        Amount: `₹${created.amount}`,
-        Destination: destination,
-        Status: "pending",
-        Time: new Date(created.createdAt).toLocaleString(),
-      });
+
+      try {
+        notifyOps("withdraw", {
+          Type: "Withdrawal",
+          User: created.userName,
+          "User ID": created.userKey,
+          Amount: `₹${created.amount}`,
+          Destination: destination,
+          Status: "pending",
+          Time: new Date(created.createdAt).toLocaleString(),
+        });
+      } catch {
+        // notify fallback
+      }
     },
     [state.user, addScore],
   );
 
-  // Approve par Instant Balance Add Logic
   const applyResolved = useCallback(
     (requests: VaultRequest[]) => {
       setState((s) => {
@@ -278,9 +318,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
             };
           }
 
-          // Balance instantly player ko attach hoga
           currentUser.balance = Math.max(0, (currentUser.balance ?? 0) + delta);
-
           appliedList.push(key);
           appliedSet.add(key);
           stateChanged = true;
@@ -298,9 +336,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  // Background Live Sync Loop
   useEffect(() => {
-    if (!ready || !state.user) return;
+    if (!ready) return;
     const sync = async () => {
       try {
         const all = await listRequests();
@@ -308,13 +345,13 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           applyResolved(all);
         }
       } catch {
-        // silent fail
+        // silent sync
       }
     };
     sync();
     const timer = setInterval(sync, 2000);
     return () => clearInterval(timer);
-  }, [ready, state.user, applyResolved]);
+  }, [ready, applyResolved]);
 
   const applyReferralBonus = useCallback(
     (totalEarned: number) => {
@@ -381,9 +418,7 @@ export function useVault() {
   const ctx = useContext(VaultContext);
   if (!ctx) throw new Error("useVault must be used inside VaultProvider");
   return ctx;
-    }
-        
+                                  }
+                      
 
-        
 
-      
