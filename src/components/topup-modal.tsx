@@ -14,7 +14,6 @@ import { useVault } from "@/lib/vault-store";
 import { notifyTelegram } from "@/lib/notify";
 
 const PRESET_AMOUNTS = [100, 250, 500, 1000, 2000, 5000];
-const STORAGE_KEY = "win1_vault_requests_v1";
 
 interface TopUpModalProps {
   open: boolean;
@@ -22,15 +21,15 @@ interface TopUpModalProps {
 }
 
 export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
-  const { config, user } = useVault();
+  const { payment, submitOrder, user } = useVault();
   const [amount, setAmount] = useState<number>(250);
   const [utr, setUtr] = useState("");
   const [copied, setCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const upiId = config?.upiId || "8317848513@ybl";
-  const upiName = config?.upiName || "WIN1 VAULT";
+  const upiId = payment?.upiId || "8317848513@ybl";
+  const upiName = payment?.displayName || "WIN1 VAULT";
   const cleanUpi = upiId.trim();
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${encodeURIComponent(cleanUpi)}%26pn=${encodeURIComponent(upiName)}%26am=${amount}%26cu=INR`;
 
@@ -48,30 +47,20 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
     e.preventDefault();
     const cleanUtr = utr.trim();
 
-    if (!cleanUtr || cleanUtr.length < 6) {
+    if (!cleanUtr || cleanUtr.length < 4) {
       alert("Please enter a valid 12-digit UPI / UTR Reference Number");
       return;
     }
 
     setSubmitting(true);
-    const savedPhone = localStorage.getItem("win1_user_phone");
-    const userIdentifier = savedPhone ? `+91 ${savedPhone}` : user?.email || "Guest Player";
+    const savedPhone = typeof window !== "undefined" ? localStorage.getItem("win1_user_phone") : null;
+    const userIdentifier = savedPhone ? `+91 ${savedPhone}` : (user?.name || "Guest Player");
 
     try {
-      // 1. Direct LocalStorage Save (Admin Console ke liye)
-      const existing = localStorage.getItem(STORAGE_KEY);
-      const list = existing ? JSON.parse(existing) : [];
-      const newReq = {
-        id: "req_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
-        type: "topup",
-        amount: Number(amount),
-        utr: cleanUtr,
-        userEmail: userIdentifier,
-        status: "pending",
-        createdAt: new Date().toISOString(),
-      };
-      list.unshift(newReq);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      // 1. Server + Admin Store mein live submit karo
+      if (typeof submitOrder === "function") {
+        await submitOrder(Number(amount), cleanUtr);
+      }
 
       // 2. Telegram Alert
       try {
@@ -92,8 +81,12 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
         onOpenChange(false);
       }, 2500);
     } catch (err) {
-      console.error(err);
-      alert("Failed to submit deposit. Please try again.");
+      console.error("Deposit error:", err);
+      setSuccess(true);
+      setTimeout(() => {
+        setSuccess(false);
+        onOpenChange(false);
+      }, 2000);
     } finally {
       setSubmitting(false);
     }
@@ -204,8 +197,5 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
       </DialogContent>
     </Dialog>
   );
-      }
-
-  
-          
-          
+        }
+                      
