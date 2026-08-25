@@ -14,7 +14,7 @@ const ROULETTE_NUMS = [
 ];
 
 export function RouletteGame() {
-  const { user, updateBalance } = useVault();
+  const { user, addScore } = useVault();
   const [betAmount, setBetAmount] = useState<number>(20);
   const [selectedBet, setSelectedBet] = useState<string>("red");
   const [spinning, setSpinning] = useState(false);
@@ -27,8 +27,10 @@ export function RouletteGame() {
       alert("Insufficient balance! Please deposit.");
       return;
     }
-    if (typeof updateBalance === "function") {
-      updateBalance(-betAmount);
+
+    // Deduct bet amount immediately
+    if (typeof addScore === "function") {
+      addScore(-betAmount);
     }
 
     setSpinning(true);
@@ -48,7 +50,9 @@ export function RouletteGame() {
       }
       if (won) {
         const amt = betAmount * mult;
-        if (typeof updateBalance === "function") updateBalance(amt);
+        if (typeof addScore === "function") {
+          addScore(amt);
+        }
         setWinMsg(`Won +₹${amt}! (${mult}x payout)`);
       } else {
         setWinMsg(`Landed on ${out.num} ${out.color.toUpperCase()}`);
@@ -150,5 +154,4 @@ export function RouletteGame() {
       </div>
     </div>
   );
-                }
-
+}
