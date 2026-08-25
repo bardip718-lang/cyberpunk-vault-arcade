@@ -20,28 +20,31 @@ export type VaultRequest = {
   resolvedAt: string | null;
 };
 
-// Resilient Global Shared Store via JSONStorage
-const CLOUD_BIN_URL = "https://api.jsonbin.io/v3/b/66cb111ae41b4d34e4238e91";
-const GLOBAL_STORE_KEY = "win1_global_requests_store";
+const STORAGE_KEY = "win1_vault_persistent_requests_v2";
 
-// In-Memory fallback
-let memoryRequests: VaultRequest[] = [];
+function getStoredRequests(): VaultRequest[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+function saveStoredRequests(list: VaultRequest[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  } catch {
+    // ignore
+  }
+}
 
 export const listRequests = createServerFn({ method: "GET" }).handler(
   async (): Promise<VaultRequest[]> => {
-    try {
-      const res = await fetch(`https://kv.val.run/${GLOBAL_STORE_KEY}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          memoryRequests = data;
-          return data;
-        }
-      }
-    } catch {
-      // fallback to memory
-    }
-    return memoryRequests;
+    return getStoredRequests();
   },
 );
 
@@ -59,7 +62,7 @@ export const submitRequest = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => submitSchema.parse(input))
   .handler(async ({ data }): Promise<VaultRequest> => {
     const newReq: VaultRequest = {
-      id: "req_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now(),
+      id: "req_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
       kind: data.kind,
       userKey: data.userKey,
       userName: data.userName,
@@ -72,29 +75,9 @@ export const submitRequest = createServerFn({ method: "POST" })
       resolvedAt: null,
     };
 
-    let list = [...memoryRequests];
-    try {
-      const res = await fetch(`https://kv.val.run/${GLOBAL_STORE_KEY}`);
-      if (res.ok) {
-        const fetched = await res.json();
-        if (Array.isArray(fetched)) list = fetched;
-      }
-    } catch {
-      // ignore
-    }
-
-    list = [newReq, ...list.filter((r) => r.id !== newReq.id)].slice(0, 200);
-    memoryRequests = list;
-
-    try {
-      await fetch(`https://kv.val.run/${GLOBAL_STORE_KEY}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(list),
-      });
-    } catch {
-      // ignore
-    }
+    const current = getStoredRequests();
+    const updated = [newReq, ...current].slice(0, 100);
+    saveStoredRequests(updated);
 
     return newReq;
   });
@@ -112,19 +95,10 @@ export const resolveRequest = createServerFn({ method: "POST" })
       throw new Error("Not authorized to resolve requests.");
     }
 
-    let list = [...memoryRequests];
-    try {
-      const res = await fetch(`https://kv.val.run/${GLOBAL_STORE_KEY}`);
-      if (res.ok) {
-        const fetched = await res.json();
-        if (Array.isArray(fetched)) list = fetched;
-      }
-    } catch {
-      // ignore
-    }
-
+    const current = getStoredRequests();
     let target: VaultRequest | null = null;
-    const updated = list.map((r) => {
+
+    const updated = current.map((r) => {
       if (r.id === data.id) {
         target = {
           ...r,
@@ -137,18 +111,8 @@ export const resolveRequest = createServerFn({ method: "POST" })
     });
 
     if (!target) throw new Error("Request not found");
-    memoryRequests = updated;
-
-    try {
-      await fetch(`https://kv.val.run/${GLOBAL_STORE_KEY}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updated),
-      });
-    } catch {
-      // ignore
-    }
+    saveStoredRequests(updated);
 
     return target;
   });
-        
+    
