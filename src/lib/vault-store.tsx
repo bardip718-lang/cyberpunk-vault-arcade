@@ -35,23 +35,25 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
 };
 
 type State = {
-  user: User | null;
+  user: User;
   accounts: Record<string, Account>;
   payment: PaymentSettings;
   applied: string[];
   bonusApplied: Record<string, number>;
 };
 
-const KEY = "win1-vault-state-v2";
+const KEY = "win1-vault-state-v3";
+const defaultUser: User = {
+  id: "guest-player",
+  name: "Guest Player",
+  email: "",
+  guest: true,
+  admin: false,
+  balance: 250,
+};
+
 const empty: State = {
-  user: {
-    id: "guest-player",
-    name: "Guest Player",
-    email: "",
-    guest: true,
-    admin: false,
-    balance: 250,
-  },
+  user: defaultUser,
   accounts: {},
   payment: DEFAULT_PAYMENT_SETTINGS,
   applied: [],
@@ -67,7 +69,7 @@ function load(): State {
     return {
       ...empty,
       ...parsed,
-      user: parsed.user ?? empty.user,
+      user: parsed.user ?? defaultUser,
       applied: parsed.applied ?? [],
       bonusApplied: parsed.bonusApplied ?? {},
       payment: { ...DEFAULT_PAYMENT_SETTINGS, ...(parsed.payment ?? {}) },
@@ -80,7 +82,7 @@ function load(): State {
 export const ADMIN_EMAIL = "bardip718@gmail.com";
 
 type Ctx = {
-  user: User | null;
+  user: User;
   ready: boolean;
   signUp: (name: string, email: string, password: string) => string | null;
   signIn: (email: string, password: string) => string | null;
@@ -177,27 +179,21 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(() => {
     setState((s) => ({
       ...s,
-      user: {
-        id: "guest-player",
-        name: "Guest Player",
-        email: "",
-        guest: true,
-        admin: false,
-        balance: 250,
-      },
+      user: defaultUser,
     }));
   }, []);
 
+  // Har bet aur win par balance instantly update hoga
   const addScore = useCallback((delta: number) => {
     setState((s) => {
-      if (!s.user) return s;
-      const newBal = Math.max(0, (s.user.balance ?? 0) + delta);
-      const updatedUser = { ...s.user, balance: newBal };
+      const current = s.user ?? defaultUser;
+      const newBal = Math.max(0, (current.balance ?? 0) + delta);
+      const updatedUser = { ...current, balance: newBal };
       const updatedAccounts = { ...s.accounts };
 
-      if (!s.user.guest && updatedAccounts[s.user.id]) {
-        updatedAccounts[s.user.id] = {
-          ...updatedAccounts[s.user.id]!,
+      if (!current.guest && updatedAccounts[current.id]) {
+        updatedAccounts[current.id] = {
+          ...updatedAccounts[current.id]!,
           balance: newBal,
         };
       }
@@ -212,39 +208,31 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
   const submitOrder = useCallback(
     async (amount: number, utr: string) => {
-      const currentUser = state.user ?? {
-        id: "guest-player",
-        name: "Guest Player",
-        email: "",
-        guest: true,
-        admin: false,
-        balance: 250,
-      };
-
-      const created = await submitRequest({
-        data: {
-          kind: "deposit",
-          userKey: currentUser.id,
-          userName: currentUser.guest ? `${currentUser.name} (guest)` : currentUser.name,
-          userEmail: currentUser.email,
-          amount,
-          utr,
-          destination: "",
-        },
-      });
-
+      const currentUser = state.user ?? defaultUser;
       try {
+        const created = await submitRequest({
+          data: {
+            kind: "deposit",
+            userKey: currentUser.id,
+            userName: currentUser.guest ? `${currentUser.name} (guest)` : currentUser.name,
+            userEmail: currentUser.email,
+            amount,
+            utr,
+            destination: "",
+          },
+        });
+
         notifyOps("deposit", {
           Type: "Deposit",
-          User: created.userName,
-          "User ID": created.userKey,
-          Amount: `₹${created.amount}`,
-          UTR: created.utr,
+          User: created?.userName || currentUser.name,
+          "User ID": created?.userKey || currentUser.id,
+          Amount: `₹${amount}`,
+          UTR: utr,
           Status: "pending",
-          Time: new Date(created.createdAt).toLocaleString(),
+          Time: new Date().toLocaleString(),
         });
-      } catch {
-        // notify fallback
+      } catch (err) {
+        console.error("Deposit submit error:", err);
       }
     },
     [state.user],
@@ -252,89 +240,76 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
   const submitWithdrawal = useCallback(
     async (amount: number, destination: string) => {
-      const currentUser = state.user ?? {
-        id: "guest-player",
-        name: "Guest Player",
-        email: "",
-        guest: true,
-        admin: false,
-        balance: 250,
-      };
-
-      const created = await submitRequest({
-        data: {
-          kind: "withdrawal",
-          userKey: currentUser.id,
-          userName: currentUser.guest ? `${currentUser.name} (guest)` : currentUser.name,
-          userEmail: currentUser.email,
-          amount,
-          utr: "",
-          destination,
-        },
-      });
-
+      const currentUser = state.user ?? defaultUser;
       addScore(-amount);
-
       try {
+        const created = await submitRequest({
+          data: {
+            kind: "withdrawal",
+            userKey: currentUser.id,
+            userName: currentUser.guest ? `${currentUser.name} (guest)` : currentUser.name,
+            userEmail: currentUser.email,
+            amount,
+            utr: "",
+            destination,
+          },
+        });
+
         notifyOps("withdraw", {
           Type: "Withdrawal",
-          User: created.userName,
-          "User ID": created.userKey,
-          Amount: `₹${created.amount}`,
+          User: created?.userName || currentUser.name,
+          "User ID": created?.userKey || currentUser.id,
+          Amount: `₹${amount}`,
           Destination: destination,
           Status: "pending",
-          Time: new Date(created.createdAt).toLocaleString(),
+          Time: new Date().toLocaleString(),
         });
-      } catch {
-        // notify fallback
+      } catch (err) {
+        console.error("Withdraw submit error:", err);
       }
     },
     [state.user, addScore],
   );
 
-  const applyResolved = useCallback(
-    (requests: VaultRequest[]) => {
-      setState((s) => {
-        if (!s.user) return s;
-        const appliedSet = new Set(s.applied);
-        let accounts = { ...s.accounts };
-        let currentUser = { ...s.user };
-        let appliedList = [...s.applied];
-        let stateChanged = false;
+  const applyResolved = useCallback((requests: VaultRequest[]) => {
+    setState((s) => {
+      const appliedSet = new Set(s.applied);
+      let accounts = { ...s.accounts };
+      let currentUser = { ...s.user };
+      let appliedList = [...s.applied];
+      let stateChanged = false;
 
-        for (const r of requests) {
-          if (r.status === "pending") continue;
-          const key = `${r.id}:${r.status}`;
-          if (appliedSet.has(key)) continue;
+      for (const r of requests) {
+        if (r.status === "pending") continue;
+        const key = `${r.id}:${r.status}`;
+        if (appliedSet.has(key)) continue;
 
-          let delta = 0;
-          if (r.kind === "deposit" && r.status === "approved") delta = r.amount;
-          if (r.kind === "withdrawal" && r.status === "rejected") delta = r.amount;
+        let delta = 0;
+        if (r.kind === "deposit" && r.status === "approved") delta = r.amount;
+        if (r.kind === "withdrawal" && r.status === "rejected") delta = r.amount;
 
-          if (accounts[r.userKey]) {
-            accounts[r.userKey] = {
-              ...accounts[r.userKey]!,
-              balance: Math.max(0, (accounts[r.userKey]!.balance ?? 0) + delta),
-            };
-          }
-
-          currentUser.balance = Math.max(0, (currentUser.balance ?? 0) + delta);
-          appliedList.push(key);
-          appliedSet.add(key);
-          stateChanged = true;
+        if (accounts[r.userKey]) {
+          accounts[r.userKey] = {
+            ...accounts[r.userKey]!,
+            balance: Math.max(0, (accounts[r.userKey]!.balance ?? 0) + delta),
+          };
         }
 
-        if (!stateChanged) return s;
-        return {
-          ...s,
-          accounts,
-          user: currentUser,
-          applied: appliedList,
-        };
-      });
-    },
-    [],
-  );
+        currentUser.balance = Math.max(0, (currentUser.balance ?? 0) + delta);
+        appliedList.push(key);
+        appliedSet.add(key);
+        stateChanged = true;
+      }
+
+      if (!stateChanged) return s;
+      return {
+        ...s,
+        accounts,
+        user: currentUser,
+        applied: appliedList,
+      };
+    });
+  }, []);
 
   useEffect(() => {
     if (!ready) return;
@@ -357,7 +332,6 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     (totalEarned: number) => {
       let credited = 0;
       setState((s) => {
-        if (!s.user) return s;
         const already = s.bonusApplied[s.user.id] ?? 0;
         const delta = Math.max(0, totalEarned - already);
         if (delta === 0) return s;
@@ -418,7 +392,5 @@ export function useVault() {
   const ctx = useContext(VaultContext);
   if (!ctx) throw new Error("useVault must be used inside VaultProvider");
   return ctx;
-                                  }
-                      
-
-
+}
+  
