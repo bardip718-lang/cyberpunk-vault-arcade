@@ -42,7 +42,7 @@ type State = {
   bonusApplied: Record<string, number>;
 };
 
-const KEY = "win1-vault-state";
+const KEY = "win1-vault-state-v2";
 const empty: State = {
   user: null,
   accounts: {},
@@ -158,8 +158,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       return {
         ...s,
         user: {
-          id: "guest-runner",
-          name: "Guest Runner",
+          id: "guest-player",
+          name: "Guest Player",
           email: "",
           guest: true,
           admin: false,
@@ -171,17 +171,28 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => setState((s) => ({ ...s, user: null })), []);
 
-  const adjust = useCallback((s: State, delta: number): State => {
-    if (!s.user) return s;
-    const balance = Math.max(0, (s.user.balance ?? 0) + delta);
-    const accounts = { ...s.accounts };
-    if (!s.user.guest && accounts[s.user.id]) {
-      accounts[s.user.id] = { ...accounts[s.user.id]!, balance };
-    }
-    return { ...s, accounts, user: { ...s.user, balance } };
-  }, []);
+  // Real-time Balance Cut / Add Logic for Gameplay
+  const addScore = useCallback((delta: number) => {
+    setState((s) => {
+      if (!s.user) return s;
+      const newBal = Math.max(0, (s.user.balance ?? 0) + delta);
+      const updatedUser = { ...s.user, balance: newBal };
+      const updatedAccounts = { ...s.accounts };
 
-  const addScore = useCallback((delta: number) => setState((s) => adjust(s, delta)), [adjust]);
+      if (!s.user.guest && updatedAccounts[s.user.id]) {
+        updatedAccounts[s.user.id] = {
+          ...updatedAccounts[s.user.id]!,
+          balance: newBal,
+        };
+      }
+
+      return {
+        ...s,
+        accounts: updatedAccounts,
+        user: updatedUser,
+      };
+    });
+  }, []);
 
   const submitOrder = useCallback(
     async (amount: number, utr: string) => {
@@ -226,7 +237,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           destination,
         },
       });
-      setState((s) => adjust({ ...s, applied: [...s.applied, created.id] }, -amount));
+      addScore(-amount);
       notifyOps("withdraw", {
         Type: "Withdrawal",
         User: created.userName,
@@ -237,15 +248,17 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         Time: new Date(created.createdAt).toLocaleString(),
       });
     },
-    [state.user, adjust],
+    [state.user, addScore],
   );
 
+  // Approve par Instant Balance Add Logic
   const applyResolved = useCallback(
     (requests: VaultRequest[]) => {
       setState((s) => {
+        if (!s.user) return s;
         const appliedSet = new Set(s.applied);
         let accounts = { ...s.accounts };
-        let currentUser = s.user ? { ...s.user } : null;
+        let currentUser = { ...s.user };
         let appliedList = [...s.applied];
         let stateChanged = false;
 
@@ -265,16 +278,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
             };
           }
 
-          if (currentUser) {
-            const isTargetUser =
-              currentUser.id === r.userKey ||
-              (currentUser.guest && r.userKey.startsWith("guest")) ||
-              currentUser.admin;
-
-            if (isTargetUser) {
-              currentUser.balance = Math.max(0, (currentUser.balance ?? 0) + delta);
-            }
-          }
+          // Balance instantly player ko attach hoga
+          currentUser.balance = Math.max(0, (currentUser.balance ?? 0) + delta);
 
           appliedList.push(key);
           appliedSet.add(key);
@@ -293,7 +298,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  // Background Auto-Sync for Live Balance Updates
+  // Background Live Sync Loop
   useEffect(() => {
     if (!ready || !state.user) return;
     const sync = async () => {
@@ -307,7 +312,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       }
     };
     sync();
-    const timer = setInterval(sync, 2500);
+    const timer = setInterval(sync, 2000);
     return () => clearInterval(timer);
   }, [ready, state.user, applyResolved]);
 
@@ -320,12 +325,16 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         const delta = Math.max(0, totalEarned - already);
         if (delta === 0) return s;
         credited = delta;
-        const next = adjust(s, delta);
-        return { ...next, bonusApplied: { ...s.bonusApplied, [s.user.id]: totalEarned } };
+        const newBal = Math.max(0, (s.user.balance ?? 0) + delta);
+        return {
+          ...s,
+          user: { ...s.user, balance: newBal },
+          bonusApplied: { ...s.bonusApplied, [s.user.id]: totalEarned },
+        };
       });
       return credited;
     },
-    [adjust],
+    [],
   );
 
   const updatePaymentSettings = useCallback((next: Partial<PaymentSettings>) => {
@@ -372,9 +381,9 @@ export function useVault() {
   const ctx = useContext(VaultContext);
   if (!ctx) throw new Error("useVault must be used inside VaultProvider");
   return ctx;
-  }
-             
-  
+    }
+        
 
+        
 
-    
+      
