@@ -9,11 +9,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Check, ArrowDownToLine } from "lucide-react";
+import { Copy, Check, ArrowDownToLine, MessageCircle } from "lucide-react";
 import { useVault } from "@/lib/vault-store";
-import { notifyTelegram } from "@/lib/notify";
 
 const PRESET_AMOUNTS = [100, 250, 500, 1000, 2000, 5000];
+const ADMIN_WHATSAPP_NUMBER = "918317848513"; // Aapka WhatsApp Number
 
 interface TopUpModalProps {
   open: boolean;
@@ -21,12 +21,10 @@ interface TopUpModalProps {
 }
 
 export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
-  const { payment, submitOrder, user } = useVault();
+  const { payment, user } = useVault();
   const [amount, setAmount] = useState<number>(250);
   const [utr, setUtr] = useState("");
   const [copied, setCopied] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   const upiId = payment?.upiId || "8317848513@ybl";
   const upiName = payment?.displayName || "WIN1 VAULT";
@@ -43,53 +41,32 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleWhatsAppSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanUtr = utr.trim();
 
     if (!cleanUtr || cleanUtr.length < 4) {
-      alert("Please enter a valid 12-digit UPI / UTR Reference Number");
+      alert("Please enter a valid UTR / Reference Number.");
       return;
     }
 
-    setSubmitting(true);
     const savedPhone = typeof window !== "undefined" ? localStorage.getItem("win1_user_phone") : null;
-    const userIdentifier = savedPhone ? `+91 ${savedPhone}` : (user?.name || "Guest Player");
+    const userIdentifier = savedPhone ? `+91 ${savedPhone}` : (user?.name || "Player");
 
-    try {
-      // 1. Server + Admin Store mein live submit karo
-      if (typeof submitOrder === "function") {
-        await submitOrder(Number(amount), cleanUtr);
-      }
+    // WhatsApp pre-filled message
+    const msg = encodeURIComponent(
+      `🎮 *WIN1 VAULT DEPOSIT REQUEST*\n\n` +
+      `👤 *User / Phone:* ${userIdentifier}\n` +
+      `💰 *Amount Paid:* ₹${amount}\n` +
+      `🔢 *UTR Reference:* ${cleanUtr}\n\n` +
+      `Please verify payment and credit my balance.`
+    );
 
-      // 2. Telegram Alert
-      try {
-        await notifyTelegram(
-          `📥 *NEW DEPOSIT REQUEST*\n\n` +
-          `👤 *User:* \`${userIdentifier}\`\n` +
-          `💰 *Amount:* ₹${amount}\n` +
-          `🔢 *UTR:* \`${cleanUtr}\``
-        );
-      } catch {
-        // ignore notification error
-      }
+    const waLink = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${msg}`;
+    window.open(waLink, "_blank");
 
-      setSuccess(true);
-      setUtr("");
-      setTimeout(() => {
-        setSuccess(false);
-        onOpenChange(false);
-      }, 2500);
-    } catch (err) {
-      console.error("Deposit error:", err);
-      setSuccess(true);
-      setTimeout(() => {
-        setSuccess(false);
-        onOpenChange(false);
-      }, 2000);
-    } finally {
-      setSubmitting(false);
-    }
+    onOpenChange(false);
+    setUtr("");
   };
 
   return (
@@ -100,102 +77,88 @@ export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
             <ArrowDownToLine className="size-6 text-primary" /> Vault Top-Up
           </DialogTitle>
           <DialogDescription className="text-muted-foreground text-xs">
-            Scan &amp; pay via any UPI app, then submit 12-digit UTR reference.
+            Scan &amp; pay via UPI, then send UTR screenshot directly on WhatsApp.
           </DialogDescription>
         </DialogHeader>
 
-        {success ? (
-          <div className="py-8 text-center space-y-3">
-            <div className="size-14 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 mx-auto flex items-center justify-center animate-bounce">
-              <Check className="size-8" />
+        <form onSubmit={handleWhatsAppSubmit} className="space-y-4 pt-1">
+          <div className="flex flex-col items-center justify-center p-3 rounded-xl border border-border bg-background/60">
+            <div className="bg-white p-2.5 rounded-lg shadow-md mb-2">
+              <img
+                src={qrUrl}
+                alt={`UPI QR code for ${cleanUpi}`}
+                className="size-44 object-contain"
+              />
             </div>
-            <h3 className="font-display text-xl text-foreground font-bold">Deposit Submitted!</h3>
-            <p className="text-xs text-muted-foreground">
-              ₹{amount} will be credited once verified by operator.
-            </p>
+            <p className="text-xs font-display font-semibold text-primary">{upiName}</p>
+
+            <div className="mt-2 flex items-center gap-2 rounded-md border border-border bg-secondary/80 px-3 py-1.5 text-xs font-mono">
+              <span>{cleanUpi}</span>
+              <button
+                type="button"
+                onClick={handleCopyUpi}
+                className="hover:text-primary transition-colors"
+                aria-label="Copy UPI ID"
+              >
+                {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
+              </button>
+            </div>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4 pt-1">
-            <div className="flex flex-col items-center justify-center p-3 rounded-xl border border-border bg-background/60">
-              <div className="bg-white p-2.5 rounded-lg shadow-md mb-2">
-                <img
-                  src={qrUrl}
-                  alt={`UPI payment QR code for ${cleanUpi}`}
-                  className="size-44 object-contain"
-                />
-              </div>
-              <p className="text-xs font-display font-semibold text-primary">{upiName}</p>
 
-              <div className="mt-2 flex items-center gap-2 rounded-md border border-border bg-secondary/80 px-3 py-1.5 text-xs font-mono">
-                <span>{cleanUpi}</span>
-                <button
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Select Amount</Label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {PRESET_AMOUNTS.map((amt) => (
+                <Button
+                  key={amt}
                   type="button"
-                  onClick={handleCopyUpi}
-                  className="hover:text-primary transition-colors"
-                  aria-label="Copy UPI ID"
+                  size="sm"
+                  variant={amount === amt ? "default" : "outline"}
+                  onClick={() => setAmount(amt)}
+                  className="font-display font-semibold text-xs"
                 >
-                  {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
-                </button>
-              </div>
+                  ₹{amt}
+                </Button>
+              ))}
             </div>
+          </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Select Amount</Label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {PRESET_AMOUNTS.map((amt) => (
-                  <Button
-                    key={amt}
-                    type="button"
-                    size="sm"
-                    variant={amount === amt ? "default" : "outline"}
-                    onClick={() => setAmount(amt)}
-                    className="font-display font-semibold text-xs"
-                  >
-                    ₹{amt}
-                  </Button>
-                ))}
-              </div>
-            </div>
+          <div className="space-y-1">
+            <Label htmlFor="deposit-amount" className="text-xs text-muted-foreground">Amount (₹)</Label>
+            <Input
+              id="deposit-amount"
+              type="number"
+              min={10}
+              value={amount}
+              onChange={(e) => setAmount(Number(e.target.value))}
+              className="font-display"
+              required
+            />
+          </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="deposit-amount" className="text-xs text-muted-foreground">Amount (₹)</Label>
-              <Input
-                id="deposit-amount"
-                type="number"
-                min={10}
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-                className="font-display"
-                required
-              />
-            </div>
+          <div className="space-y-1">
+            <Label htmlFor="deposit-utr" className="text-xs text-muted-foreground">
+              12-digit UPI / UTR Reference No.
+            </Label>
+            <Input
+              id="deposit-utr"
+              type="text"
+              placeholder="e.g. 521061008271"
+              value={utr}
+              onChange={(e) => setUtr(e.target.value)}
+              className="font-display"
+              required
+            />
+          </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="deposit-utr" className="text-xs text-muted-foreground">
-                12-digit UPI / UTR Reference No.
-              </Label>
-              <Input
-                id="deposit-utr"
-                type="text"
-                placeholder="e.g. 521061008271"
-                value={utr}
-                onChange={(e) => setUtr(e.target.value)}
-                className="font-display"
-                required
-              />
-            </div>
-
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-5 font-display tracking-wider uppercase font-bold"
-            >
-              {submitting ? "Submitting..." : `Submit Deposit (₹${amount})`}
-            </Button>
-          </form>
-        )}
+          <Button
+            type="submit"
+            className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 text-white font-display tracking-wider uppercase font-bold flex items-center justify-center gap-2"
+          >
+            <MessageCircle className="size-5" /> Submit via WhatsApp (₹{amount})
+          </Button>
+        </form>
       </DialogContent>
     </Dialog>
   );
-        }
-                      
+              }
