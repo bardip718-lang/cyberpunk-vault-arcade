@@ -1,7 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import type { Database } from "@/integrations/supabase/types";
 
 const ADMIN_EMAIL = "bardip718@gmail.com";
 
@@ -55,32 +53,25 @@ function mapRow(row: Row): VaultRequest {
   };
 }
 
-function publicClient() {
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-  return createClient<Database>(process.env["SUPABASE_URL"]!, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: {
-      fetch: (input, init) => {
-        const h = new Headers(init?.headers);
-        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) {
-          h.delete("Authorization");
-        }
-        h.set("apikey", key);
-        return fetch(input, { ...init, headers: h });
-      },
-    },
-  });
-}
-
 export const listRequests = createServerFn({ method: "GET" }).handler(
   async (): Promise<VaultRequest[]> => {
-    const { data, error } = await publicClient()
-      .from("transaction_requests")
-      .select(SELECT_COLUMNS)
-      .order("created_at", { ascending: false })
-      .limit(300);
-    if (error) throw new Error(error.message);
-    return (data ?? []).map((r) => mapRow(r as Row));
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data, error } = await supabaseAdmin
+        .from("transaction_requests")
+        .select(SELECT_COLUMNS)
+        .order("created_at", { ascending: false })
+        .limit(300);
+
+      if (error) {
+        console.error("Error fetching requests:", error);
+        return [];
+      }
+      return (data ?? []).map((r) => mapRow(r as Row));
+    } catch (err) {
+      console.error("listRequests server error:", err);
+      return [];
+    }
   },
 );
 
@@ -112,6 +103,7 @@ export const submitRequest = createServerFn({ method: "POST" })
       })
       .select(SELECT_COLUMNS)
       .single();
+
     if (error) throw new Error(error.message);
     return mapRow(row as Row);
   });
@@ -140,12 +132,19 @@ export const resolveRequest = createServerFn({ method: "POST" })
       .eq("status", "pending")
       .select(SELECT_COLUMNS)
       .maybeSingle();
+
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Request already resolved.");
+
     const mapped = mapRow(row as Row);
     if (mapped.kind === "deposit" && mapped.status === "approved") {
-      const { payReferralBonusIfFirstDeposit } = await import("@/lib/referral-reward.server");
-      await payReferralBonusIfFirstDeposit(mapped.userKey);
+      try {
+        const { payReferralBonusIfFirstDeposit } = await import("@/lib/referral-reward.server");
+        await payReferralBonusIfFirstDeposit(mapped.userKey);
+      } catch {
+        // ignore referral error if optional
+      }
     }
     return mapped;
   });
+
