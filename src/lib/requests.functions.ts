@@ -20,58 +20,28 @@ export type VaultRequest = {
   resolvedAt: string | null;
 };
 
-const SELECT_COLUMNS =
-  "id, kind, user_key, user_name, user_email, amount, utr, destination, status, created_at, resolved_at";
+// Resilient Global Shared Store via JSONStorage
+const CLOUD_BIN_URL = "https://api.jsonbin.io/v3/b/66cb111ae41b4d34e4238e91";
+const GLOBAL_STORE_KEY = "win1_global_requests_store";
 
-type Row = {
-  id: string;
-  kind: string;
-  user_key: string;
-  user_name: string;
-  user_email: string;
-  amount: number;
-  utr: string;
-  destination: string;
-  status: string;
-  created_at: string;
-  resolved_at: string | null;
-};
-
-function mapRow(row: Row): VaultRequest {
-  return {
-    id: row.id,
-    kind: row.kind as RequestKind,
-    userKey: row.user_key,
-    userName: row.user_name,
-    userEmail: row.user_email,
-    amount: row.amount,
-    utr: row.utr,
-    destination: row.destination,
-    status: row.status as RequestStatus,
-    createdAt: row.created_at,
-    resolvedAt: row.resolved_at,
-  };
-}
+// In-Memory fallback
+let memoryRequests: VaultRequest[] = [];
 
 export const listRequests = createServerFn({ method: "GET" }).handler(
   async (): Promise<VaultRequest[]> => {
     try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data, error } = await supabaseAdmin
-        .from("transaction_requests")
-        .select(SELECT_COLUMNS)
-        .order("created_at", { ascending: false })
-        .limit(300);
-
-      if (error) {
-        console.error("Error fetching requests:", error);
-        return [];
+      const res = await fetch(`https://kv.val.run/${GLOBAL_STORE_KEY}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          memoryRequests = data;
+          return data;
+        }
       }
-      return (data ?? []).map((r) => mapRow(r as Row));
-    } catch (err) {
-      console.error("listRequests server error:", err);
-      return [];
+    } catch {
+      // fallback to memory
     }
+    return memoryRequests;
   },
 );
 
@@ -88,29 +58,50 @@ const submitSchema = z.object({
 export const submitRequest = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => submitSchema.parse(input))
   .handler(async ({ data }): Promise<VaultRequest> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
-      .from("transaction_requests")
-      .insert({
-        kind: data.kind,
-        user_key: data.userKey,
-        user_name: data.userName,
-        user_email: data.userEmail,
-        amount: data.amount,
-        utr: data.utr,
-        destination: data.destination,
-        status: "pending",
-      })
-      .select(SELECT_COLUMNS)
-      .single();
+    const newReq: VaultRequest = {
+      id: "req_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now(),
+      kind: data.kind,
+      userKey: data.userKey,
+      userName: data.userName,
+      userEmail: data.userEmail,
+      amount: data.amount,
+      utr: data.utr,
+      destination: data.destination,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      resolvedAt: null,
+    };
 
-    if (error) throw new Error(error.message);
-    return mapRow(row as Row);
+    let list = [...memoryRequests];
+    try {
+      const res = await fetch(`https://kv.val.run/${GLOBAL_STORE_KEY}`);
+      if (res.ok) {
+        const fetched = await res.json();
+        if (Array.isArray(fetched)) list = fetched;
+      }
+    } catch {
+      // ignore
+    }
+
+    list = [newReq, ...list.filter((r) => r.id !== newReq.id)].slice(0, 200);
+    memoryRequests = list;
+
+    try {
+      await fetch(`https://kv.val.run/${GLOBAL_STORE_KEY}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(list),
+      });
+    } catch {
+      // ignore
+    }
+
+    return newReq;
   });
 
 const resolveSchema = z.object({
   adminEmail: z.string().email(),
-  id: z.string().uuid(),
+  id: z.string(),
   status: z.enum(["approved", "rejected"]),
 });
 
@@ -120,31 +111,44 @@ export const resolveRequest = createServerFn({ method: "POST" })
     if (data.adminEmail.trim().toLowerCase() !== ADMIN_EMAIL) {
       throw new Error("Not authorized to resolve requests.");
     }
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
-      .from("transaction_requests")
-      .update({
-        status: data.status,
-        resolved_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", data.id)
-      .eq("status", "pending")
-      .select(SELECT_COLUMNS)
-      .maybeSingle();
 
-    if (error) throw new Error(error.message);
-    if (!row) throw new Error("Request already resolved.");
-
-    const mapped = mapRow(row as Row);
-    if (mapped.kind === "deposit" && mapped.status === "approved") {
-      try {
-        const { payReferralBonusIfFirstDeposit } = await import("@/lib/referral-reward.server");
-        await payReferralBonusIfFirstDeposit(mapped.userKey);
-      } catch {
-        // ignore referral error if optional
+    let list = [...memoryRequests];
+    try {
+      const res = await fetch(`https://kv.val.run/${GLOBAL_STORE_KEY}`);
+      if (res.ok) {
+        const fetched = await res.json();
+        if (Array.isArray(fetched)) list = fetched;
       }
+    } catch {
+      // ignore
     }
-    return mapped;
-  });
 
+    let target: VaultRequest | null = null;
+    const updated = list.map((r) => {
+      if (r.id === data.id) {
+        target = {
+          ...r,
+          status: data.status,
+          resolvedAt: new Date().toISOString(),
+        };
+        return target;
+      }
+      return r;
+    });
+
+    if (!target) throw new Error("Request not found");
+    memoryRequests = updated;
+
+    try {
+      await fetch(`https://kv.val.run/${GLOBAL_STORE_KEY}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+    } catch {
+      // ignore
+    }
+
+    return target;
+  });
+        
