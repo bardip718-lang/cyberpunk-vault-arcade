@@ -7,9 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { notifyOps } from "@/lib/notify";
 import depositQrAsset from "@/assets/deposit-qr.png.asset.json";
-import { submitRequest, listRequests, type VaultRequest } from "@/lib/requests.functions";
 
 export type User = {
   id: string;
@@ -29,7 +27,7 @@ export type PaymentSettings = {
 };
 
 export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
-  upiId: "7719254845@ybl",
+  upiId: "8317848513@ybl",
   displayName: "WIN1 VAULT",
   qrUrl: depositQrAsset.url,
 };
@@ -38,13 +36,12 @@ type State = {
   user: User;
   accounts: Record<string, Account>;
   payment: PaymentSettings;
-  applied: string[];
-  bonusApplied: Record<string, number>;
+  usedVouchers: string[];
 };
 
-const KEY = "win1-vault-state-v3";
+const KEY = "win1-vault-state-v5";
 const defaultUser: User = {
-  id: "guest-player",
+  id: "player-" + Math.floor(1000 + Math.random() * 9000),
   name: "Guest Player",
   email: "",
   guest: true,
@@ -56,9 +53,19 @@ const empty: State = {
   user: defaultUser,
   accounts: {},
   payment: DEFAULT_PAYMENT_SETTINGS,
-  applied: [],
-  bonusApplied: {},
+  usedVouchers: [],
 };
+
+// Simple secret verification algorithm: Code format: W1-<AMOUNT>-<ANY_4_CHAR_TOKEN>
+// Example valid codes: W1-100-X7A9, W1-250-M4K2, W1-500-P9L1, W1-1000-B8Q3
+function verifyAndExtractAmount(code: string): number | null {
+  const clean = code.trim().toUpperCase();
+  const match = clean.match(/^W1-(50|100|200|250|500|1000|2000|5000)-[A-Z0-9]{4}$/);
+  if (match && match[1]) {
+    return parseInt(match[1], 10);
+  }
+  return null;
+}
 
 function load(): State {
   if (typeof window === "undefined") return empty;
@@ -70,8 +77,7 @@ function load(): State {
       ...empty,
       ...parsed,
       user: parsed.user ?? defaultUser,
-      applied: parsed.applied ?? [],
-      bonusApplied: parsed.bonusApplied ?? {},
+      usedVouchers: parsed.usedVouchers ?? [],
       payment: { ...DEFAULT_PAYMENT_SETTINGS, ...(parsed.payment ?? {}) },
     };
   } catch {
@@ -89,10 +95,7 @@ type Ctx = {
   playAsGuest: () => void;
   signOut: () => void;
   addScore: (delta: number) => void;
-  submitOrder: (amount: number, utr: string) => Promise<void>;
-  submitWithdrawal: (amount: number, destination: string) => Promise<void>;
-  applyResolved: (requests: VaultRequest[]) => void;
-  applyReferralBonus: (totalEarned: number) => number;
+  redeemVoucher: (code: string) => { success: boolean; message: string; amount?: number };
   payment: PaymentSettings;
   updatePaymentSettings: (next: Partial<PaymentSettings>) => void;
 };
@@ -163,27 +166,13 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const playAsGuest = useCallback(() => {
-    setState((s) => ({
-      ...s,
-      user: {
-        id: "guest-player",
-        name: "Guest Player",
-        email: "",
-        guest: true,
-        admin: false,
-        balance: 250,
-      },
-    }));
+    setState((s) => ({ ...s, user: defaultUser }));
   }, []);
 
   const signOut = useCallback(() => {
-    setState((s) => ({
-      ...s,
-      user: defaultUser,
-    }));
+    setState((s) => ({ ...s, user: defaultUser }));
   }, []);
 
-  // Har bet aur win par balance instantly update hoga
   const addScore = useCallback((delta: number) => {
     setState((s) => {
       const current = s.user ?? defaultUser;
@@ -206,147 +195,58 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const submitOrder = useCallback(
-    async (amount: number, utr: string) => {
-      const currentUser = state.user ?? defaultUser;
-      try {
-        const created = await submitRequest({
-          data: {
-            kind: "deposit",
-            userKey: currentUser.id,
-            userName: currentUser.guest ? `${currentUser.name} (guest)` : currentUser.name,
-            userEmail: currentUser.email,
-            amount,
-            utr,
-            destination: "",
-          },
-        });
+  // Secure One-Time Voucher Verification
+  const redeemVoucher = useCallback((rawCode: string) => {
+    const clean = rawCode.trim().toUpperCase();
+    if (!clean) {
+      return { success: false, message: "Please enter a voucher code." };
+    }
 
-        notifyOps("deposit", {
-          Type: "Deposit",
-          User: created?.userName || currentUser.name,
-          "User ID": created?.userKey || currentUser.id,
-          Amount: `₹${amount}`,
-          UTR: utr,
-          Status: "pending",
-          Time: new Date().toLocaleString(),
-        });
-      } catch (err) {
-        console.error("Deposit submit error:", err);
-      }
-    },
-    [state.user],
-  );
+    if (state.usedVouchers.includes(clean)) {
+      return { success: false, message: "This voucher has ALREADY been used!" };
+    }
 
-  const submitWithdrawal = useCallback(
-    async (amount: number, destination: string) => {
-      const currentUser = state.user ?? defaultUser;
-      addScore(-amount);
-      try {
-        const created = await submitRequest({
-          data: {
-            kind: "withdrawal",
-            userKey: currentUser.id,
-            userName: currentUser.guest ? `${currentUser.name} (guest)` : currentUser.name,
-            userEmail: currentUser.email,
-            amount,
-            utr: "",
-            destination,
-          },
-        });
+    const val = verifyAndExtractAmount(clean);
+    if (!val) {
+      return { success: false, message: "Invalid code format! Ask admin on WhatsApp." };
+    }
 
-        notifyOps("withdraw", {
-          Type: "Withdrawal",
-          User: created?.userName || currentUser.name,
-          "User ID": created?.userKey || currentUser.id,
-          Amount: `₹${amount}`,
-          Destination: destination,
-          Status: "pending",
-          Time: new Date().toLocaleString(),
-        });
-      } catch (err) {
-        console.error("Withdraw submit error:", err);
-      }
-    },
-    [state.user, addScore],
-  );
+    let result = { success: false, message: "" };
 
-  const applyResolved = useCallback((requests: VaultRequest[]) => {
     setState((s) => {
-      const appliedSet = new Set(s.applied);
-      let accounts = { ...s.accounts };
-      let currentUser = { ...s.user };
-      let appliedList = [...s.applied];
-      let stateChanged = false;
-
-      for (const r of requests) {
-        if (r.status === "pending") continue;
-        const key = `${r.id}:${r.status}`;
-        if (appliedSet.has(key)) continue;
-
-        let delta = 0;
-        if (r.kind === "deposit" && r.status === "approved") delta = r.amount;
-        if (r.kind === "withdrawal" && r.status === "rejected") delta = r.amount;
-
-        if (accounts[r.userKey]) {
-          accounts[r.userKey] = {
-            ...accounts[r.userKey]!,
-            balance: Math.max(0, (accounts[r.userKey]!.balance ?? 0) + delta),
-          };
-        }
-
-        currentUser.balance = Math.max(0, (currentUser.balance ?? 0) + delta);
-        appliedList.push(key);
-        appliedSet.add(key);
-        stateChanged = true;
+      if (s.usedVouchers.includes(clean)) {
+        result = { success: false, message: "This voucher has ALREADY been used!" };
+        return s;
       }
 
-      if (!stateChanged) return s;
+      const current = s.user ?? defaultUser;
+      const newBal = (current.balance ?? 0) + val;
+      const updatedUser = { ...current, balance: newBal };
+      const updatedAccounts = { ...s.accounts };
+
+      if (!current.guest && updatedAccounts[current.id]) {
+        updatedAccounts[current.id] = {
+          ...updatedAccounts[current.id]!,
+          balance: newBal,
+        };
+      }
+
+      result = {
+        success: true,
+        message: `₹${val} added to your balance!`,
+        amount: val,
+      };
+
       return {
         ...s,
-        accounts,
-        user: currentUser,
-        applied: appliedList,
+        accounts: updatedAccounts,
+        user: updatedUser,
+        usedVouchers: [...s.usedVouchers, clean],
       };
     });
-  }, []);
 
-  useEffect(() => {
-    if (!ready) return;
-    const sync = async () => {
-      try {
-        const all = await listRequests();
-        if (all && all.length > 0) {
-          applyResolved(all);
-        }
-      } catch {
-        // silent sync
-      }
-    };
-    sync();
-    const timer = setInterval(sync, 2000);
-    return () => clearInterval(timer);
-  }, [ready, applyResolved]);
-
-  const applyReferralBonus = useCallback(
-    (totalEarned: number) => {
-      let credited = 0;
-      setState((s) => {
-        const already = s.bonusApplied[s.user.id] ?? 0;
-        const delta = Math.max(0, totalEarned - already);
-        if (delta === 0) return s;
-        credited = delta;
-        const newBal = Math.max(0, (s.user.balance ?? 0) + delta);
-        return {
-          ...s,
-          user: { ...s.user, balance: newBal },
-          bonusApplied: { ...s.bonusApplied, [s.user.id]: totalEarned },
-        };
-      });
-      return credited;
-    },
-    [],
-  );
+    return result;
+  }, [state.usedVouchers]);
 
   const updatePaymentSettings = useCallback((next: Partial<PaymentSettings>) => {
     setState((s) => ({ ...s, payment: { ...DEFAULT_PAYMENT_SETTINGS, ...s.payment, ...next } }));
@@ -361,10 +261,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       playAsGuest,
       signOut,
       addScore,
-      submitOrder,
-      submitWithdrawal,
-      applyResolved,
-      applyReferralBonus,
+      redeemVoucher,
       payment: state.payment ?? DEFAULT_PAYMENT_SETTINGS,
       updatePaymentSettings,
     }),
@@ -376,10 +273,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       playAsGuest,
       signOut,
       addScore,
-      submitOrder,
-      submitWithdrawal,
-      applyResolved,
-      applyReferralBonus,
+      redeemVoucher,
       state.payment,
       updatePaymentSettings,
     ],
@@ -392,5 +286,5 @@ export function useVault() {
   const ctx = useContext(VaultContext);
   if (!ctx) throw new Error("useVault must be used inside VaultProvider");
   return ctx;
-}
-  
+          }
+    
