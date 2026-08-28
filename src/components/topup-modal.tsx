@@ -23,7 +23,7 @@ interface TopUpModalProps {
 export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
   const { payment, redeemVoucher, user } = useVault();
   const [activeTab, setActiveTab] = useState<"pay" | "redeem">("pay");
-  const [amount, setAmount] = useState<number>(250);
+  const [amount, setAmount] = useState<number>(50);
   const [utr, setUtr] = useState("");
   const [voucherCode, setVoucherCode] = useState("");
   const [copied, setCopied] = useState(false);
