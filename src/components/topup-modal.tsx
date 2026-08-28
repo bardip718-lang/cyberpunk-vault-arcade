@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-interface TopupModalProps {
+export interface TopUpModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (amount: number) => void;
@@ -8,7 +8,7 @@ interface TopupModalProps {
 
 const PRESET_AMOUNTS = [50, 100, 200, 500, 1000];
 
-export const TopupModal: React.FC<TopupModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const TopUpModal: React.FC<TopUpModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [amount, setAmount] = useState<number>(50);
   const [utr, setUtr] = useState<string>('');
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
@@ -33,7 +33,7 @@ export const TopupModal: React.FC<TopupModalProps> = ({ isOpen, onClose, onSucce
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition"
+          className="absolute top-4 right-4 text-gray-400 hover:text-white transition text-lg"
         >
           ✕
         </button>
@@ -76,7 +76,7 @@ export const TopupModal: React.FC<TopupModalProps> = ({ isOpen, onClose, onSucce
                 Or Enter Custom Amount
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-3 text-cyan-400 font-bold">₹</span>
+                <span className="absolute left-3 top-2.5 text-cyan-400 font-bold">₹</span>
                 <input
                   type="number"
                   min="50"
@@ -136,4 +136,4 @@ export const TopupModal: React.FC<TopupModalProps> = ({ isOpen, onClose, onSucce
   );
 };
 
-export default TopupModal;
+export default TopUpModal;
