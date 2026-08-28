@@ -1,241 +1,139 @@
-import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Copy, Check, ArrowDownToLine, MessageCircle, Gift, CheckCircle2 } from "lucide-react";
-import { useVault } from "@/lib/vault-store";
+import React, { useState } from 'react';
 
-const PRESET_AMOUNTS = [100, 250, 500, 1000, 2000, 5000];
-const ADMIN_WHATSAPP_NUMBER = "918317848513";
-
-interface TopUpModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+interface TopupModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess?: (amount: number) => void;
 }
 
-export function TopUpModal({ open, onOpenChange }: TopUpModalProps) {
-  const { payment, redeemVoucher, user } = useVault();
-  const [activeTab, setActiveTab] = useState<"pay" | "redeem">("pay");
+const PRESET_AMOUNTS = [50, 100, 200, 500, 1000];
+
+export const TopupModal: React.FC<TopupModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [amount, setAmount] = useState<number>(50);
-  const [utr, setUtr] = useState("");
-  const [voucherCode, setVoucherCode] = useState("");
-  const [copied, setCopied] = useState(false);
-  const [redeemResult, setRedeemResult] = useState<{ success: boolean; msg: string } | null>(null);
+  const [utr, setUtr] = useState<string>('');
+  const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
 
-  const upiId = payment?.upiId || "8317848513@ybl";
-  const upiName = payment?.displayName || "WIN1 VAULT";
-  const cleanUpi = upiId.trim();
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${encodeURIComponent(cleanUpi)}%26pn=${encodeURIComponent(upiName)}%26am=${amount}%26cu=INR`;
+  if (!isOpen) return null;
 
-  const handleCopyUpi = async () => {
-    try {
-      await navigator.clipboard.writeText(cleanUpi);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleWhatsAppSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanUtr = utr.trim();
-
-    if (!cleanUtr || cleanUtr.length < 4) {
-      alert("Please enter a valid UTR / Reference Number.");
+    if (amount < 50) {
+      alert('Minimum deposit amount is ₹50');
       return;
     }
-
-    const savedPhone = typeof window !== "undefined" ? localStorage.getItem("win1_user_phone") : null;
-    const userIdentifier = savedPhone ? `+91 ${savedPhone}` : (user?.name || "Player");
-
-    const msg = encodeURIComponent(
-      `🎮 *WIN1 VAULT DEPOSIT REQUEST*\n\n` +
-      `👤 *User / Phone:* ${userIdentifier}\n` +
-      `💰 *Amount Paid:* ₹${amount}\n` +
-      `🔢 *UTR Reference:* ${cleanUtr}\n\n` +
-      `I have completed payment. Please send my Voucher Code.`
-    );
-
-    const waLink = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${msg}`;
-    window.open(waLink, "_blank");
-
-    // Automatically switch to redeem tab for smooth flow
-    setActiveTab("redeem");
-    setUtr("");
-  };
-
-  const handleRedeemSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!voucherCode.trim()) return;
-
-    const res = redeemVoucher(voucherCode);
-    if (res.success) {
-      setRedeemResult({ success: true, msg: res.message });
-      setVoucherCode("");
-      setTimeout(() => {
-        setRedeemResult(null);
-        onOpenChange(false);
-      }, 1800);
-    } else {
-      setRedeemResult({ success: false, msg: res.message });
+    setIsSubmitted(true);
+    if (onSuccess) {
+      onSuccess(amount);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="neon-panel border-primary/30 max-w-md">
-        <DialogHeader>
-          <DialogTitle className="font-display text-2xl neon-text flex items-center gap-2">
-            <ArrowDownToLine className="size-6 text-primary" /> Vault Top-Up
-          </DialogTitle>
-          <DialogDescription className="text-muted-foreground text-xs">
-            Pay via UPI or enter your voucher code to add balance instantly.
-          </DialogDescription>
-        </DialogHeader>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
+      <div className="bg-[#12121a] border border-cyan-500/40 w-full max-w-md rounded-2xl p-6 shadow-[0_0_25px_rgba(6,182,212,0.15)] relative text-white">
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-white transition"
+        >
+          ✕
+        </button>
 
-        {/* 2 Switch Tabs */}
-        <div className="grid grid-cols-2 gap-2 bg-secondary/60 p-1 rounded-xl border border-border mt-1">
-          <Button
-            type="button"
-            variant={activeTab === "pay" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => { setActiveTab("pay"); setRedeemResult(null); }}
-            className="font-display text-xs font-bold uppercase tracking-wider"
-          >
-            1. Pay on UPI
-          </Button>
-          <Button
-            type="button"
-            variant={activeTab === "redeem" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setActiveTab("redeem")}
-            className="font-display text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 text-emerald-400"
-          >
-            <Gift className="size-3.5" /> 2. Enter Voucher
-          </Button>
-        </div>
+        <h2 className="text-xl font-bold text-center text-cyan-400 tracking-wide">
+          DEPOSIT CREDITS
+        </h2>
+        <p className="text-xs text-center text-gray-400 mt-1 mb-5">
+          Min. Deposit ₹50 | Instant Wallet Update
+        </p>
 
-        {activeTab === "pay" ? (
-          <form onSubmit={handleWhatsAppSubmit} className="space-y-4 pt-1">
-            <div className="flex flex-col items-center justify-center p-3 rounded-xl border border-border bg-background/60">
-              <div className="bg-white p-2.5 rounded-lg shadow-md mb-2">
-                <img
-                  src={qrUrl}
-                  alt={`UPI QR code for ${cleanUpi}`}
-                  className="size-44 object-contain"
-                />
-              </div>
-              <p className="text-xs font-display font-semibold text-primary">{upiName}</p>
-
-              <div className="mt-2 flex items-center gap-2 rounded-md border border-border bg-secondary/80 px-3 py-1.5 text-xs font-mono">
-                <span>{cleanUpi}</span>
-                <button
-                  type="button"
-                  onClick={handleCopyUpi}
-                  className="hover:text-primary transition-colors"
-                  aria-label="Copy UPI ID"
-                >
-                  {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Select Amount</Label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {PRESET_AMOUNTS.map((amt) => (
-                  <Button
-                    key={amt}
+        {!isSubmitted ? (
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Amount Selection */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
+                Select Amount (₹)
+              </label>
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                {PRESET_AMOUNTS.map((val) => (
+                  <button
+                    key={val}
                     type="button"
-                    size="sm"
-                    variant={amount === amt ? "default" : "outline"}
-                    onClick={() => setAmount(amt)}
-                    className="font-display font-semibold text-xs"
+                    onClick={() => setAmount(val)}
+                    className={`py-2 text-sm font-bold rounded-lg border transition ${
+                      amount === val
+                        ? 'bg-cyan-500 text-black border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]'
+                        : 'bg-[#1a1a26] text-gray-300 border-gray-700 hover:border-cyan-500/50'
+                    }`}
                   >
-                    ₹{amt}
-                  </Button>
+                    ₹{val}
+                  </button>
                 ))}
               </div>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="deposit-utr" className="text-xs text-muted-foreground">
-                12-digit UPI / UTR Reference No.
-              </Label>
-              <Input
-                id="deposit-utr"
+            {/* Custom Amount Input */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">
+                Or Enter Custom Amount
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-3 text-cyan-400 font-bold">₹</span>
+                <input
+                  type="number"
+                  min="50"
+                  value={amount}
+                  onChange={(e) => setAmount(Number(e.target.value))}
+                  className="w-full bg-[#1a1a26] border border-gray-700 rounded-xl py-2.5 pl-8 pr-4 text-white text-sm font-semibold focus:outline-none focus:border-cyan-400"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* UTR / Transaction Input */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">
+                Transaction ID / UTR (Optional)
+              </label>
+              <input
                 type="text"
-                placeholder="e.g. 521061008271"
+                placeholder="12-digit UTR after payment"
                 value={utr}
                 onChange={(e) => setUtr(e.target.value)}
-                className="font-display"
-                required
+                className="w-full bg-[#1a1a26] border border-gray-700 rounded-xl py-2.5 px-4 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-400"
               />
             </div>
 
-            <Button
+            {/* Submit Button */}
+            <button
               type="submit"
-              className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 text-white font-display tracking-wider uppercase font-bold flex items-center justify-center gap-2 shadow-lg"
+              className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-bold text-sm tracking-wider uppercase rounded-xl shadow-lg transition duration-200"
             >
-              <MessageCircle className="size-5" /> Submit via WhatsApp (₹{amount})
-            </Button>
+              Confirm Deposit ₹{amount}
+            </button>
           </form>
         ) : (
-          <form onSubmit={handleRedeemSubmit} className="space-y-4 py-2">
-            <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-center space-y-2">
-              <Gift className="size-8 text-emerald-400 mx-auto" />
-              <h4 className="font-display font-bold text-foreground text-sm">Got a Voucher from Admin?</h4>
-              <p className="text-xs text-muted-foreground">
-                Paste the one-time code sent on WhatsApp to recharge instantly.
-              </p>
+          <div className="text-center py-6 space-y-4">
+            <div className="w-12 h-12 bg-green-500/20 border border-green-500 text-green-400 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
+              ✓
             </div>
-
-            {redeemResult && (
-              <div
-                className={`p-3 rounded-lg text-xs font-display text-center font-bold flex items-center justify-center gap-2 ${
-                  redeemResult.success
-                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                    : "bg-rose-500/20 text-rose-400 border border-rose-500/40"
-                }`}
-              >
-                {redeemResult.success && <CheckCircle2 className="size-4" />}
-                {redeemResult.msg}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="voucher-code" className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
-                Enter Voucher Code
-              </Label>
-              <Input
-                id="voucher-code"
-                type="text"
-                placeholder="e.g. W1-250-B5UF"
-                value={voucherCode}
-                onChange={(e) => setVoucherCode(e.target.value)}
-                className="font-mono font-bold tracking-widest text-center text-lg uppercase bg-background border-emerald-500/40 text-emerald-400"
-                required
-              />
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 text-white font-display tracking-wider uppercase font-bold text-sm shadow-lg"
+            <h3 className="text-lg font-bold text-white">Deposit Request Received</h3>
+            <p className="text-xs text-gray-400">
+              ₹{amount} deposit request is being processed. Wallet balance will update shortly.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setIsSubmitted(false);
+                onClose();
+              }}
+              className="w-full py-2.5 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-xl text-xs transition"
             >
-              Redeem Credits Now
-            </Button>
-          </form>
+              Done
+            </button>
+          </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
-                        }
-                
+};
+
+export default TopupModal;
