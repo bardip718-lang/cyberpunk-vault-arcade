@@ -39,7 +39,7 @@ export function RouletteGame() {
     setRot((prev) => prev + 1800 + idx * (360 / ROULETTE_NUMS.length));
 
     setTimeout(() => {
-      const out = ROULETTE_NUMS[idx];
+      const out = ROULETTE_NUMS[idx] ?? { num: 0, color: "green" };
       setLastResult(out);
       setSpinning(false);
       let won = false;

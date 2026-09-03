@@ -87,6 +87,8 @@ function load(): State {
 
 export const ADMIN_EMAIL = "bardip718@gmail.com";
 
+type RedeemResult = { success: boolean; message: string; amount?: number };
+
 type Ctx = {
   user: User;
   ready: boolean;
@@ -95,7 +97,8 @@ type Ctx = {
   playAsGuest: () => void;
   signOut: () => void;
   addScore: (delta: number) => void;
-  redeemVoucher: (code: string) => { success: boolean; message: string; amount?: number };
+  redeemVoucher: (code: string) => RedeemResult;
+  applyReferralBonus: (bonusEarned: number) => number;
   payment: PaymentSettings;
   updatePaymentSettings: (next: Partial<PaymentSettings>) => void;
 };
@@ -105,6 +108,7 @@ const VaultContext = createContext<Ctx | null>(null);
 export function VaultProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>(empty);
   const [ready, setReady] = useState(false);
+  const [appliedBonus, setAppliedBonus] = useState(0);
 
   useEffect(() => {
     setState(load());
@@ -211,7 +215,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       return { success: false, message: "Invalid code format! Ask admin on WhatsApp." };
     }
 
-    let result = { success: false, message: "" };
+    let result: RedeemResult = { success: false, message: "" };
 
     setState((s) => {
       if (s.usedVouchers.includes(clean)) {
@@ -248,6 +252,33 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     return result;
   }, [state.usedVouchers]);
 
+  /**
+   * Credits the net-new portion of a referral bonus into the player's balance.
+   * Idempotent per session: only the delta above the previously credited amount
+   * is applied, so a polled profile that hasn't changed never re-credits.
+   */
+  const applyReferralBonus = useCallback(
+    (bonusEarned: number) => {
+      if (!Number.isFinite(bonusEarned) || bonusEarned <= appliedBonus) return 0;
+      const delta = bonusEarned - appliedBonus;
+      setAppliedBonus(bonusEarned);
+      setState((s) => {
+        const current = s.user ?? defaultUser;
+        const newBal = Math.max(0, (current.balance ?? 0) + delta);
+        const updatedAccounts = { ...s.accounts };
+        if (!current.guest && updatedAccounts[current.id]) {
+          updatedAccounts[current.id] = {
+            ...updatedAccounts[current.id]!,
+            balance: newBal,
+          };
+        }
+        return { ...s, accounts: updatedAccounts, user: { ...current, balance: newBal } };
+      });
+      return delta;
+    },
+    [appliedBonus],
+  );
+
   const updatePaymentSettings = useCallback((next: Partial<PaymentSettings>) => {
     setState((s) => ({ ...s, payment: { ...DEFAULT_PAYMENT_SETTINGS, ...s.payment, ...next } }));
   }, []);
@@ -262,6 +293,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       signOut,
       addScore,
       redeemVoucher,
+      applyReferralBonus,
       payment: state.payment ?? DEFAULT_PAYMENT_SETTINGS,
       updatePaymentSettings,
     }),
@@ -274,6 +306,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       signOut,
       addScore,
       redeemVoucher,
+      applyReferralBonus,
       state.payment,
       updatePaymentSettings,
     ],
@@ -286,5 +319,4 @@ export function useVault() {
   const ctx = useContext(VaultContext);
   if (!ctx) throw new Error("useVault must be used inside VaultProvider");
   return ctx;
-          }
-    
+}
