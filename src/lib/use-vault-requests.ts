@@ -1,67 +1,67 @@
 import { useState, useEffect } from "react";
-
-export interface VaultRequest {
-  id: string;
-  type: "topup" | "withdraw";
-  amount: number;
-  utr?: string;
-  upiId?: string;
-  userEmail?: string;
-  status: "pending" | "approved" | "rejected";
-  createdAt: string;
-}
+import type { VaultRequest, RequestKind, RequestStatus } from "@/lib/requests.functions";
 
 const STORAGE_KEY = "win1_vault_requests_v1";
 
+function loadRequests(): VaultRequest[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    return saved ? (JSON.parse(saved) as VaultRequest[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export function useVaultRequests() {
-  const [requests, setRequests] = useState<VaultRequest[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [requests, setRequests] = useState<VaultRequest[]>(() => loadRequests());
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
     } catch {
       // ignore
     }
   }, [requests]);
 
   const createRequest = async (data: {
-    type: "topup" | "withdraw";
+    kind: RequestKind;
+    userKey: string;
+    userName: string;
+    userEmail: string;
     amount: number;
     utr?: string;
-    upiId?: string;
-    userEmail?: string;
-  }) => {
+    destination?: string;
+  }): Promise<VaultRequest> => {
     const newReq: VaultRequest = {
       id: "req_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
-      type: data.type,
+      kind: data.kind,
+      userKey: data.userKey,
+      userName: data.userName,
+      userEmail: data.userEmail,
       amount: Number(data.amount),
-      utr: data.utr,
-      upiId: data.upiId,
-      userEmail: data.userEmail || "Guest Player",
+      utr: data.utr ?? "",
+      destination: data.destination ?? "",
       status: "pending",
       createdAt: new Date().toISOString(),
+      resolvedAt: null,
     };
 
     setRequests((prev) => [newReq, ...prev]);
     return newReq;
   };
 
-  const updateRequestStatus = (id: string, status: "approved" | "rejected") => {
+  const updateRequestStatus = (id: string, status: RequestStatus) => {
     setRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status } : r))
+      prev.map((r) => (r.id === id ? { ...r, status } : r)),
     );
   };
 
   const clearAllRequests = () => {
     setRequests([]);
-    localStorage.removeItem(STORAGE_KEY);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
   };
 
   return {

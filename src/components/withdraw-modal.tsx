@@ -7,10 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useQueryClient } from "@tanstack/react-query";
 import { REQUESTS_KEY } from "@/lib/requests-query";
 import { useVault } from "@/lib/vault-store";
+import { useVaultRequests } from "@/lib/use-vault-requests";
 import { toast } from "sonner";
 
 export function WithdrawModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const { user, submitWithdrawal } = useVault();
+  const { user, addScore } = useVault();
+  const { createRequest } = useVaultRequests();
   const [amount, setAmount] = useState("100");
   const [destination, setDestination] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -33,9 +35,22 @@ export function WithdrawModal({ open, onOpenChange }: { open: boolean; onOpenCha
       setError("Enter a valid UPI ID or bank account details.");
       return;
     }
+    if (!user) {
+      setError("Please sign in to request a withdrawal.");
+      return;
+    }
     setSubmitting(true);
     try {
-      await submitWithdrawal(Math.round(amt), destination.trim());
+      // Lock (deduct) the requested amount immediately; refunded on rejection.
+      addScore(-Math.round(amt));
+      await createRequest({
+        kind: "withdrawal",
+        userKey: user.id,
+        userName: user.name,
+        userEmail: user.email,
+        amount: Math.round(amt),
+        destination: destination.trim(),
+      });
       await queryClient.invalidateQueries({ queryKey: REQUESTS_KEY });
       setError(null);
       setDestination("");
@@ -56,7 +71,7 @@ export function WithdrawModal({ open, onOpenChange }: { open: boolean; onOpenCha
         <DialogHeader>
           <DialogTitle className="font-display text-2xl neon-text">Vault Withdrawal</DialogTitle>
           <DialogDescription>
-            Request a payout to your UPI ID or bank account. Credits are deducted on approval.
+            Request a payout to your UPI ID or bank account. Credits are deducted on submission and refunded if rejected.
           </DialogDescription>
         </DialogHeader>
 

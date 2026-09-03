@@ -102,7 +102,7 @@ const GAMES = [
 ];
 
 function Index() {
-  const { user, signOut, signInAsGuest } = useVault();
+  const { user, signOut, playAsGuest } = useVault();
   const { requests } = useVaultRequests();
 
   const [activeTab, setActiveTab] = useState<string>("lobby");
@@ -117,10 +117,10 @@ function Index() {
     const savedPhone = localStorage.getItem("win1_user_phone");
     if (savedPhone) {
       setActiveUserMobile(savedPhone);
-    } else if (!user && typeof signInAsGuest === "function") {
-      signInAsGuest();
+    } else if (!user) {
+      playAsGuest();
     }
-  }, [user, signInAsGuest]);
+  }, [user, playAsGuest]);
 
   const handlePhoneLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -372,7 +372,7 @@ function Index() {
         </div>
       )}
 
-      <TopUpModal open={topUpOpen} onOpenChange={setTopUpOpen} />
+      <TopUpModal isOpen={topUpOpen} onClose={() => setTopUpOpen(false)} />
       <WithdrawModal open={withdrawOpen} onOpenChange={setWithdrawOpen} />
     </main>
   );
