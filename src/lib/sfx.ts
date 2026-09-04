@@ -33,6 +33,21 @@ export const sfx = {
     setTimeout(() => beep(1180, 0.22), 240);
   },
   lose: () => beep(140, 0.24, "triangle", 0.04),
+  coin: () => {
+    beep(1320, 0.07, "sine", 0.05);
+    setTimeout(() => beep(1760, 0.09, "sine", 0.04), 70);
+  },
+  payout: () => {
+    for (let i = 0; i < 6; i++) setTimeout(() => beep(880 + i * 120, 0.06, "square", 0.03), i * 70);
+  },
+  fanfare: () => {
+    const notes = [523, 659, 784, 1047, 1319, 1568];
+    notes.forEach((n, i) => setTimeout(() => beep(n, 0.22, "triangle", 0.05), i * 110));
+    setTimeout(() => {
+      beep(1047, 0.5, "sawtooth", 0.04);
+      beep(1568, 0.5, "sine", 0.04);
+    }, 700);
+  },
   flip: () => beep(520, 0.06, "sine", 0.05),
   match: () => beep(940, 0.14, "sine", 0.05),
 };
