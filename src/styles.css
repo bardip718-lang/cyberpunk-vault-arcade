@@ -149,3 +149,43 @@
 .animate-neon-pulse {
   animation: neon-pulse 2.4s ease-in-out infinite;
 }
+
+@keyframes win-shake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  10% { transform: translate3d(-6px, 2px, 0) rotate(-0.35deg); }
+  25% { transform: translate3d(5px, -3px, 0) rotate(0.3deg); }
+  40% { transform: translate3d(-4px, 3px, 0) rotate(-0.25deg); }
+  55% { transform: translate3d(4px, -2px, 0) rotate(0.2deg); }
+  70% { transform: translate3d(-3px, 1px, 0); }
+  85% { transform: translate3d(2px, -1px, 0); }
+}
+
+@keyframes win-border-cycle {
+  0%, 100% { box-shadow: 0 0 0 2px var(--primary), 0 0 42px color-mix(in oklab, var(--primary) 65%, transparent) inset; }
+  33% { box-shadow: 0 0 0 2px var(--accent), 0 0 42px color-mix(in oklab, var(--accent) 65%, transparent) inset; }
+  66% { box-shadow: 0 0 0 2px oklch(0.85 0.17 90), 0 0 42px color-mix(in oklab, oklch(0.85 0.17 90) 65%, transparent) inset; }
+}
+
+@keyframes win-symbol-pulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px var(--primary)); }
+  50% { transform: scale(1.14); filter: drop-shadow(0 0 18px oklch(0.85 0.17 90)); }
+}
+
+@keyframes win-banner-pop {
+  0% { opacity: 0; transform: scale(0.5) translateY(24px); }
+  55% { opacity: 1; transform: scale(1.08) translateY(0); }
+  70% { transform: scale(0.97); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes coin-fall {
+  0% { opacity: 0; transform: translate3d(0, -12vh, 0) rotate(0deg); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(0, 108vh, 0) rotate(540deg); }
+}
+
+.animate-win-shake { animation: win-shake 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; will-change: transform; }
+.animate-win-border { animation: win-border-cycle 0.9s linear infinite; }
+.animate-win-symbol { animation: win-symbol-pulse 0.7s ease-in-out infinite; will-change: transform; }
+.animate-win-banner { animation: win-banner-pop 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.animate-coin-fall { animation: coin-fall linear forwards; will-change: transform; }
