@@ -7,38 +7,44 @@ import { useVault } from "@/lib/vault-store";
 import { sfx } from "@/lib/sfx";
 import { toast } from "sonner";
 
-type Phase = "idle" | "flying" | "crashed" | "cashed";
+type Phase = "betting" | "flying" | "crashed";
+type BetState = "none" | "placed" | "active" | "cashed" | "lost";
+
+const BETTING_SECONDS = 6;
 
 export function AviatorGame() {
   const { user, addScore } = useVault();
   const [bet, setBet] = useState("50");
   const [mult, setMult] = useState(1);
-  const [phase, setPhase] = useState<Phase>("idle");
+  const [phase, setPhase] = useState<Phase>("betting");
+  const [betState, setBetState] = useState<BetState>("none");
+  const [countdown, setCountdown] = useState(BETTING_SECONDS);
   const [history, setHistory] = useState<number[]>([]);
   const [payout, setPayout] = useState(0);
   const crashAt = useRef(1);
   const raf = useRef<number | null>(null);
   const staked = useRef(0);
+  const isSubmitting = useRef(false);
+  const betStateRef = useRef<BetState>("none");
+  const multRef = useRef(1);
 
-  useEffect(() => () => { if (raf.current) cancelAnimationFrame(raf.current); }, []);
+  betStateRef.current = betState;
+  multRef.current = mult;
 
   const stop = useCallback(() => {
     if (raf.current) cancelAnimationFrame(raf.current);
     raf.current = null;
   }, []);
 
-  function launch() {
-    const amt = Number(bet);
-    if (!user) { toast.error("Sign in or enter guest mode to play"); return; }
-    if (!Number.isFinite(amt) || amt < 10) { toast.error("Minimum bet is 10 credits"); return; }
-    if (amt > user.balance) { toast.error("Not enough credits — top up the vault"); return; }
+  useEffect(() => () => stop(), [stop]);
 
-    staked.current = Math.round(amt);
-    addScore(-staked.current);
-    setPayout(0);
+  const startFlight = useCallback(() => {
     setMult(1);
     setPhase("flying");
-    sfx.spin();
+    if (betStateRef.current === "placed") {
+      setBetState("active");
+      sfx.spin();
+    }
     // House edge ~4%; heavy tail crash curve.
     crashAt.current = Math.max(1, Number((0.96 / (1 - Math.random())).toFixed(2)));
 
@@ -50,7 +56,10 @@ export function AviatorGame() {
         setMult(crashAt.current);
         setPhase("crashed");
         setHistory((h) => [crashAt.current, ...h].slice(0, 8));
-        sfx.lose();
+        if (betStateRef.current === "active") {
+          setBetState("lost");
+          sfx.lose();
+        }
         stop();
         return;
       }
@@ -58,18 +67,75 @@ export function AviatorGame() {
       raf.current = requestAnimationFrame(tick);
     };
     raf.current = requestAnimationFrame(tick);
+  }, [stop]);
+
+  // Round lifecycle: betting countdown -> flight -> crash pause -> betting
+  useEffect(() => {
+    if (phase === "betting") {
+      if (countdown <= 0) {
+        startFlight();
+        return;
+      }
+      const id = window.setTimeout(() => setCountdown((c) => c - 1), 1000);
+      return () => window.clearTimeout(id);
+    }
+    if (phase === "crashed") {
+      const id = window.setTimeout(() => {
+        setBetState("none");
+        setPayout(0);
+        staked.current = 0;
+        setCountdown(BETTING_SECONDS);
+        setPhase("betting");
+      }, 3000);
+      return () => window.clearTimeout(id);
+    }
+    return;
+  }, [phase, countdown, startFlight]);
+
+  const canBet = phase === "betting" && betState === "none";
+
+  function placeBet() {
+    if (!canBet || isSubmitting.current) return;
+    isSubmitting.current = true;
+    try {
+      const amt = Number(bet);
+      if (!user) { toast.error("Sign in or enter guest mode to play"); return; }
+      if (!Number.isFinite(amt) || amt < 10) { toast.error("Minimum bet is 10 credits"); return; }
+      if (amt > user.balance) { toast.error("Not enough credits — top up the vault"); return; }
+
+      staked.current = Math.round(amt);
+      addScore(-staked.current);
+      setPayout(0);
+      setBetState("placed");
+      toast.success(`Bet of ${staked.current} placed for this round`);
+    } finally {
+      window.setTimeout(() => { isSubmitting.current = false; }, 300);
+    }
   }
 
   function cashOut() {
-    if (phase !== "flying") return;
-    stop();
-    const win = Math.round(staked.current * mult);
+    if (phase !== "flying" || betStateRef.current !== "active") return;
+    const win = Math.round(staked.current * multRef.current);
     addScore(win);
     setPayout(win);
-    setPhase("cashed");
-    setHistory((h) => [mult, ...h].slice(0, 8));
+    setBetState("cashed");
     sfx.win();
   }
+
+  const statusText =
+    phase === "betting"
+      ? betState === "placed"
+        ? `Bet locked — take off in ${countdown}s`
+        : `Betting open — ${countdown}s`
+      : phase === "crashed"
+        ? betState === "lost"
+          ? "Flew away — bet lost."
+          : "Round over — next round starting…"
+        : betState === "cashed"
+          ? `Cashed out +${payout} credits`
+          : betState === "active"
+            ? "Cash out before it flies away!"
+            : "Watching this round — bet on the next one.";
 
   return (
     <section className="space-y-6">
@@ -104,21 +170,13 @@ export function AviatorGame() {
           <div className="absolute inset-0 flex items-center justify-center">
             <p
               className={`font-display text-5xl ${
-                phase === "crashed" ? "text-destructive" : phase === "cashed" ? "text-success" : "neon-text"
+                phase === "crashed" ? "text-destructive" : betState === "cashed" ? "text-success" : "neon-text"
               }`}
             >
-              {mult.toFixed(2)}×
+              {phase === "betting" ? `${countdown}s` : `${mult.toFixed(2)}×`}
             </p>
           </div>
-          <p className="absolute inset-x-0 bottom-3 text-center text-sm text-muted-foreground">
-            {phase === "crashed"
-              ? "Flew away — bet lost."
-              : phase === "cashed"
-                ? `Cashed out +${payout} credits`
-                : phase === "flying"
-                  ? "Cash out before it flies away!"
-                  : "Place your bet and take off."}
-          </p>
+          <p className="absolute inset-x-0 bottom-3 text-center text-sm text-muted-foreground">{statusText}</p>
         </div>
 
         <div className="mt-4 flex flex-wrap items-end gap-3">
@@ -129,17 +187,25 @@ export function AviatorGame() {
               className="w-32"
               inputMode="numeric"
               value={bet}
-              disabled={phase === "flying"}
+              disabled={!canBet}
               onChange={(e) => setBet(e.target.value.replace(/\D/g, ""))}
             />
           </div>
-          {phase === "flying" ? (
+          {betState === "active" ? (
             <Button onClick={cashOut} className="font-display tracking-wide">
-              Cash Out {Math.round(Number(bet) * mult)}
+              Cash Out {Math.round(staked.current * mult)}
             </Button>
           ) : (
-            <Button onClick={launch} className="font-display tracking-wide">
-              Take Off
+            <Button onClick={placeBet} disabled={!canBet} className="font-display tracking-wide">
+              {betState === "placed"
+                ? `Bet Placed (${staked.current})`
+                : betState === "cashed"
+                  ? `Cashed Out +${payout}`
+                  : betState === "lost"
+                    ? "Bet Lost"
+                    : phase === "betting"
+                      ? "Place Bet"
+                      : "Waiting for next round"}
             </Button>
           )}
         </div>
