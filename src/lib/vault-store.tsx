@@ -94,6 +94,7 @@ type Ctx = {
   ready: boolean;
   signUp: (name: string, email: string, password: string) => string | null;
   signIn: (email: string, password: string) => string | null;
+  signInWithPhone: (phoneE164: string) => { isNew: boolean; key: string };
   playAsGuest: () => void;
   signOut: () => void;
   addScore: (delta: number) => void;
