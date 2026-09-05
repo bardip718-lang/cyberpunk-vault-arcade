@@ -170,6 +170,25 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     return err;
   }, []);
 
+  // Phone sign-in: the OTP is verified server-side before this is called.
+  const signInWithPhone = useCallback((phoneE164: string) => {
+    const key = phoneE164.trim();
+    let isNew = false;
+    setState((s) => {
+      const existing = s.accounts[key];
+      isNew = !existing;
+      const name = existing?.name ?? `Player ${key.slice(-4)}`;
+      const balance = existing?.balance ?? 500;
+      const account: Account = { email: key, password: "", name, balance };
+      return {
+        ...s,
+        accounts: { ...s.accounts, [key]: account },
+        user: { id: key, name, email: key, guest: false, admin: false, balance },
+      };
+    });
+    return { isNew, key };
+  }, []);
+
   const playAsGuest = useCallback(() => {
     setState((s) => ({ ...s, user: defaultUser }));
   }, []);
