@@ -65,6 +65,8 @@ type State = {
   bonusClaims: string[];
   /** One signup bonus per browser session/device. */
   deviceBonusClaimed: boolean;
+  /** Request ids already applied to the wallet (approved deposits, refunds). */
+  settledRequests: string[];
 };
 
 const KEY = "win1-vault-state-v6";
@@ -95,6 +97,7 @@ const empty: State = {
   usedVouchers: [],
   bonusClaims: [],
   deviceBonusClaimed: false,
+  settledRequests: [],
 };
 
 function withTotals(u: User): User {
