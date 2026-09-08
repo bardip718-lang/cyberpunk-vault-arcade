@@ -156,6 +156,13 @@ type Ctx = {
   addScore: (delta: number) => void;
   lockWithdrawal: (amount: number) => void;
   refundWithdrawal: (amount: number) => void;
+  /** Applies an operator decision to the wallet exactly once. */
+  settleRequest: (input: {
+    id: string;
+    kind: "deposit" | "withdrawal";
+    status: "approved" | "rejected";
+    amount: number;
+  }) => void;
   redeemVoucher: (code: string) => RedeemResult;
   applyReferralBonus: (bonusEarned: number) => number;
   payment: PaymentSettings;
