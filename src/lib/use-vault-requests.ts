@@ -1,73 +1,56 @@
-import { useState, useEffect } from "react";
-import type { VaultRequest, RequestKind, RequestStatus } from "@/lib/requests.functions";
-
-const STORAGE_KEY = "win1_vault_requests_v1";
-
-function loadRequests(): VaultRequest[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    return saved ? (JSON.parse(saved) as VaultRequest[]) : [];
-  } catch {
-    return [];
-  }
-}
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  resolveRequest,
+  submitRequest,
+  type RequestKind,
+  type RequestStatus,
+  type VaultRequest,
+} from "@/lib/requests.functions";
+import { requestsQuery, REQUESTS_KEY } from "@/lib/requests-query";
 
 export function useVaultRequests() {
-  const [requests, setRequests] = useState<VaultRequest[]>(() => loadRequests());
+  const queryClient = useQueryClient();
+  const { data, isLoading, refetch } = useQuery(requestsQuery);
 
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
-    } catch {
-      // ignore
-    }
-  }, [requests]);
+  const create = useMutation({
+    mutationFn: (input: {
+      kind: RequestKind;
+      userKey: string;
+      userName: string;
+      userEmail: string;
+      amount: number;
+      utr?: string;
+      destination?: string;
+      screenshotDataUrl?: string;
+    }) =>
+      submitRequest({
+        data: {
+          kind: input.kind,
+          userKey: input.userKey,
+          userName: input.userName,
+          userEmail: input.userEmail,
+          amount: Math.round(input.amount),
+          utr: input.utr ?? "",
+          destination: input.destination ?? "",
+          screenshotDataUrl: input.screenshotDataUrl ?? "",
+        },
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: REQUESTS_KEY }),
+  });
 
-  const createRequest = async (data: {
-    kind: RequestKind;
-    userKey: string;
-    userName: string;
-    userEmail: string;
-    amount: number;
-    utr?: string;
-    destination?: string;
-  }): Promise<VaultRequest> => {
-    const newReq: VaultRequest = {
-      id: "req_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
-      kind: data.kind,
-      userKey: data.userKey,
-      userName: data.userName,
-      userEmail: data.userEmail,
-      amount: Number(data.amount),
-      utr: data.utr ?? "",
-      destination: data.destination ?? "",
-      status: "pending",
-      createdAt: new Date().toISOString(),
-      resolvedAt: null,
-    };
-
-    setRequests((prev) => [newReq, ...prev]);
-    return newReq;
-  };
-
-  const updateRequestStatus = (id: string, status: RequestStatus) => {
-    setRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status } : r)),
-    );
-  };
-
-  const clearAllRequests = () => {
-    setRequests([]);
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(STORAGE_KEY);
-    }
-  };
+  const resolve = useMutation({
+    mutationFn: (input: { adminEmail: string; id: string; status: Exclude<RequestStatus, "pending"> }) =>
+      resolveRequest({ data: input }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: REQUESTS_KEY }),
+  });
 
   return {
-    requests,
-    createRequest,
-    updateRequestStatus,
-    clearAllRequests,
+    requests: (data ?? []) as VaultRequest[],
+    isLoading,
+    refetch,
+    createRequest: create.mutateAsync,
+    isCreating: create.isPending,
+    resolveRequest: resolve.mutateAsync,
+    isResolving: resolve.isPending,
   };
 }
