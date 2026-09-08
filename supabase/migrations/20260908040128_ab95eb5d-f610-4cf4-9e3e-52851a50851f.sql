@@ -1,0 +1,1 @@
+ALTER TABLE public.transaction_requests ADD COLUMN IF NOT EXISTS screenshot_url text NOT NULL DEFAULT '';

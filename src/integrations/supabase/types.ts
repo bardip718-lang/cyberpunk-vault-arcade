@@ -88,6 +88,7 @@ export type Database = {
           id: string
           kind: string
           resolved_at: string | null
+          screenshot_url: string
           status: string
           updated_at: string
           user_email: string
@@ -102,6 +103,7 @@ export type Database = {
           id?: string
           kind: string
           resolved_at?: string | null
+          screenshot_url?: string
           status?: string
           updated_at?: string
           user_email?: string
@@ -116,6 +118,7 @@ export type Database = {
           id?: string
           kind?: string
           resolved_at?: string | null
+          screenshot_url?: string
           status?: string
           updated_at?: string
           user_email?: string
