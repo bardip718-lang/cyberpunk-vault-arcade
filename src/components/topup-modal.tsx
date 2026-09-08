@@ -7,48 +7,49 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Copy, Check, Upload, ArrowUpRight } from "lucide-react";
+import { Copy, Check, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 
-interface TopupModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+export interface TopUpModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess?: (amount: number) => void;
 }
 
-export function TopupModal({ open, onOpenChange }: TopupModalProps) {
+export function TopUpModal({ isOpen, onClose, onSuccess }: TopUpModalProps) {
   const [amount, setAmount] = useState("250");
   const [utr, setUtr] = useState("");
   const [copied, setCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Fallback UPI details so build compiles cleanly without external query dependencies
   const upiId = "8317848513@ybl";
   const merchantName = "WIN1 VAULT";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(upiId);
     setCopied(true);
-    toast.success("UPI ID copied to clipboard!");
+    toast.success("UPI ID copied!");
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!utr || utr.length < 6) {
+    if (!utr || utr.trim().length < 6) {
       toast.error("Please enter a valid 12-digit UTR/Reference number.");
       return;
     }
     setSubmitting(true);
     setTimeout(() => {
       setSubmitting(false);
-      toast.success("Deposit request submitted! Admin will verify and credit your wallet shortly.");
-      onOpenChange(false);
+      toast.success("Deposit request submitted! Admin will verify shortly.");
+      if (onSuccess) onSuccess(Number(amount));
+      onClose();
       setUtr("");
     }, 1000);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md border-cyan-500/30 bg-slate-950 text-white shadow-2xl shadow-cyan-950/50">
         <DialogHeader>
           <DialogTitle className="text-center text-xl font-black uppercase tracking-wider text-cyan-400">
@@ -57,7 +58,6 @@ export function TopupModal({ open, onOpenChange }: TopupModalProps) {
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Amount Presets */}
           <div>
             <label className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
               Select Amount (₹)
@@ -87,7 +87,6 @@ export function TopupModal({ open, onOpenChange }: TopupModalProps) {
             />
           </div>
 
-          {/* UPI Payment Card */}
           <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-3">
             <div className="flex items-center justify-between">
               <div>
@@ -108,7 +107,6 @@ export function TopupModal({ open, onOpenChange }: TopupModalProps) {
             </div>
           </div>
 
-          {/* Verification Form */}
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <label className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
@@ -139,5 +137,7 @@ export function TopupModal({ open, onOpenChange }: TopupModalProps) {
   );
 }
 
-export default TopupModal;
+// Aliases for backward compatibility
+export const TopupModal = TopUpModal;
+export default TopUpModal;
 
