@@ -128,6 +128,7 @@ function load(): State {
       user,
       usedVouchers: parsed.usedVouchers ?? [],
       bonusClaims: parsed.bonusClaims ?? [],
+      settledRequests: parsed.settledRequests ?? [],
       deviceBonusClaimed: deviceClaimed || Boolean(parsed.deviceBonusClaimed),
       payment: { ...DEFAULT_PAYMENT_SETTINGS, ...(parsed.payment ?? {}) },
     };
