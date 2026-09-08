@@ -353,6 +353,49 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /**
+   * Applies an operator decision to the signed-in player's wallet, once per
+   * request id: approved deposits credit real cash, rejected withdrawals are
+   * refunded to real cash.
+   */
+  const settleRequest = useCallback(
+    (input: { id: string; kind: "deposit" | "withdrawal"; status: "approved" | "rejected"; amount: number }) => {
+      setState((s) => {
+        if (s.user.guest) return s;
+        if (s.settledRequests.includes(input.id)) return s;
+
+        const amount = Math.max(0, Math.round(input.amount));
+        const current = s.user;
+        let next = current;
+
+        if (input.kind === "deposit" && input.status === "approved") {
+          next = withTotals({
+            ...current,
+            realBalance: current.realBalance + amount,
+            totalDeposited: current.totalDeposited + amount,
+          });
+        } else if (input.kind === "withdrawal" && input.status === "rejected") {
+          next = withTotals({ ...current, realBalance: current.realBalance + amount });
+        } else {
+          // Nothing to move (approved payout already held, rejected deposit).
+          return { ...s, settledRequests: [...s.settledRequests, input.id] };
+        }
+
+        const accounts = { ...s.accounts };
+        const acct = accounts[current.id];
+        if (acct) {
+          accounts[current.id] = {
+            ...acct,
+            realBalance: next.realBalance,
+            totalDeposited: next.totalDeposited,
+          };
+        }
+        return { ...s, accounts, user: next, settledRequests: [...s.settledRequests, input.id] };
+      });
+    },
+    [],
+  );
+
   // Secure One-Time Voucher Verification — credits real, withdrawable cash.
   const redeemVoucher = useCallback(
     (rawCode: string) => {
