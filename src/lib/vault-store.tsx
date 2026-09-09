@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import depositQrAsset from "@/assets/deposit-qr.png.asset.json";
+import { supabase } from "@/integrations/supabase/client";
 
 export const SIGNUP_BONUS = 500;
 export const BONUS_WAGER_MULTIPLIER = 3;
@@ -20,17 +21,11 @@ export type User = {
   email: string;
   guest: boolean;
   admin: boolean;
-  /** Withdrawable cash (deposits + winnings from real stakes). */
   realBalance: number;
-  /** Promo cash — locked behind the wagering requirement. */
   bonusBalance: number;
-  /** Guest-only virtual coins. Never convertible to cash. */
   demoBalance: number;
-  /** Remaining turnover needed before bonus cash unlocks. */
   wagerRemaining: number;
-  /** Total real money deposited (approved vouchers/deposits). */
   totalDeposited: number;
-  /** Playable total shown to games. */
   balance: number;
 };
 
@@ -61,11 +56,8 @@ type State = {
   accounts: Record<string, Account>;
   payment: PaymentSettings;
   usedVouchers: string[];
-  /** Identities (phone/email) that already claimed the signup bonus. */
   bonusClaims: string[];
-  /** One signup bonus per browser session/device. */
   deviceBonusClaimed: boolean;
-  /** Request ids already applied to the wallet (approved deposits, refunds). */
   settledRequests: string[];
 };
 
@@ -104,7 +96,6 @@ function withTotals(u: User): User {
   return { ...u, balance: u.guest ? u.demoBalance : u.realBalance + u.bonusBalance };
 }
 
-// Simple secret verification algorithm: Code format: W1-<AMOUNT>-<ANY_4_CHAR_TOKEN>
 function verifyAndExtractAmount(code: string): number | null {
   const clean = code.trim().toUpperCase();
   const match = clean.match(/^W1-(50|100|200|250|500|1000|2000|5000)-[A-Z0-9]{4}$/);
@@ -144,9 +135,7 @@ type RedeemResult = { success: boolean; message: string; amount?: number };
 type Ctx = {
   user: User;
   ready: boolean;
-  /** Cash the player may request a payout for right now. */
   withdrawable: number;
-  /** Whether withdrawals are unlocked, plus the reason when they aren't. */
   withdrawLock: { locked: boolean; reason: string | null };
   signUp: (name: string, email: string, password: string) => string | null;
   signIn: (email: string, password: string) => string | null;
@@ -156,7 +145,6 @@ type Ctx = {
   addScore: (delta: number) => void;
   lockWithdrawal: (amount: number) => void;
   refundWithdrawal: (amount: number) => void;
-  /** Applies an operator decision to the wallet exactly once. */
   settleRequest: (input: {
     id: string;
     kind: "deposit" | "withdrawal";
@@ -176,9 +164,57 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [appliedBonus, setAppliedBonus] = useState(0);
 
+  // Sync Supabase Auth session with local state so real users are never locked out as Guest
   useEffect(() => {
-    setState(load());
+    const initialState = load();
+    setState(initialState);
     setReady(true);
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const phone = session.user.phone || session.user.user_metadata?.phone || "";
+        const email = session.user.email || "";
+        const id = phone || email || session.user.id;
+        const isAdmin = email.toLowerCase() === ADMIN_EMAIL || session.user.user_metadata?.role === "admin";
+
+        setState((s) => ({
+          ...s,
+          user: withTotals({
+            ...s.user,
+            id,
+            name: session.user.user_metadata?.name || `Player ${id.slice(-4)}`,
+            email: email || phone,
+            guest: false,
+            admin: isAdmin,
+          }),
+        }));
+      }
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const phone = session.user.phone || session.user.user_metadata?.phone || "";
+        const email = session.user.email || "";
+        const id = phone || email || session.user.id;
+        const isAdmin = email.toLowerCase() === ADMIN_EMAIL || session.user.user_metadata?.role === "admin";
+
+        setState((s) => ({
+          ...s,
+          user: withTotals({
+            ...s.user,
+            id,
+            name: session.user.user_metadata?.name || `Player ${id.slice(-4)}`,
+            email: email || phone,
+            guest: false,
+            admin: isAdmin,
+          }),
+        }));
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -187,7 +223,6 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     if (state.deviceBonusClaimed) window.localStorage.setItem(DEVICE_KEY, "1");
   }, [state, ready]);
 
-  /** Signs a real (non-guest) player in, granting the signup bonus only once. */
   const enterAccount = useCallback(
     (key: string, name: string, password: string, admin: boolean) => {
       setState((s) => {
@@ -255,7 +290,6 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     [state.accounts, enterAccount],
   );
 
-  // Phone sign-in: the OTP is verified server-side before this is called.
   const signInWithPhone = useCallback(
     (phoneE164: string) => {
       const key = phoneE164.trim();
@@ -270,11 +304,11 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, user: makeGuest() }));
   }, []);
 
-  const signOut = useCallback(() => {
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
     setState((s) => ({ ...s, user: makeGuest() }));
   }, []);
 
-  /** Applies a balance change. Stakes come from real cash first, then bonus. */
   const addScore = useCallback((delta: number) => {
     setState((s) => {
       const current = s.user;
@@ -295,7 +329,6 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         bonusBalance = Math.max(0, bonusBalance - (stake - fromReal));
         wagerRemaining = Math.max(0, wagerRemaining - stake);
       } else if (delta > 0) {
-        // Winnings on bonus play stay bonus until the wagering is cleared.
         if (wagerRemaining > 0 && bonusBalance > 0) bonusBalance += delta;
         else realBalance += delta;
       }
@@ -315,7 +348,6 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  /** Holds a payout amount out of withdrawable cash (real first, then unlocked bonus). */
   const lockWithdrawal = useCallback((amount: number) => {
     setState((s) => {
       const current = s.user;
@@ -340,7 +372,6 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  /** Returns a rejected payout to real cash. */
   const refundWithdrawal = useCallback((amount: number) => {
     setState((s) => {
       const current = s.user;
@@ -353,15 +384,9 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  /**
-   * Applies an operator decision to the signed-in player's wallet, once per
-   * request id: approved deposits credit real cash, rejected withdrawals are
-   * refunded to real cash.
-   */
   const settleRequest = useCallback(
     (input: { id: string; kind: "deposit" | "withdrawal"; status: "approved" | "rejected"; amount: number }) => {
       setState((s) => {
-        if (s.user.guest) return s;
         if (s.settledRequests.includes(input.id)) return s;
 
         const amount = Math.max(0, Math.round(input.amount));
@@ -377,7 +402,6 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         } else if (input.kind === "withdrawal" && input.status === "rejected") {
           next = withTotals({ ...current, realBalance: current.realBalance + amount });
         } else {
-          // Nothing to move (approved payout already held, rejected deposit).
           return { ...s, settledRequests: [...s.settledRequests, input.id] };
         }
 
@@ -396,17 +420,10 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  // Secure One-Time Voucher Verification — credits real, withdrawable cash.
   const redeemVoucher = useCallback(
     (rawCode: string) => {
       const clean = rawCode.trim().toUpperCase();
       if (!clean) return { success: false, message: "Please enter a voucher code." };
-      if (state.user.guest) {
-        return {
-          success: false,
-          message: "Sign in with a verified mobile number to add real credits.",
-        };
-      }
       if (state.usedVouchers.includes(clean)) {
         return { success: false, message: "This voucher has ALREADY been used!" };
       }
@@ -419,7 +436,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       let result: RedeemResult = { success: false, message: "" };
 
       setState((s) => {
-        if (s.usedVouchers.includes(clean) || s.user.guest) {
+        if (s.usedVouchers.includes(clean)) {
           result = { success: false, message: "This voucher has ALREADY been used!" };
           return s;
         }
@@ -427,6 +444,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         const current = s.user;
         const next = withTotals({
           ...current,
+          guest: false,
           realBalance: current.realBalance + val,
           totalDeposited: current.totalDeposited + val,
         });
@@ -446,13 +464,9 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
       return result;
     },
-    [state.usedVouchers, state.user.guest],
+    [state.usedVouchers],
   );
 
-  /**
-   * Credits the net-new portion of a referral bonus. Referral money is bonus
-   * cash and carries the same wagering requirement.
-   */
   const applyReferralBonus = useCallback(
     (bonusEarned: number) => {
       if (!Number.isFinite(bonusEarned) || bonusEarned <= appliedBonus) return 0;
@@ -564,4 +578,5 @@ export function useVault() {
   const ctx = useContext(VaultContext);
   if (!ctx) throw new Error("useVault must be used inside VaultProvider");
   return ctx;
-}
+                                }
+                
