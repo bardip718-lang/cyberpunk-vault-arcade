@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ShieldCheck, Gift, Copy, Check, QrCode, RefreshCw } from "lucide-react";
+import { PendingDeposits } from "@/components/pending-deposits";
 
 const PRESET_AMOUNTS = [100, 250, 500, 1000, 2000, 5000];
 
@@ -120,7 +121,10 @@ export function AdminConsole() {
         )}
       </div>
 
-      {/* 2. UPI Receiver Settings */}
+      {/* 2. Pending Deposits Verification */}
+      <PendingDeposits />
+
+      {/* 3. UPI Receiver Settings */}
       <form onSubmit={handleSavePayment} className="p-4 rounded-xl border border-border bg-secondary/30 space-y-3">
         <div className="flex items-center gap-2">
           <QrCode className="size-4 text-primary" />
