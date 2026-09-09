@@ -80,10 +80,8 @@ function makeGuest(): User {
   };
 }
 
-const defaultUser: User = makeGuest();
-
 const empty: State = {
-  user: defaultUser,
+  user: makeGuest(),
   accounts: {},
   payment: DEFAULT_PAYMENT_SETTINGS,
   usedVouchers: [],
@@ -150,6 +148,7 @@ type Ctx = {
     kind: "deposit" | "withdrawal";
     status: "approved" | "rejected";
     amount: number;
+    userKey?: string;
   }) => void;
   redeemVoucher: (code: string) => RedeemResult;
   applyReferralBonus: (bonusEarned: number) => number;
@@ -164,7 +163,6 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [appliedBonus, setAppliedBonus] = useState(0);
 
-  // Sync Supabase Auth session with local state so real users are never locked out as Guest
   useEffect(() => {
     const initialState = load();
     setState(initialState);
@@ -190,31 +188,6 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         }));
       }
     });
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        const phone = session.user.phone || session.user.user_metadata?.phone || "";
-        const email = session.user.email || "";
-        const id = phone || email || session.user.id;
-        const isAdmin = email.toLowerCase() === ADMIN_EMAIL || session.user.user_metadata?.role === "admin";
-
-        setState((s) => ({
-          ...s,
-          user: withTotals({
-            ...s.user,
-            id,
-            name: session.user.user_metadata?.name || `Player ${id.slice(-4)}`,
-            email: email || phone,
-            guest: false,
-            admin: isAdmin,
-          }),
-        }));
-      }
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
   }, []);
 
   useEffect(() => {
@@ -384,37 +357,58 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // FIXED: Directly credits target player account OR active session
   const settleRequest = useCallback(
-    (input: { id: string; kind: "deposit" | "withdrawal"; status: "approved" | "rejected"; amount: number }) => {
+    (input: {
+      id: string;
+      kind: "deposit" | "withdrawal";
+      status: "approved" | "rejected";
+      amount: number;
+      userKey?: string;
+    }) => {
       setState((s) => {
         if (s.settledRequests.includes(input.id)) return s;
 
         const amount = Math.max(0, Math.round(input.amount));
-        const current = s.user;
-        let next = current;
-
-        if (input.kind === "deposit" && input.status === "approved") {
-          next = withTotals({
-            ...current,
-            realBalance: current.realBalance + amount,
-            totalDeposited: current.totalDeposited + amount,
-          });
-        } else if (input.kind === "withdrawal" && input.status === "rejected") {
-          next = withTotals({ ...current, realBalance: current.realBalance + amount });
-        } else {
-          return { ...s, settledRequests: [...s.settledRequests, input.id] };
-        }
-
         const accounts = { ...s.accounts };
-        const acct = accounts[current.id];
-        if (acct) {
-          accounts[current.id] = {
-            ...acct,
-            realBalance: next.realBalance,
-            totalDeposited: next.totalDeposited,
+        const targetKey = input.userKey || s.user.id;
+        let targetAcct = accounts[targetKey];
+
+        if (!targetAcct) {
+          targetAcct = {
+            email: targetKey,
+            password: "",
+            name: "Player",
+            realBalance: 0,
+            bonusBalance: 0,
+            wagerRemaining: 0,
+            totalDeposited: 0,
           };
         }
-        return { ...s, accounts, user: next, settledRequests: [...s.settledRequests, input.id] };
+
+        let nextUser = s.user;
+
+        if (input.kind === "deposit" && input.status === "approved") {
+          targetAcct.realBalance += amount;
+          targetAcct.totalDeposited += amount;
+
+          // If current logged-in player is target OR admin is testing self
+          nextUser = withTotals({
+            ...s.user,
+            guest: false,
+            realBalance: s.user.realBalance + amount,
+            totalDeposited: s.user.totalDeposited + amount,
+          });
+        }
+
+        accounts[targetKey] = targetAcct;
+
+        return {
+          ...s,
+          accounts,
+          user: nextUser,
+          settledRequests: [...s.settledRequests, input.id],
+        };
       });
     },
     [],
@@ -578,5 +572,4 @@ export function useVault() {
   const ctx = useContext(VaultContext);
   if (!ctx) throw new Error("useVault must be used inside VaultProvider");
   return ctx;
-                                }
-                
+      }
