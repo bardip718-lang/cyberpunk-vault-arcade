@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Copy, Check, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 import { useVault } from "@/lib/vault-store";
-import { useVaultRequests } from "@/lib/vault-requests";
 
 export interface TopUpModalProps {
   isOpen?: boolean;
@@ -28,7 +27,6 @@ export function TopUpModal(props: TopUpModalProps) {
   };
 
   const { user, payment } = useVault();
-  const { createRequest } = useVaultRequests();
 
   const [amount, setAmount] = useState("500");
   const [utr, setUtr] = useState("");
@@ -45,7 +43,7 @@ export function TopUpModal(props: TopUpModalProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!utr || utr.trim().length < 6) {
@@ -56,22 +54,33 @@ export function TopUpModal(props: TopUpModalProps) {
     setSubmitting(true);
 
     try {
-      // Direct store link: This dispatches instantly to the Admin Console queue
-      createRequest({
+      // 1. Direct deposit request record creation
+      const newRequest = {
+        id: "dep-" + Date.now(),
         kind: "deposit",
         amount: parseFloat(amount),
         utr: utr.trim(),
-        userPhone: user.email || user.name || "Player",
-        userName: user.name || "Player",
-      });
+        userPhone: user.email || user.name || "Verified Player",
+        userName: user.name || "Verified Player",
+        userId: user.id || "player-1",
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      };
+
+      // 2. Sync to local storage for Admin Operator Console
+      const existingReqs = JSON.parse(localStorage.getItem("win1-vault-requests") || "[]");
+      localStorage.setItem("win1-vault-requests", JSON.stringify([newRequest, ...existingReqs]));
+
+      // 3. Dispatch global sync event so admin screen updates instantly without refresh
+      window.dispatchEvent(new Event("storage"));
+      window.dispatchEvent(new CustomEvent("win1-request-created", { detail: newRequest }));
 
       toast.success("Deposit request submitted! Admin will verify shortly.");
       if (props.onSuccess) props.onSuccess(Number(amount));
       setUtr("");
       handleClose();
     } catch (err) {
-      toast.success("Payment proof submitted! Pending admin review.");
-      handleClose();
+      toast.error("Error submitting request. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -117,7 +126,7 @@ export function TopUpModal(props: TopUpModalProps) {
             />
           </div>
 
-          {/* UPI Address Box */}
+          {/* UPI Box */}
           <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-3">
             <div className="flex items-center justify-between">
               <div>
@@ -139,7 +148,7 @@ export function TopUpModal(props: TopUpModalProps) {
             </div>
           </div>
 
-          {/* Submission Form */}
+          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <label className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
@@ -172,4 +181,3 @@ export function TopUpModal(props: TopUpModalProps) {
 
 export const TopupModal = TopUpModal;
 export default TopUpModal;
-            
