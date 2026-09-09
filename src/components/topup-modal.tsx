@@ -7,9 +7,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Copy, Check, ArrowUpRight, Upload } from "lucide-react";
+import { Copy, Check, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { useVault } from "@/lib/vault-store";
+import { useVaultRequests } from "@/lib/vault-requests";
 
 export interface TopUpModalProps {
   isOpen?: boolean;
@@ -26,13 +27,16 @@ export function TopUpModal(props: TopUpModalProps) {
     if (props.onOpenChange) props.onOpenChange(false);
   };
 
+  const { user, payment } = useVault();
+  const { createRequest } = useVaultRequests();
+
   const [amount, setAmount] = useState("500");
   const [utr, setUtr] = useState("");
   const [copied, setCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const upiId = "8317848513@ybl";
-  const merchantName = "WIN1 VAULT";
+  const upiId = payment?.upiId || "8317848513@ybl";
+  const merchantName = payment?.displayName || "WIN1 VAULT";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(upiId);
@@ -45,34 +49,23 @@ export function TopUpModal(props: TopUpModalProps) {
     e.preventDefault();
 
     if (!utr || utr.trim().length < 6) {
-      toast.error("Please enter a valid UTR / Ref number.");
+      toast.error("Please enter a valid 12-digit UTR/Reference number.");
       return;
     }
 
     setSubmitting(true);
 
     try {
-      // Direct submission to deposit_requests table without guest blocking
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id || null;
-      const userPhone = userData?.user?.phone || localStorage.getItem("player_phone") || "Verified User";
+      // Direct store link: This dispatches instantly to the Admin Console queue
+      createRequest({
+        kind: "deposit",
+        amount: parseFloat(amount),
+        utr: utr.trim(),
+        userPhone: user.email || user.name || "Player",
+        userName: user.name || "Player",
+      });
 
-      const { error } = await supabase.from("deposit_requests").insert([
-        {
-          user_id: userId,
-          phone: userPhone,
-          amount: parseFloat(amount),
-          utr_number: utr.trim(),
-          status: "PENDING",
-        },
-      ]);
-
-      if (error) {
-        // If table doesn't match schema, still accept locally for safety
-        console.warn("Supabase record notice:", error.message);
-      }
-
-      toast.success("Payment proof submitted! Admin will verify shortly.");
+      toast.success("Deposit request submitted! Admin will verify shortly.");
       if (props.onSuccess) props.onSuccess(Number(amount));
       setUtr("");
       handleClose();
@@ -124,7 +117,7 @@ export function TopUpModal(props: TopUpModalProps) {
             />
           </div>
 
-          {/* UPI Address Container */}
+          {/* UPI Address Box */}
           <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-3">
             <div className="flex items-center justify-between">
               <div>
@@ -179,4 +172,4 @@ export function TopUpModal(props: TopUpModalProps) {
 
 export const TopupModal = TopUpModal;
 export default TopUpModal;
-              
+            
