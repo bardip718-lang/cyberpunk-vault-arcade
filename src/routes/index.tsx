@@ -32,6 +32,7 @@ import { MinesGame } from "@/components/mines-game";
 import { SUPPORT_WHATSAPP } from "@/lib/notify";
 import { useVault, ADMIN_EMAIL } from "@/lib/vault-store";
 import { useVaultRequests } from "@/lib/use-vault-requests";
+import { useSettleOwnRequests } from "@/lib/use-settle-requests";
 import { ReferEarn } from "@/components/refer-earn";
 
 export const Route = createFileRoute("/")({
@@ -104,6 +105,7 @@ const GAMES = [
 function Index() {
   const { user, signOut, playAsGuest } = useVault();
   const { requests } = useVaultRequests();
+  useSettleOwnRequests();
 
   const [activeTab, setActiveTab] = useState<string>("lobby");
   const [topUpOpen, setTopUpOpen] = useState(false);
