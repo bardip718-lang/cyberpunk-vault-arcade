@@ -145,9 +145,20 @@ function Index() {
   const isOperator = isAdminUnlocked || (!!user && !user.guest && user.email === ADMIN_EMAIL);
   const pending = requests ? requests.filter((r) => r.status === "pending").length : 0;
 
-  const openDeposit = () => setTopUpOpen(true);
+  // A user is considered logged in if they have a verified mobile number OR an
+  // active (non-guest) vault session. Logged-in users open the deposit/withdraw
+  // modals directly; only guests are prompted to sign in with a real number.
+  const isLoggedIn = !!activeUserMobile || (!!user && !user.guest);
+
+  const openDeposit = () => {
+    if (!isLoggedIn) {
+      setMobileAuthOpen(true);
+      return;
+    }
+    setTopUpOpen(true);
+  };
   const openWithdraw = () => {
-    if (!activeUserMobile) {
+    if (!isLoggedIn) {
       setMobileAuthOpen(true);
       return;
     }
