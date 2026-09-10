@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Zap, RefreshCw, Flame, Sparkles } from "lucide-react";
+import { Zap, RefreshCw, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { useVault } from "@/lib/vault-store";
 
@@ -16,8 +16,7 @@ const SYMBOLS = [
 const MULTIPLIERS = [1, 2, 3, 5, 10, 15];
 
 export function FortuneGemsGame() {
-  const vault = useVault() as any;
-  const user = vault.user;
+  const { user, applyOutcome, lockWithdrawal, refundWithdrawal, creditBalance } = useVault() as any;
 
   const [betAmount, setBetAmount] = useState<number>(5);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -31,30 +30,6 @@ export function FortuneGemsGame() {
   const [activeMultiplier, setActiveMultiplier] = useState<number>(1);
   const [lastWin, setLastWin] = useState<number>(0);
   const animTimerRef = useRef<any>(null);
-
-  // Safe Universal Balance Deduct
-  const safeDeduct = (amt: number) => {
-    try {
-      if (typeof vault.debit === "function") vault.debit(amt);
-      else if (typeof vault.placeBet === "function") vault.placeBet(amt);
-      else if (typeof vault.debitBalance === "function") vault.debitBalance(amt);
-      else if (typeof vault.lockWithdrawal === "function") vault.lockWithdrawal(amt);
-    } catch {
-      // Safe fallback
-    }
-  };
-
-  // Safe Universal Balance Credit
-  const safeCredit = (amt: number) => {
-    try {
-      if (typeof vault.credit === "function") vault.credit(amt);
-      else if (typeof vault.win === "function") vault.win(amt);
-      else if (typeof vault.creditBalance === "function") vault.creditBalance(amt);
-      else if (typeof vault.refundWithdrawal === "function") vault.refundWithdrawal(amt);
-    } catch {
-      // Safe fallback
-    }
-  };
 
   const pickRandomSymbol = () => {
     const rand = Math.random();
@@ -70,15 +45,21 @@ export function FortuneGemsGame() {
     if (isSpinning) return;
 
     if (user && typeof user.balance === "number" && user.balance < betAmount) {
-      toast.error("Insufficient vault balance! Please top up.");
+      toast.error("Insufficient score balance! Please deposit.");
       return;
     }
 
-    safeDeduct(betAmount);
+    // Step 1: Immediately deduct bet from score balance
+    if (typeof applyOutcome === "function") {
+      applyOutcome({ bet: betAmount, won: 0, game: "fortunegems" });
+    } else if (typeof lockWithdrawal === "function") {
+      lockWithdrawal(betAmount);
+    }
+
     setIsSpinning(true);
     setLastWin(0);
 
-    // Fast rolling animation effect
+    // Fast slot rolling effect
     let cycles = 0;
     animTimerRef.current = setInterval(() => {
       cycles++;
@@ -89,7 +70,6 @@ export function FortuneGemsGame() {
       ]);
       setActiveMultiplier(MULTIPLIERS[Math.floor(Math.random() * MULTIPLIERS.length)]);
 
-      // Stop after ~1.2 seconds
       if (cycles > 12) {
         clearInterval(animTimerRef.current);
 
@@ -118,7 +98,15 @@ export function FortuneGemsGame() {
           const sym = SYMBOLS.find((s) => s.id === symId) || SYMBOLS[0];
           const payout = Math.round(betAmount * (sym.pay / 2) * finalMulti);
 
-          safeCredit(payout);
+          // Step 2: Add win amount to balance
+          if (typeof applyOutcome === "function") {
+            applyOutcome({ bet: 0, won: payout, game: "fortunegems" });
+          } else if (typeof creditBalance === "function") {
+            creditBalance(payout);
+          } else if (typeof refundWithdrawal === "function") {
+            refundWithdrawal(payout);
+          }
+
           setLastWin(payout);
           toast.success(`🎉 WIN! +₹${payout} (${finalMulti}x Multiplier applied!)`);
         }
@@ -130,7 +118,6 @@ export function FortuneGemsGame() {
 
   return (
     <div className="neon-panel mx-auto max-w-2xl rounded-2xl border border-amber-500/40 p-4 sm:p-6 bg-gradient-to-b from-slate-950 via-background to-amber-950/20 shadow-2xl">
-      {/* Title Header */}
       <div className="flex items-center justify-between border-b border-amber-500/30 pb-3 mb-4">
         <div className="flex items-center gap-2">
           <Flame className="size-6 text-amber-400 animate-pulse" />
@@ -143,13 +130,10 @@ export function FortuneGemsGame() {
         </span>
       </div>
 
-      {/* Main Reels Grid Frame */}
       <div className="relative rounded-xl border-2 border-amber-500/50 bg-slate-950/90 p-3 shadow-inner">
-        {/* Center Winning Line */}
         <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] bg-gradient-to-r from-amber-500/20 via-amber-400 to-amber-500/20 pointer-events-none z-10" />
 
         <div className="grid grid-cols-4 gap-2">
-          {/* 3 Main Reels */}
           {[0, 1, 2].map((col) => (
             <div key={col} className="flex flex-col gap-2">
               {[0, 1, 2].map((row) => {
@@ -170,7 +154,6 @@ export function FortuneGemsGame() {
             </div>
           ))}
 
-          {/* 4th Multiplier Reel */}
           <div className="flex flex-col gap-2 rounded-xl border-2 border-purple-500/50 bg-purple-950/30 p-1">
             <div className="text-center text-[9px] font-black uppercase text-purple-300">
               MULT REEL
@@ -189,7 +172,6 @@ export function FortuneGemsGame() {
         </div>
       </div>
 
-      {/* Win Banner */}
       {lastWin > 0 && (
         <div className="mt-3 rounded-xl border border-amber-500/50 bg-amber-500/20 p-2.5 text-center animate-bounce">
           <p className="text-[11px] uppercase font-bold text-amber-300">Winning Payline Hit!</p>
@@ -199,7 +181,6 @@ export function FortuneGemsGame() {
         </div>
       )}
 
-      {/* Bet & Spin Controls */}
       <div className="mt-4 space-y-3 border-t border-border pt-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-slate-400">Bet Amount (₹)</span>
