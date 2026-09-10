@@ -170,17 +170,17 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        const phone = session.user.phone || session.user.user_metadata?.phone || "";
+        const phone = session.user.phone || session.user.user_metadata?.['phone'] || "";
         const email = session.user.email || "";
         const id = phone || email || session.user.id;
-        const isAdmin = email.toLowerCase() === ADMIN_EMAIL || session.user.user_metadata?.role === "admin";
+        const isAdmin = email.toLowerCase() === ADMIN_EMAIL || session.user.user_metadata?.['role'] === "admin";
 
         setState((s) => ({
           ...s,
           user: withTotals({
             ...s.user,
             id,
-            name: session.user.user_metadata?.name || `Player ${id.slice(-4)}`,
+            name: session.user.user_metadata?.['name'] || `Player ${id.slice(-4)}`,
             email: email || phone,
             guest: false,
             admin: isAdmin,
