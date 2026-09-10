@@ -22,6 +22,7 @@ import {
   ExternalLink,
   Flame,
   LayoutGrid,
+  User as UserIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReelGame } from "@/components/reel-game";
@@ -35,6 +36,7 @@ import { AviatorGame } from "@/components/aviator-game";
 import { MinesGame } from "@/components/mines-game";
 import { DailySpinModal } from "@/components/daily-spin-modal";
 import { FortuneGemsGame } from "@/components/fortune-gems-game";
+import { ProfileModal } from "@/components/profile-modal";
 import { SUPPORT_WHATSAPP } from "@/lib/notify";
 import { useVault, ADMIN_EMAIL } from "@/lib/vault-store";
 import { useVaultRequests } from "@/lib/use-vault-requests";
@@ -137,12 +139,12 @@ function Index() {
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [dailySpinOpen, setDailySpinOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [mobileAuthOpen, setMobileAuthOpen] = useState(false);
   const [mobileNumber, setMobileNumber] = useState("");
   const [activeUserMobile, setActiveUserMobile] = useState<string | null>(null);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
 
-  // Live Jackpot Counter
   const [jackpotAmount, setJackpotAmount] = useState(1101901);
 
   useEffect(() => {
@@ -152,7 +154,6 @@ function Index() {
     return () => clearInterval(timer);
   }, []);
 
-  // OTP Verification States
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [secretCode, setSecretCode] = useState<string>("");
   const [enteredOtp, setEnteredOtp] = useState<string>("");
@@ -270,6 +271,13 @@ function Index() {
           <Button variant="secondary" onClick={openWithdraw} className="font-display tracking-wide">
             <ArrowUpFromLine className="size-4" /> Withdraw
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => setProfileOpen(true)}
+            className="border-primary/50 font-display tracking-wide"
+          >
+            <UserIcon className="size-4 text-primary" /> Profile
+          </Button>
           <Button variant="ghost" asChild>
             <a href={SUPPORT_WHATSAPP} target="_blank" rel="noopener noreferrer">
               <MessageCircle className="size-4" /> Support
@@ -304,7 +312,6 @@ function Index() {
         )}
       </div>
 
-      {/* Navigation Tabs */}
       <div className="mb-6 flex flex-wrap gap-2">
         <Button
           variant={activeTab === "lobby" ? "default" : "secondary"}
@@ -338,7 +345,6 @@ function Index() {
 
       {activeTab === "lobby" && (
         <div className="space-y-6">
-          {/* Live Jackpot Banner */}
           <div className="relative overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 via-background to-cyan-950/40 p-5 shadow-xl">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
@@ -365,7 +371,6 @@ function Index() {
             </div>
           </div>
 
-          {/* Game Category Filter Bar */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
             <Button
               size="sm"
@@ -506,7 +511,7 @@ function Index() {
                 </p>
                 <form onSubmit={handleSendOtp} className="space-y-4">
                   <div className="flex items-center gap-2 rounded-lg border border-border bg-background/80 px-3 py-2">
-                       <span className="font-display text-sm text-muted-foreground">+91</span>
+                    <span className="font-display text-sm text-muted-foreground">+91</span>
                     <input
                       type="tel"
                       maxLength={10}
@@ -570,6 +575,12 @@ function Index() {
       <TopUpModal isOpen={topUpOpen} onClose={() => setTopUpOpen(false)} />
       <WithdrawModal open={withdrawOpen} onOpenChange={setWithdrawOpen} />
       <DailySpinModal open={dailySpinOpen} onOpenChange={setDailySpinOpen} />
+      <ProfileModal
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+        onDeposit={openDeposit}
+        onWithdraw={openWithdraw}
+      />
     </main>
   );
 }
