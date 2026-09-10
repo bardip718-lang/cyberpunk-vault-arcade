@@ -1,215 +1,218 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Plane } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useVault } from "@/lib/vault-store";
-import { sfx } from "@/lib/sfx";
+import { Plane, Zap, Flame, ShieldAlert, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
-
-type Phase = "betting" | "flying" | "crashed";
-type BetState = "none" | "placed" | "active" | "cashed" | "lost";
-
-const BETTING_SECONDS = 6;
+import { useVault } from "@/lib/vault-store";
+import { SoundFX } from "@/lib/sound-fx";
 
 export function AviatorGame() {
   const { user, addScore } = useVault();
-  const [bet, setBet] = useState("50");
-  const [mult, setMult] = useState(1);
-  const [phase, setPhase] = useState<Phase>("betting");
-  const [betState, setBetState] = useState<BetState>("none");
-  const [countdown, setCountdown] = useState(BETTING_SECONDS);
-  const [history, setHistory] = useState<number[]>([]);
-  const [payout, setPayout] = useState(0);
-  const crashAt = useRef(1);
-  const raf = useRef<number | null>(null);
-  const staked = useRef(0);
-  const isSubmitting = useRef(false);
-  const betStateRef = useRef<BetState>("none");
-  const multRef = useRef(1);
 
-  betStateRef.current = betState;
-  multRef.current = mult;
+  const [betAmount, setBetAmount] = useState<number>(10);
+  const [gameState, setGameState] = useState<"idle" | "running" | "crashed">("idle");
+  const [multiplier, setMultiplier] = useState<number>(1.0);
+  const [hasCashedOut, setHasCashedOut] = useState<boolean>(false);
+  const [cashoutGain, setCashoutGain] = useState<number>(0);
 
-  const stop = useCallback(() => {
-    if (raf.current) cancelAnimationFrame(raf.current);
-    raf.current = null;
+  const crashPointRef = useRef<number>(1.0);
+  const animFrameRef = useRef<any>(null);
+  const soundTickRef = useRef<number>(0);
+
+  // Generate weighted crash point (fair casino curve)
+  const generateCrashPoint = () => {
+    const rand = Math.random();
+    if (rand < 0.08) return 1.0; // Instant bust (house edge)
+    if (rand < 0.6) return parseFloat((1.1 + Math.random() * 1.5).toFixed(2)); // 1.1x - 2.6x
+    if (rand < 0.88) return parseFloat((2.6 + Math.random() * 4.0).toFixed(2)); // 2.6x - 6.6x
+    return parseFloat((6.6 + Math.random() * 15.0).toFixed(2)); // High roller jackpot
+  };
+
+  const startFlight = () => {
+    if (gameState === "running") return;
+
+    if (!user || user.balance < betAmount) {
+      toast.error("Insufficient balance to place bet!");
+      return;
+    }
+
+    // Deduct bet from vault
+    addScore(-betAmount);
+    SoundFX.click();
+
+    const crashAt = generateCrashPoint();
+    crashPointRef.current = crashAt;
+
+    setGameState("running");
+    setMultiplier(1.0);
+    setHasCashedOut(false);
+    setCashoutGain(0);
+    soundTickRef.current = 0;
+
+    let current = 1.0;
+    const startTime = Date.now();
+
+    const tick = () => {
+      const elapsed = (Date.now() - startTime) / 1000;
+      // Exponential curve like standard Aviator
+      current = parseFloat((1.0 + Math.pow(elapsed * 0.55, 1.8)).toFixed(2));
+
+      // Sound audio sync on engine ascent
+      soundTickRef.current++;
+      if (soundTickRef.current % 15 === 0) {
+        SoundFX.flightAscend(current);
+      }
+
+      if (current >= crashPointRef.current) {
+        // Plane Crashed / Flew Away
+        setMultiplier(crashPointRef.current);
+        setGameState("crashed");
+        SoundFX.blast();
+        cancelAnimationFrame(animFrameRef.current);
+      } else {
+        setMultiplier(current);
+        animFrameRef.current = requestAnimationFrame(tick);
+      }
+    };
+
+    animFrameRef.current = requestAnimationFrame(tick);
+  };
+
+  const handleCashout = () => {
+    if (gameState !== "running" || hasCashedOut) return;
+
+    const winAmount = Math.round(betAmount * multiplier);
+    addScore(winAmount);
+    setHasCashedOut(true);
+    setCashoutGain(winAmount);
+
+    if (multiplier >= 5) {
+      SoundFX.bigWin();
+    } else {
+      SoundFX.win();
+    }
+
+    toast.success(`🚀 CASHOUT SUCCESS! +₹${winAmount} (${multiplier}x)`);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
   }, []);
 
-  useEffect(() => () => stop(), [stop]);
-
-  const startFlight = useCallback(() => {
-    setMult(1);
-    setPhase("flying");
-    if (betStateRef.current === "placed") {
-      setBetState("active");
-      sfx.spin();
-    }
-    // House edge ~4%; heavy tail crash curve.
-    crashAt.current = Math.max(1, Number((0.96 / (1 - Math.random())).toFixed(2)));
-
-    const start = performance.now();
-    const tick = (now: number) => {
-      const t = (now - start) / 1000;
-      const m = Number(Math.pow(1.07, t * 6).toFixed(2));
-      if (m >= crashAt.current) {
-        setMult(crashAt.current);
-        setPhase("crashed");
-        setHistory((h) => [crashAt.current, ...h].slice(0, 8));
-        if (betStateRef.current === "active") {
-          setBetState("lost");
-          sfx.lose();
-        }
-        stop();
-        return;
-      }
-      setMult(m);
-      raf.current = requestAnimationFrame(tick);
-    };
-    raf.current = requestAnimationFrame(tick);
-  }, [stop]);
-
-  // Round lifecycle: betting countdown -> flight -> crash pause -> betting
-  useEffect(() => {
-    if (phase === "betting") {
-      if (countdown <= 0) {
-        startFlight();
-        return;
-      }
-      const id = window.setTimeout(() => setCountdown((c) => c - 1), 1000);
-      return () => window.clearTimeout(id);
-    }
-    if (phase === "crashed") {
-      const id = window.setTimeout(() => {
-        setBetState("none");
-        setPayout(0);
-        staked.current = 0;
-        setCountdown(BETTING_SECONDS);
-        setPhase("betting");
-      }, 3000);
-      return () => window.clearTimeout(id);
-    }
-    return;
-  }, [phase, countdown, startFlight]);
-
-  const canBet = phase === "betting" && betState === "none";
-
-  function placeBet() {
-    if (!canBet || isSubmitting.current) return;
-    isSubmitting.current = true;
-    try {
-      const amt = Number(bet);
-      if (!user) { toast.error("Sign in or enter guest mode to play"); return; }
-      if (!Number.isFinite(amt) || amt < 10) { toast.error("Minimum bet is 10 credits"); return; }
-      if (amt > user.balance) { toast.error("Not enough credits — top up the vault"); return; }
-
-      staked.current = Math.round(amt);
-      addScore(-staked.current);
-      setPayout(0);
-      setBetState("placed");
-      toast.success(`Bet of ${staked.current} placed for this round`);
-    } finally {
-      window.setTimeout(() => { isSubmitting.current = false; }, 300);
-    }
-  }
-
-  function cashOut() {
-    if (phase !== "flying" || betStateRef.current !== "active") return;
-    const win = Math.round(staked.current * multRef.current);
-    addScore(win);
-    setPayout(win);
-    setBetState("cashed");
-    sfx.win();
-  }
-
-  const statusText =
-    phase === "betting"
-      ? betState === "placed"
-        ? `Bet locked — take off in ${countdown}s`
-        : `Betting open — ${countdown}s`
-      : phase === "crashed"
-        ? betState === "lost"
-          ? "Flew away — bet lost."
-          : "Round over — next round starting…"
-        : betState === "cashed"
-          ? `Cashed out +${payout} credits`
-          : betState === "active"
-            ? "Cash out before it flies away!"
-            : "Watching this round — bet on the next one.";
-
   return (
-    <section className="space-y-6">
-      <div className="neon-panel rounded-xl p-5">
+    <div className="mx-auto max-w-2xl rounded-2xl border border-rose-500/30 bg-slate-950 p-4 sm:p-6 shadow-2xl">
+      {/* Title Bar */}
+      <div className="mb-4 flex items-center justify-between border-b border-rose-500/20 pb-3">
+        <div className="flex items-center gap-2">
+          <Plane className="size-6 text-rose-500 animate-pulse" />
+          <h2 className="font-display text-xl font-black tracking-wider text-rose-400">
+            AVIATOR CRASH
+          </h2>
+        </div>
+        <span className="rounded bg-rose-500/20 px-2.5 py-1 text-[11px] font-mono font-bold text-rose-300 border border-rose-500/30">
+          PROVABLY FAIR
+        </span>
+      </div>
+
+      {/* Radar Flight Canvas Arena */}
+      <div className="relative flex h-64 sm:h-72 w-full flex-col items-center justify-center overflow-hidden rounded-xl border border-rose-950 bg-gradient-to-b from-[#18080a] via-[#0f0406] to-[#080203] p-4 shadow-inner">
+        {/* Radar Circular Background Lines */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-15 pointer-events-none">
+          <div className="size-48 rounded-full border border-rose-500" />
+          <div className="absolute size-72 rounded-full border border-rose-500" />
+          <div className="absolute h-full w-[1px] bg-rose-500" />
+          <div className="absolute w-full h-[1px] bg-rose-500" />
+        </div>
+
+        {/* Multiplier Center Display */}
+        <div className="z-10 text-center">
+          <div
+            className={`font-display text-5xl sm:text-6xl font-black tracking-tight ${
+              gameState === "crashed"
+                ? "text-rose-600 scale-105 transition-transform"
+                : "text-rose-400 drop-shadow-[0_0_20px_rgba(244,63,94,0.6)]"
+            }`}
+          >
+            {multiplier.toFixed(2)}x
+          </div>
+
+          {gameState === "crashed" && (
+            <p className="mt-2 font-display text-xs font-bold uppercase tracking-widest text-rose-500 animate-pulse">
+              FLEW AWAY @ {crashPointRef.current.toFixed(2)}x
+            </p>
+          )}
+
+          {hasCashedOut && (
+            <div className="mt-2 rounded-lg bg-emerald-500/20 px-3 py-1 border border-emerald-500/40 text-emerald-400 font-bold text-xs animate-bounce">
+              Cashed Out: ₹{cashoutGain}
+            </div>
+          )}
+        </div>
+
+        {/* Animated Jet in Flight */}
+        {gameState === "running" && (
+          <div
+            className="absolute z-20 flex items-center gap-2 transition-all duration-75"
+            style={{
+              bottom: `${Math.min(75, 20 + Math.log(multiplier) * 30)}%`,
+              left: `${Math.min(75, 15 + Math.log(multiplier) * 28)}%`,
+            }}
+          >
+            <div className="relative">
+              <Plane className="size-10 text-rose-400 -rotate-12 fill-rose-500 drop-shadow-[0_0_15px_#f43f5e]" />
+              <div className="absolute -bottom-1 -left-4 h-1.5 w-6 rounded-full bg-amber-400 blur-[1px] animate-pulse" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Controls Bar */}
+      <div className="mt-4 space-y-3 border-t border-border/50 pt-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-xl neon-text">Aviator</h2>
-          <div className="flex gap-1.5">
-            {history.map((h, i) => (
-              <span
-                key={i}
-                className={`rounded px-2 py-0.5 text-xs font-display ${h >= 2 ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}
+          <span className="text-xs font-semibold text-slate-400">Stake Amount (₹)</span>
+          <div className="flex items-center gap-1.5">
+            {[10, 25, 50, 100, 250].map((amt) => (
+              <Button
+                key={amt}
+                size="sm"
+                type="button"
+                variant={betAmount === amt ? "default" : "outline"}
+                onClick={() => setBetAmount(amt)}
+                className={`h-7 px-2.5 text-xs font-bold font-mono ${
+                  betAmount === amt ? "bg-rose-500 text-white" : "border-rose-900/50 text-slate-300"
+                }`}
               >
-                {h.toFixed(2)}×
-              </span>
+                ₹{amt}
+              </Button>
             ))}
           </div>
         </div>
 
-        <div className="relative mt-4 h-56 overflow-hidden rounded-lg border border-border bg-background/70">
-          <div
-            className="absolute transition-none"
-            style={{
-              left: `${Math.min(82, (mult - 1) * 22)}%`,
-              bottom: `${Math.min(78, (mult - 1) * 20)}%`,
-            }}
+        {gameState === "running" && !hasCashedOut ? (
+          <Button
+            type="button"
+            onClick={handleCashout}
+            className="w-full bg-gradient-to-r from-emerald-500 to-green-600 py-6 font-display text-lg font-black tracking-wider uppercase text-slate-950 shadow-[0_0_25px_rgba(16,185,129,0.5)] active:scale-95 transition-all"
           >
-            <Plane
-              className={`size-8 ${phase === "crashed" ? "text-destructive" : "text-primary"}`}
-              style={{ transform: "rotate(-25deg)" }}
-            />
-          </div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <p
-              className={`font-display text-5xl ${
-                phase === "crashed" ? "text-destructive" : betState === "cashed" ? "text-success" : "neon-text"
-              }`}
-            >
-              {phase === "betting" ? `${countdown}s` : `${mult.toFixed(2)}×`}
-            </p>
-          </div>
-          <p className="absolute inset-x-0 bottom-3 text-center text-sm text-muted-foreground">{statusText}</p>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-end gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="av-bet">Bet (credits)</Label>
-            <Input
-              id="av-bet"
-              className="w-32"
-              inputMode="numeric"
-              value={bet}
-              disabled={!canBet}
-              onChange={(e) => setBet(e.target.value.replace(/\D/g, ""))}
-            />
-          </div>
-          {betState === "active" ? (
-            <Button onClick={cashOut} className="font-display tracking-wide">
-              Cash Out {Math.round(staked.current * mult)}
-            </Button>
-          ) : (
-            <Button onClick={placeBet} disabled={!canBet} className="font-display tracking-wide">
-              {betState === "placed"
-                ? `Bet Placed (${staked.current})`
-                : betState === "cashed"
-                  ? `Cashed Out +${payout}`
-                  : betState === "lost"
-                    ? "Bet Lost"
-                    : phase === "betting"
-                      ? "Place Bet"
-                      : "Waiting for next round"}
-            </Button>
-          )}
-        </div>
+            CASHOUT ₹{Math.round(betAmount * multiplier)} ({multiplier.toFixed(2)}x)
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            onClick={startFlight}
+            disabled={gameState === "running"}
+            className="w-full bg-gradient-to-r from-rose-500 via-red-600 to-rose-700 py-6 font-display text-base font-black tracking-widest uppercase text-white shadow-[0_0_25px_rgba(244,63,94,0.4)] active:scale-95 transition-all"
+          >
+            <span className="flex items-center justify-center gap-2">
+              <Zap className="size-5 fill-white" /> BET ₹{betAmount} &amp; FLY
+            </span>
+          </Button>
+        )}
       </div>
-    </section>
+    </div>
   );
 }
+
+export default AviatorGame;
+                  
