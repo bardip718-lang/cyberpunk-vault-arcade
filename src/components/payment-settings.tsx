@@ -41,6 +41,10 @@ export function PaymentSettingsPanel() {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!hasPasscode) {
+      toast.error("Enter your operator passcode to save settings.");
+      return;
+    }
     const id = upiId.trim();
     if (id.length < 5 || id.length > 100 || !/^[\w.\-]{2,}@[\w.\-]{2,}$/.test(id)) {
       toast.error("Enter a valid UPI ID like name@bank");
