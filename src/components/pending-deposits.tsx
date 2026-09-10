@@ -23,6 +23,7 @@ function formatTime(iso: string): string {
 export function PendingDeposits() {
   const { requests, isLoading, resolveRequest } = useVaultRequests();
   const { settleRequest } = useVault();
+  const { passcode, setPasscode, hasPasscode } = useAdminPasscode();
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const pending = requests.filter(
@@ -31,13 +32,15 @@ export function PendingDeposits() {
 
   const handleResolve = async (r: VaultRequest, status: "approved" | "rejected") => {
     if (busyId) return;
+    if (!hasPasscode) {
+      toast.error("Enter your operator passcode first.");
+      return;
+    }
     setBusyId(r.id);
     try {
-      if (typeof resolveRequest === "function") {
-        await resolveRequest({ adminEmail: ADMIN_EMAIL, id: r.id, status });
-      }
+      await resolveRequest({ adminPasscode: passcode, id: r.id, status });
 
-      // Direct balance credit to the player's wallet store
+      // Mirror the confirmed decision into this browser's wallet view.
       settleRequest({
         id: r.id,
         kind: "deposit",
@@ -51,14 +54,7 @@ export function PendingDeposits() {
         toast.success("Deposit rejected.");
       }
     } catch (err) {
-      // Fallback: Agar backend fail bhi kare, client side wallet balance zaroor update karein
-      settleRequest({
-        id: r.id,
-        kind: "deposit",
-        status,
-        amount: Number(r.amount),
-      });
-      toast.success(status === "approved" ? `₹${r.amount} approved and credited!` : "Deposit rejected.");
+      toast.error(err instanceof Error ? err.message : "Could not update this request.");
     } finally {
       setBusyId(null);
     }
