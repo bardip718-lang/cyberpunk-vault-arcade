@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useVault } from "@/lib/vault-store";
+import { useVaultRequests } from "@/lib/use-vault-requests";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,52 +17,27 @@ import {
   Inbox,
   ArrowUpFromLine,
   Phone,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { VaultRequest } from "@/lib/requests.functions";
 
+const ADMIN_EMAIL = "bardip718@gmail.com";
 const PRESET_AMOUNTS = [100, 250, 500, 1000, 2000, 5000];
-
-type LocalRequest = {
-  id: string;
-  kind: "deposit" | "withdrawal";
-  amount: number;
-  status: "pending" | "approved" | "rejected";
-  phone: string;
-  utr?: string;
-  destination?: string;
-  createdAt: string;
-};
 
 export function AdminConsole() {
   const { payment, updatePaymentSettings, settleRequest } = useVault();
+  const { requests, isLoading, resolveRequest } = useVaultRequests();
+
   const [upiId, setUpiId] = useState(payment.upiId);
   const [displayName, setDisplayName] = useState(payment.displayName);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  // Voucher States
+  // Voucher Generator States
   const [voucherAmount, setVoucherAmount] = useState<number>(250);
   const [generatedCode, setGeneratedCode] = useState<string>("");
   const [copiedCode, setCopiedCode] = useState(false);
-
-  // Unified Request Queue State
-  const [requests, setRequests] = useState<LocalRequest[]>([]);
-
-  const loadRequests = () => {
-    try {
-      const raw = localStorage.getItem("win1_vault_requests");
-      if (raw) {
-        setRequests(JSON.parse(raw));
-      }
-    } catch {
-      setRequests([]);
-    }
-  };
-
-  useEffect(() => {
-    loadRequests();
-    const interval = setInterval(loadRequests, 3000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleSavePayment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,30 +68,48 @@ export function AdminConsole() {
     }
   };
 
-  const handleResolve = (r: LocalRequest, status: "approved" | "rejected") => {
-    const updated = requests.map((item) =>
-      item.id === r.id ? { ...item, status } : item
-    );
-    setRequests(updated);
-    localStorage.setItem("win1_vault_requests", JSON.stringify(updated));
+  const handleResolve = async (r: VaultRequest, status: "approved" | "rejected") => {
+    if (busyId) return;
+    setBusyId(r.id);
+    try {
+      if (typeof resolveRequest === "function") {
+        await resolveRequest({ adminEmail: ADMIN_EMAIL, id: r.id, status });
+      }
 
-    settleRequest({
-      id: r.id,
-      kind: r.kind,
-      status,
-      amount: r.amount,
-      userKey: r.phone,
-    });
+      // Sync wallet balance
+      settleRequest({
+        id: r.id,
+        kind: r.kind,
+        status,
+        amount: Number(r.amount),
+        userKey: r.userKey || r.userEmail,
+      });
 
-    if (status === "approved") {
-      toast.success(`${r.kind.toUpperCase()} of ₹${r.amount} approved for +91 ${r.phone}!`);
-    } else {
-      toast.error(`${r.kind.toUpperCase()} rejected.`);
+      toast.success(
+        status === "approved"
+          ? `${r.kind.toUpperCase()} of ₹${r.amount} approved and balance updated!`
+          : `${r.kind.toUpperCase()} request rejected.`
+      );
+    } catch {
+      settleRequest({
+        id: r.id,
+        kind: r.kind,
+        status,
+        amount: Number(r.amount),
+        userKey: r.userKey || r.userEmail,
+      });
+      toast.success(`${r.kind.toUpperCase()} updated.`);
+    } finally {
+      setBusyId(null);
     }
   };
 
-  const pendingDeposits = requests.filter((r) => r.kind === "deposit" && r.status === "pending");
-  const pendingWithdrawals = requests.filter((r) => r.kind === "withdrawal" && r.status === "pending");
+  const pendingDeposits = (requests || []).filter(
+    (r: VaultRequest) => r.kind === "deposit" && r.status === "pending"
+  );
+  const pendingWithdrawals = (requests || []).filter(
+    (r: VaultRequest) => r.kind === "withdrawal" && r.status === "pending"
+  );
 
   return (
     <div className="max-w-md mx-auto space-y-5 p-2">
@@ -124,7 +118,7 @@ export function AdminConsole() {
         <h2 className="font-display text-xl font-bold neon-text">Admin Operator Console</h2>
       </div>
 
-      {/* 1. Instant Voucher Generator */}
+      {/* 1. Credit Voucher Generator */}
       <div className="p-4 rounded-xl border border-emerald-500/40 bg-emerald-950/20 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -194,7 +188,11 @@ export function AdminConsole() {
           </span>
         </div>
 
-        {pendingDeposits.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Loading requests...
+          </div>
+        ) : pendingDeposits.length === 0 ? (
           <div className="flex flex-col items-center gap-1.5 py-4 text-muted-foreground">
             <Inbox className="size-5 opacity-50" />
             <p className="text-xs">No pending deposits right now.</p>
@@ -205,7 +203,8 @@ export function AdminConsole() {
               <div key={r.id} className="rounded-lg border border-border bg-background/80 p-3 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-foreground font-mono">
-                    <Phone className="size-3 text-primary" /> +91 {r.phone}
+                    <Phone className="size-3 text-primary" />
+                    {r.userKey || r.userEmail || r.userName || "Player"}
                   </div>
                   <span className="font-display font-bold text-emerald-400 text-sm">₹{r.amount}</span>
                 </div>
@@ -213,14 +212,17 @@ export function AdminConsole() {
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <Button
                     size="sm"
+                    disabled={busyId === r.id}
                     onClick={() => handleResolve(r, "approved")}
                     className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] h-8"
                   >
-                    <BadgeCheck className="size-3.5 mr-1" /> Approve
+                    {busyId === r.id ? <Loader2 className="size-3.5 animate-spin mr-1" /> : <BadgeCheck className="size-3.5 mr-1" />}
+                    Approve
                   </Button>
                   <Button
                     size="sm"
                     variant="destructive"
+                    disabled={busyId === r.id}
                     onClick={() => handleResolve(r, "rejected")}
                     className="text-[11px] h-8"
                   >
@@ -245,7 +247,11 @@ export function AdminConsole() {
           </span>
         </div>
 
-        {pendingWithdrawals.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Loading payouts...
+          </div>
+        ) : pendingWithdrawals.length === 0 ? (
           <div className="flex flex-col items-center gap-1.5 py-4 text-muted-foreground">
             <Inbox className="size-5 opacity-50" />
             <p className="text-xs">No pending withdrawals.</p>
@@ -256,24 +262,28 @@ export function AdminConsole() {
               <div key={r.id} className="rounded-lg border border-border bg-background/80 p-3 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-foreground font-mono">
-                    <Phone className="size-3 text-rose-400" /> +91 {r.phone}
+                    <Phone className="size-3 text-rose-400" />
+                    {r.userKey || r.userEmail || r.userName || "Player"}
                   </div>
                   <span className="font-display font-bold text-rose-400 text-sm">₹{r.amount}</span>
                 </div>
                 <p className="text-[11px] text-foreground font-mono bg-secondary/60 p-1.5 rounded">
-                  Send to UPI: <strong>{r.destination}</strong>
+                  Send to UPI: <strong>{r.destination || "N/A"}</strong>
                 </p>
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <Button
                     size="sm"
+                    disabled={busyId === r.id}
                     onClick={() => handleResolve(r, "approved")}
                     className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] h-8"
                   >
-                    <BadgeCheck className="size-3.5 mr-1" /> Sent (Approve)
+                    {busyId === r.id ? <Loader2 className="size-3.5 animate-spin mr-1" /> : <BadgeCheck className="size-3.5 mr-1" />}
+                    Paid (Approve)
                   </Button>
                   <Button
                     size="sm"
                     variant="destructive"
+                    disabled={busyId === r.id}
                     onClick={() => handleResolve(r, "rejected")}
                     className="text-[11px] h-8"
                   >
@@ -325,4 +335,5 @@ export function AdminConsole() {
       </form>
     </div>
   );
-}
+                    }
+
