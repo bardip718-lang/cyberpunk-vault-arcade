@@ -1,23 +1,67 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useVault } from "@/lib/vault-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ShieldCheck, Gift, Copy, Check, QrCode, RefreshCw } from "lucide-react";
-import { PendingDeposits } from "@/components/pending-deposits";
+import {
+  ShieldCheck,
+  Gift,
+  Copy,
+  Check,
+  QrCode,
+  RefreshCw,
+  BadgeCheck,
+  XCircle,
+  Clock3,
+  Inbox,
+  ArrowUpFromLine,
+  Phone,
+} from "lucide-react";
+import { toast } from "sonner";
 
 const PRESET_AMOUNTS = [100, 250, 500, 1000, 2000, 5000];
 
+type LocalRequest = {
+  id: string;
+  kind: "deposit" | "withdrawal";
+  amount: number;
+  status: "pending" | "approved" | "rejected";
+  phone: string;
+  utr?: string;
+  destination?: string;
+  createdAt: string;
+};
+
 export function AdminConsole() {
-  const { payment, updatePaymentSettings } = useVault();
+  const { payment, updatePaymentSettings, settleRequest } = useVault();
   const [upiId, setUpiId] = useState(payment.upiId);
   const [displayName, setDisplayName] = useState(payment.displayName);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Voucher Generator States
+  // Voucher States
   const [voucherAmount, setVoucherAmount] = useState<number>(250);
   const [generatedCode, setGeneratedCode] = useState<string>("");
   const [copiedCode, setCopiedCode] = useState(false);
+
+  // Unified Request Queue State
+  const [requests, setRequests] = useState<LocalRequest[]>([]);
+
+  const loadRequests = () => {
+    try {
+      const raw = localStorage.getItem("win1_vault_requests");
+      if (raw) {
+        setRequests(JSON.parse(raw));
+      }
+    } catch {
+      setRequests([]);
+    }
+  };
+
+  useEffect(() => {
+    loadRequests();
+    const interval = setInterval(loadRequests, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSavePayment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +71,6 @@ export function AdminConsole() {
   };
 
   const handleGenerateVoucher = () => {
-    // Generate secure format: W1-<AMOUNT>-<4 RANDOM ALPHANUMERIC>
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     let token = "";
     for (let i = 0; i < 4; i++) {
@@ -49,6 +92,31 @@ export function AdminConsole() {
     }
   };
 
+  const handleResolve = (r: LocalRequest, status: "approved" | "rejected") => {
+    const updated = requests.map((item) =>
+      item.id === r.id ? { ...item, status } : item
+    );
+    setRequests(updated);
+    localStorage.setItem("win1_vault_requests", JSON.stringify(updated));
+
+    settleRequest({
+      id: r.id,
+      kind: r.kind,
+      status,
+      amount: r.amount,
+      userKey: r.phone,
+    });
+
+    if (status === "approved") {
+      toast.success(`${r.kind.toUpperCase()} of ₹${r.amount} approved for +91 ${r.phone}!`);
+    } else {
+      toast.error(`${r.kind.toUpperCase()} rejected.`);
+    }
+  };
+
+  const pendingDeposits = requests.filter((r) => r.kind === "deposit" && r.status === "pending");
+  const pendingWithdrawals = requests.filter((r) => r.kind === "withdrawal" && r.status === "pending");
+
   return (
     <div className="max-w-md mx-auto space-y-5 p-2">
       <div className="flex items-center gap-2 border-b border-primary/30 pb-3">
@@ -67,10 +135,6 @@ export function AdminConsole() {
             ONE-TIME USE
           </span>
         </div>
-
-        <p className="text-xs text-muted-foreground">
-          User ne WhatsApp par payment kiya? Amount select karo aur generate karke code use bhej do.
-        </p>
 
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Select Amount (₹)</Label>
@@ -99,7 +163,7 @@ export function AdminConsole() {
         </Button>
 
         {generatedCode && (
-          <div className="p-3 bg-background/80 rounded-lg border border-emerald-500/40 space-y-2 text-center animate-in fade-in">
+          <div className="p-3 bg-background/80 rounded-lg border border-emerald-500/40 space-y-2 text-center">
             <p className="text-[11px] text-muted-foreground font-bold">VOUCHER CODE FOR USER:</p>
             <div className="flex items-center justify-between bg-secondary/80 px-3 py-2 rounded font-mono text-base font-bold text-emerald-400">
               <span className="tracking-widest">{generatedCode}</span>
@@ -114,17 +178,115 @@ export function AdminConsole() {
                 {copiedCode ? "Copied" : "Copy"}
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground">
-              Send this code on WhatsApp to user. They can enter it in the deposit tab.
-            </p>
           </div>
         )}
       </div>
 
-      {/* 2. Pending Deposits Verification */}
-      <PendingDeposits />
+      {/* 2. Real Deposit Requests Queue */}
+      <div className="p-4 rounded-xl border border-primary/40 bg-secondary/20 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock3 className="size-4 text-primary" />
+            <h3 className="font-display font-bold text-foreground text-sm">Deposit Verification</h3>
+          </div>
+          <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded font-mono font-bold">
+            {pendingDeposits.length} WAITING
+          </span>
+        </div>
 
-      {/* 3. UPI Receiver Settings */}
+        {pendingDeposits.length === 0 ? (
+          <div className="flex flex-col items-center gap-1.5 py-4 text-muted-foreground">
+            <Inbox className="size-5 opacity-50" />
+            <p className="text-xs">No pending deposits right now.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {pendingDeposits.map((r) => (
+              <div key={r.id} className="rounded-lg border border-border bg-background/80 p-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-foreground font-mono">
+                    <Phone className="size-3 text-primary" /> +91 {r.phone}
+                  </div>
+                  <span className="font-display font-bold text-emerald-400 text-sm">₹{r.amount}</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground font-mono">UTR: {r.utr || "N/A"}</p>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    onClick={() => handleResolve(r, "approved")}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] h-8"
+                  >
+                    <BadgeCheck className="size-3.5 mr-1" /> Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleResolve(r, "rejected")}
+                    className="text-[11px] h-8"
+                  >
+                    <XCircle className="size-3.5 mr-1" /> Reject
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 3. Real Withdrawal Requests Queue */}
+      <div className="p-4 rounded-xl border border-rose-500/40 bg-rose-950/20 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ArrowUpFromLine className="size-4 text-rose-400" />
+            <h3 className="font-display font-bold text-foreground text-sm">Withdrawal Payouts</h3>
+          </div>
+          <span className="text-[10px] bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded font-mono font-bold">
+            {pendingWithdrawals.length} WAITING
+          </span>
+        </div>
+
+        {pendingWithdrawals.length === 0 ? (
+          <div className="flex flex-col items-center gap-1.5 py-4 text-muted-foreground">
+            <Inbox className="size-5 opacity-50" />
+            <p className="text-xs">No pending withdrawals.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {pendingWithdrawals.map((r) => (
+              <div key={r.id} className="rounded-lg border border-border bg-background/80 p-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-foreground font-mono">
+                    <Phone className="size-3 text-rose-400" /> +91 {r.phone}
+                  </div>
+                  <span className="font-display font-bold text-rose-400 text-sm">₹{r.amount}</span>
+                </div>
+                <p className="text-[11px] text-foreground font-mono bg-secondary/60 p-1.5 rounded">
+                  Send to UPI: <strong>{r.destination}</strong>
+                </p>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    onClick={() => handleResolve(r, "approved")}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] h-8"
+                  >
+                    <BadgeCheck className="size-3.5 mr-1" /> Sent (Approve)
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleResolve(r, "rejected")}
+                    className="text-[11px] h-8"
+                  >
+                    <XCircle className="size-3.5 mr-1" /> Refund (Reject)
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 4. UPI Receiver Settings */}
       <form onSubmit={handleSavePayment} className="p-4 rounded-xl border border-border bg-secondary/30 space-y-3">
         <div className="flex items-center gap-2">
           <QrCode className="size-4 text-primary" />
@@ -157,14 +319,10 @@ export function AdminConsole() {
           />
         </div>
 
-        <Button
-          type="submit"
-          className="w-full font-display font-bold tracking-wider uppercase text-xs py-4"
-        >
+        <Button type="submit" className="w-full font-display font-bold tracking-wider uppercase text-xs py-4">
           {saveSuccess ? "Settings Saved!" : "Save Payment Settings"}
         </Button>
       </form>
     </div>
   );
-                }
-          
+}
