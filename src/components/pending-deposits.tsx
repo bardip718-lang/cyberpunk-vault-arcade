@@ -4,9 +4,10 @@ import { BadgeCheck, XCircle, Loader2, ImageIcon, Clock3, Inbox } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { useVaultRequests } from "@/lib/use-vault-requests";
 import { useVault } from "@/lib/vault-store";
+import { useAdminPasscode } from "@/lib/use-admin-passcode";
+import { Input } from "@/components/ui/input";
 import type { VaultRequest } from "@/lib/requests.functions";
 
-const ADMIN_EMAIL = "bardip718@gmail.com";
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
