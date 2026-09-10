@@ -11,7 +11,7 @@ export type PaymentSettingsRow = {
   updatedAt: string;
 };
 
-const ADMIN_EMAIL = "bardip718@gmail.com";
+
 
 export const getPaymentSettings = createServerFn({ method: "GET" }).handler(
   async (): Promise<PaymentSettingsRow | null> => {

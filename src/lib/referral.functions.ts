@@ -122,7 +122,9 @@ const getSchema = z.object({ userKey: z.string().min(1).max(120) });
 export const getReferralProfile = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => getSchema.parse(input))
   .handler(async ({ data }): Promise<ReferralProfile | null> => {
-    const supabase = publicClient();
+    // The referrals table is no longer publicly readable; look up only the
+    // single requested row server-side.
+    const { supabaseAdmin: supabase } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabase
       .from("referrals")
       .select(SELECT_COLUMNS)
