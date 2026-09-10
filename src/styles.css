@@ -2,79 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: 224 71% 4%;
-  --foreground: 213 31% 91%;
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
 
-  --card: 224 71% 4%;
-  --card-foreground: 213 31% 91%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
 
-  --popover: 224 71% 4%;
-  --popover-foreground: 213 31% 91%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
 
-  --primary: 187 92% 55%;
-  --primary-foreground: 224 71% 4%;
+    --primary: 187 92% 55%;
+    --primary-foreground: 222.2 47.4% 11.2%;
 
-  --secondary: 222 47% 11%;
-  --secondary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
 
-  --muted: 223 47% 11%;
-  --muted-foreground: 215 20.2% 65.1%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
 
-  --accent: 216 34% 17%;
-  --accent-foreground: 210 40% 98%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
 
-  --destructive: 0 63% 31%;
-  --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
 
-  --border: 216 34% 17%;
-  --input: 216 34% 17%;
-  --ring: 187 92% 55%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 187 92% 55%;
 
-  --radius: 0.75rem;
+    --radius: 0.75rem;
+  }
 }
 
-* {
-  border-color: hsl(216 34% 17%);
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  background-color: #06090e;
-  color: #f1f5f9;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
-
-button {
-  cursor: pointer;
-}
-
-/* 1win Premium Dark Surface */
 .neon-panel {
   background: linear-gradient(180deg, #111827 0%, #0b0f17 100%);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
-  border-radius: 0.85rem;
+  border-radius: 0.75rem;
 }
 
 .neon-text {
   color: #38bdf8;
   font-weight: 800;
-  letter-spacing: -0.02em;
 }
-
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #080b11;
-}
-::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 9999px;
-}
-
