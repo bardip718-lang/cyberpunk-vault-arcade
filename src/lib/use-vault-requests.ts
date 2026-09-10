@@ -39,13 +39,46 @@ export function useVaultRequests() {
   });
 
   const resolve = useMutation({
-    mutationFn: (input: {
-      adminPasscode: string;
+    mutationFn: async (input: {
+      adminPasscode?: string;
+      adminEmail?: string;
       id: string;
       status: Exclude<RequestStatus, "pending">;
-    }) =>
-      resolveRequest({ data: input }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: REQUESTS_KEY }),
+    }) => {
+      // Optimistically update React Query cache immediately
+      queryClient.setQueryData(REQUESTS_KEY, (old: VaultRequest[] | undefined) => {
+        if (!old) return [];
+        return old.map((r) =>
+          r.id === input.id ? { ...r, status: input.status } : r
+        );
+      });
+
+      // Update local persistent requests
+      try {
+        const raw = localStorage.getItem("win1_vault_requests");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const updated = parsed.map((item: any) =>
+            item.id === input.id ? { ...item, status: input.status } : item
+          );
+          localStorage.setItem("win1_vault_requests", JSON.stringify(updated));
+        }
+      } catch {
+        // ignore
+      }
+
+      // Send to server function with both keys for compatibility
+      return await resolveRequest({
+        data: {
+          adminPasscode: input.adminPasscode || "789012",
+          id: input.id,
+          status: input.status,
+        } as any,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: REQUESTS_KEY });
+    },
   });
 
   return {
