@@ -1,25 +1,25 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 @layer base {
   :root {
-    --background: 222 47% 7%;
+    --background: 224 71% 4%;
     --foreground: 210 40% 98%;
 
-    --card: 222 47% 10%;
+    --card: 222 47% 9%;
     --card-foreground: 210 40% 98%;
 
     --popover: 222 47% 9%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 217 91% 60%;
-    --primary-foreground: 210 40% 98%;
+    --primary-foreground: 222 47% 10%;
 
-    --secondary: 217 33% 17%;
+    --secondary: 217 33% 15%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217 33% 15%;
+    --muted: 217 33% 14%;
     --muted-foreground: 215 20% 65%;
 
     --accent: 142 76% 45%;
@@ -32,43 +32,51 @@
     --input: 217 33% 18%;
     --ring: 217 91% 60%;
 
-    --radius: 0.85rem;
+    --radius: 0.75rem;
   }
 }
 
+* {
+  border-color: hsl(var(--border));
+}
+
 body {
-  background-color: #0b0e14;
-  color: #f1f5f9;
+  background-color: #080b11;
+  color: #f8fafc;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+  padding: 0;
   -webkit-font-smoothing: antialiased;
 }
 
-/* 1win Premium Smooth Cards (No neon glare) */
+/* Button & Card Reset */
+button {
+  cursor: pointer;
+}
+
+/* 1win Premium Dark Surface */
 .neon-panel {
-  background: linear-gradient(180deg, rgba(20, 26, 38, 0.95) 0%, rgba(13, 17, 24, 0.98) 100%);
+  background: linear-gradient(180deg, #111827 0%, #0b0f17 100%);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  border-radius: 0.85rem;
 }
 
 .neon-text {
-  color: #ffffff;
+  color: #38bdf8;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
 
-/* Smooth Dark Scrollbar */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0b0e14;
+  background: #080b11;
 }
 ::-webkit-scrollbar-thumb {
   background: #1e293b;
   border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #334155;
 }
