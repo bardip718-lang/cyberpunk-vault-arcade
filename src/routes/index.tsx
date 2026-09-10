@@ -118,7 +118,7 @@ function Index() {
   const [activeUserMobile, setActiveUserMobile] = useState<string | null>(null);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
 
-  // Secure Verification Flow
+  // OTP Verification States
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [secretCode, setSecretCode] = useState<string>("");
   const [enteredOtp, setEnteredOtp] = useState<string>("");
@@ -136,35 +136,45 @@ function Index() {
     e.preventDefault();
     const cleanNumber = mobileNumber.replace(/\D/g, "");
 
-    // Valid Indian Mobile Regex Check (Starts with 6,7,8,9 and exactly 10 digits)
     if (!/^[6-9]\d{9}$/.test(cleanNumber)) {
       toast.error("Please enter a valid 10-digit mobile number starting with 6, 7, 8 or 9.");
       return;
     }
 
-    // Generate random 4-digit code (NOT shown on screen)
+    // Generate 4-digit code
     const randomOtp = Math.floor(1000 + Math.random() * 9000).toString();
     setSecretCode(randomOtp);
+    // Persist in session so app switch doesn't reset it
+    sessionStorage.setItem("win1_pending_otp", randomOtp);
+    sessionStorage.setItem("win1_pending_phone", cleanNumber);
     setStep("otp");
 
-    // WhatsApp Direct Verification link
-    const waText = encodeURIComponent(`Hi Admin, please verify my Win1 account.\nPhone: +91${cleanNumber}\nVerification Code: ${randomOtp}`);
-    const waUrl = `${SUPPORT_WHATSAPP}?text=${waText}`;
-    window.open(waUrl, "_blank");
+    // Clean WhatsApp redirect URL
+    const cleanWaNumber = (SUPPORT_WHATSAPP || "").replace(/\D/g, "");
+    const waText = encodeURIComponent(
+      `Hi Admin, please verify my Win1 account.\nPhone: +91${cleanNumber}\nVerification Code: ${randomOtp}`
+    );
+    const targetWa = cleanWaNumber ? `https://wa.me/${cleanWaNumber}?text=${waText}` : SUPPORT_WHATSAPP;
 
-    toast.success("WhatsApp opened. Send the verification message to get approved!");
+    window.open(targetWa, "_blank");
+    toast.success("WhatsApp opened. Send the verification message to Admin!");
   };
 
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!secretCode || enteredOtp.trim() !== secretCode) {
-      toast.error("Incorrect verification code! Ask Admin on WhatsApp.");
+    const savedOtp = secretCode || sessionStorage.getItem("win1_pending_otp");
+    const targetPhone =
+      mobileNumber.replace(/\D/g, "") || sessionStorage.getItem("win1_pending_phone") || "";
+
+    if (!savedOtp || enteredOtp.trim() !== savedOtp.trim()) {
+      toast.error("Incorrect verification code! Please check the code sent to WhatsApp.");
       return;
     }
 
-    const cleanNumber = mobileNumber.replace(/\D/g, "");
-    localStorage.setItem("win1_user_phone", cleanNumber);
-    setActiveUserMobile(cleanNumber);
+    localStorage.setItem("win1_user_phone", targetPhone);
+    setActiveUserMobile(targetPhone);
+    sessionStorage.removeItem("win1_pending_otp");
+    sessionStorage.removeItem("win1_pending_phone");
     setMobileAuthOpen(false);
     setStep("phone");
     setEnteredOtp("");
@@ -464,3 +474,4 @@ function Index() {
     </main>
   );
 }
+
