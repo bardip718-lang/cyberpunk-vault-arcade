@@ -74,6 +74,20 @@ export function PendingDeposits() {
         </span>
       </div>
 
+      <div className="space-y-1">
+        <Input
+          type="password"
+          value={passcode}
+          autoComplete="off"
+          placeholder="Operator passcode"
+          onChange={(e) => setPasscode(e.target.value)}
+          className="font-mono text-xs"
+        />
+        <p className="text-[10px] text-muted-foreground">
+          Required to approve or reject. Checked on the server; kept only in this tab.
+        </p>
+      </div>
+
       {isLoading ? (
         <div className="flex items-center justify-center gap-2 py-6 text-muted-foreground text-xs">
           <Loader2 className="size-4 animate-spin" /> Loading requests…
