@@ -132,7 +132,7 @@ function Index() {
     }
   }, [user, playAsGuest]);
 
-  const handleSendOtp = (e: React.FormEvent) => {
+    const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanNumber = mobileNumber.replace(/\D/g, "");
 
@@ -144,21 +144,19 @@ function Index() {
     // Generate 4-digit code
     const randomOtp = Math.floor(1000 + Math.random() * 9000).toString();
     setSecretCode(randomOtp);
-    // Persist in session so app switch doesn't reset it
     sessionStorage.setItem("win1_pending_otp", randomOtp);
     sessionStorage.setItem("win1_pending_phone", cleanNumber);
     setStep("otp");
 
-    // Clean WhatsApp redirect URL
-    const cleanWaNumber = (SUPPORT_WHATSAPP || "").replace(/\D/g, "");
-    const waText = encodeURIComponent(
-      `Hi Admin, please verify my Win1 account.\nPhone: +91${cleanNumber}\nVerification Code: ${randomOtp}`
-    );
-    const targetWa = cleanWaNumber ? `https://wa.me/${cleanWaNumber}?text=${waText}` : SUPPORT_WHATSAPP;
+    // Clean Indian Admin Number (Only 91 + 10 digit number)
+    const adminPhone = "918317848513";
+    const waText = encodeURIComponent(`Hi Admin, please verify my Win1 account.\nPhone: +91${cleanNumber}\nVerification Code: ${randomOtp}`);
+    const waUrl = `https://wa.me/${adminPhone}?text=${waText}`;
 
-    window.open(targetWa, "_blank");
-    toast.success("WhatsApp opened. Send the verification message to Admin!");
+    window.open(waUrl, "_blank");
+    toast.success("WhatsApp opened. Send the verification code to Admin!");
   };
+
 
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
