@@ -26,7 +26,7 @@ const ADMIN_EMAIL = "bardip718@gmail.com";
 const PRESET_AMOUNTS = [100, 250, 500, 1000, 2000, 5000];
 
 export function AdminConsole() {
-  const { payment, updatePaymentSettings, settleRequest } = useVault();
+  const { payment, updatePaymentSettings, settleRequest, refundWithdrawal } = useVault();
   const { requests, isLoading, resolveRequest } = useVaultRequests();
 
   const [upiId, setUpiId] = useState(payment.upiId);
@@ -34,7 +34,6 @@ export function AdminConsole() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  // Voucher Generator States
   const [voucherAmount, setVoucherAmount] = useState<number>(250);
   const [generatedCode, setGeneratedCode] = useState<string>("");
   const [copiedCode, setCopiedCode] = useState(false);
@@ -72,33 +71,49 @@ export function AdminConsole() {
     if (busyId) return;
     setBusyId(r.id);
     try {
+      // 1. Resolve on backend/request-store
       if (typeof resolveRequest === "function") {
         await resolveRequest({ adminEmail: ADMIN_EMAIL, id: r.id, status });
       }
 
-      // Sync wallet balance
-      settleRequest({
-        id: r.id,
-        kind: r.kind,
-        status,
-        amount: Number(r.amount),
-        userKey: r.userKey || r.userEmail,
-      });
+      // 2. Local request queue synchronization fallback
+      try {
+        const raw = localStorage.getItem("win1_vault_requests");
+        if (raw) {
+          const list = JSON.parse(raw);
+          const updated = list.map((item: any) =>
+            item.id === r.id ? { ...item, status } : item
+          );
+          localStorage.setItem("win1_vault_requests", JSON.stringify(updated));
+        }
+      } catch {
+        // ignore
+      }
+
+      // 3. Balance Adjustment
+      if (r.kind === "deposit" && status === "approved") {
+        settleRequest({
+          id: r.id,
+          kind: "deposit",
+          status: "approved",
+          amount: Number(r.amount),
+          userKey: r.userKey || r.userEmail,
+        });
+      } else if (r.kind === "withdrawal" && status === "rejected") {
+        // Refund locked amount back to player wallet
+        refundWithdrawal(Number(r.amount));
+      }
 
       toast.success(
         status === "approved"
-          ? `${r.kind.toUpperCase()} of ₹${r.amount} approved and balance updated!`
-          : `${r.kind.toUpperCase()} request rejected.`
+          ? `${r.kind.toUpperCase()} approved successfully!`
+          : `${r.kind.toUpperCase()} rejected${r.kind === "withdrawal" ? " & balance refunded" : ""}.`
       );
     } catch {
-      settleRequest({
-        id: r.id,
-        kind: r.kind,
-        status,
-        amount: Number(r.amount),
-        userKey: r.userKey || r.userEmail,
-      });
-      toast.success(`${r.kind.toUpperCase()} updated.`);
+      if (r.kind === "withdrawal" && status === "rejected") {
+        refundWithdrawal(Number(r.amount));
+      }
+      toast.success(`${r.kind.toUpperCase()} status updated.`);
     } finally {
       setBusyId(null);
     }
@@ -118,7 +133,7 @@ export function AdminConsole() {
         <h2 className="font-display text-xl font-bold neon-text">Admin Operator Console</h2>
       </div>
 
-      {/* 1. Credit Voucher Generator */}
+      {/* Voucher Generator */}
       <div className="p-4 rounded-xl border border-emerald-500/40 bg-emerald-950/20 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -176,7 +191,7 @@ export function AdminConsole() {
         )}
       </div>
 
-      {/* 2. Real Deposit Requests Queue */}
+      {/* Deposit Verification */}
       <div className="p-4 rounded-xl border border-primary/40 bg-secondary/20 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -190,7 +205,7 @@ export function AdminConsole() {
 
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Loading requests...
+            <Loader2 className="size-4 animate-spin" /> Loading deposits...
           </div>
         ) : pendingDeposits.length === 0 ? (
           <div className="flex flex-col items-center gap-1.5 py-4 text-muted-foreground">
@@ -213,7 +228,7 @@ export function AdminConsole() {
                   <Button
                     size="sm"
                     disabled={busyId === r.id}
-                    onClick={() => handleResolve(r, "approved")}
+                    onClick={() => void handleResolve(r, "approved")}
                     className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] h-8"
                   >
                     {busyId === r.id ? <Loader2 className="size-3.5 animate-spin mr-1" /> : <BadgeCheck className="size-3.5 mr-1" />}
@@ -223,7 +238,7 @@ export function AdminConsole() {
                     size="sm"
                     variant="destructive"
                     disabled={busyId === r.id}
-                    onClick={() => handleResolve(r, "rejected")}
+                    onClick={() => void handleResolve(r, "rejected")}
                     className="text-[11px] h-8"
                   >
                     <XCircle className="size-3.5 mr-1" /> Reject
@@ -235,7 +250,7 @@ export function AdminConsole() {
         )}
       </div>
 
-      {/* 3. Real Withdrawal Requests Queue */}
+      {/* Withdrawal Payouts */}
       <div className="p-4 rounded-xl border border-rose-500/40 bg-rose-950/20 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -274,7 +289,7 @@ export function AdminConsole() {
                   <Button
                     size="sm"
                     disabled={busyId === r.id}
-                    onClick={() => handleResolve(r, "approved")}
+                    onClick={() => void handleResolve(r, "approved")}
                     className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] h-8"
                   >
                     {busyId === r.id ? <Loader2 className="size-3.5 animate-spin mr-1" /> : <BadgeCheck className="size-3.5 mr-1" />}
@@ -284,7 +299,7 @@ export function AdminConsole() {
                     size="sm"
                     variant="destructive"
                     disabled={busyId === r.id}
-                    onClick={() => handleResolve(r, "rejected")}
+                    onClick={() => void handleResolve(r, "rejected")}
                     className="text-[11px] h-8"
                   >
                     <XCircle className="size-3.5 mr-1" /> Refund (Reject)
@@ -296,7 +311,7 @@ export function AdminConsole() {
         )}
       </div>
 
-      {/* 4. UPI Receiver Settings */}
+      {/* UPI Receiver Settings */}
       <form onSubmit={handleSavePayment} className="p-4 rounded-xl border border-border bg-secondary/30 space-y-3">
         <div className="flex items-center gap-2">
           <QrCode className="size-4 text-primary" />
@@ -335,5 +350,4 @@ export function AdminConsole() {
       </form>
     </div>
   );
-                    }
-
+}
