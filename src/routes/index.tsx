@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   KeyRound,
   ExternalLink,
+  Flame,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReelGame } from "@/components/reel-game";
@@ -31,6 +32,7 @@ import { WithdrawModal } from "@/components/withdraw-modal";
 import { WalletView } from "@/components/wallet-view";
 import { AviatorGame } from "@/components/aviator-game";
 import { MinesGame } from "@/components/mines-game";
+import { DailySpinModal } from "@/components/daily-spin-modal";
 import { SUPPORT_WHATSAPP } from "@/lib/notify";
 import { useVault, ADMIN_EMAIL } from "@/lib/vault-store";
 import { useVaultRequests } from "@/lib/use-vault-requests";
@@ -113,10 +115,21 @@ function Index() {
   const [activeTab, setActiveTab] = useState<string>("lobby");
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [dailySpinOpen, setDailySpinOpen] = useState(false);
   const [mobileAuthOpen, setMobileAuthOpen] = useState(false);
   const [mobileNumber, setMobileNumber] = useState("");
   const [activeUserMobile, setActiveUserMobile] = useState<string | null>(null);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
+
+  // Live Jackpot Running Counter
+  const [jackpotAmount, setJackpotAmount] = useState(1101901);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setJackpotAmount((prev) => prev + Math.floor(Math.random() * 5) + 1);
+    }, 2500);
+    return () => clearInterval(timer);
+  }, []);
 
   // OTP Verification States
   const [step, setStep] = useState<"phone" | "otp">("phone");
@@ -132,7 +145,7 @@ function Index() {
     }
   }, [user, playAsGuest]);
 
-    const handleSendOtp = (e: React.FormEvent) => {
+  const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanNumber = mobileNumber.replace(/\D/g, "");
 
@@ -141,22 +154,19 @@ function Index() {
       return;
     }
 
-    // Generate 4-digit code
     const randomOtp = Math.floor(1000 + Math.random() * 9000).toString();
     setSecretCode(randomOtp);
     sessionStorage.setItem("win1_pending_otp", randomOtp);
     sessionStorage.setItem("win1_pending_phone", cleanNumber);
     setStep("otp");
 
-    // Clean Indian Admin Number (Only 91 + 10 digit number)
     const adminPhone = "918317848513";
-    const waText = encodeURIComponent(`Hi Admin, please verify my Win1 account.\nPhone: +91${cleanNumber}\nVerification Code: ${randomOtp}`);
-    const waUrl = `https://wa.me/${adminPhone}?text=${waText}`;
-
-    window.open(waUrl, "_blank");
-    toast.success("WhatsApp opened. Send the verification code to Admin!");
+    const waText = encodeURIComponent(
+      `Hi Admin, please verify my Win1 account.\nPhone: +91${cleanNumber}\nVerification Code: ${randomOtp}`
+    );
+    window.open(`https://wa.me/${adminPhone}?text=${waText}`, "_blank");
+    toast.success("WhatsApp opened. Send the verification message to Admin!");
   };
-
 
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
@@ -269,6 +279,7 @@ function Index() {
         )}
       </div>
 
+      {/* Navigation Tabs */}
       <div className="mb-6 flex flex-wrap gap-2">
         <Button
           variant={activeTab === "lobby" ? "default" : "secondary"}
@@ -276,6 +287,13 @@ function Index() {
           className="font-display text-sm"
         >
           <Gamepad2 className="mr-2 size-4" /> Game Lobby
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => setDailySpinOpen(true)}
+          className="font-display text-sm border-amber-500/50 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+        >
+          <Sparkles className="mr-2 size-4 animate-spin" /> Daily Spin
         </Button>
         <Button
           variant={activeTab === "wallet" ? "default" : "secondary"}
@@ -294,8 +312,35 @@ function Index() {
       </div>
 
       {activeTab === "lobby" && (
-        <div>
-          <div className="mb-4 flex items-center justify-between">
+        <div className="space-y-6">
+          {/* 1win Inspired Live Jackpot Banner */}
+          <div className="relative overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 via-background to-cyan-950/40 p-5 shadow-xl">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="flex size-2.5 rounded-full bg-emerald-500 animate-ping" />
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-amber-400">
+                    Grand Cyber Jackpot • Live
+                  </span>
+                </div>
+                <h2 className="mt-1 font-display text-3xl font-black tracking-tight text-amber-300 drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]">
+                  ₹{jackpotAmount.toLocaleString("en-IN")}
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Draw updates live in real-time across all platform games.
+                </p>
+              </div>
+
+              <Button
+                onClick={() => setDailySpinOpen(true)}
+                className="bg-gradient-to-r from-amber-500 to-yellow-600 font-display font-bold uppercase tracking-wider text-slate-950 shadow-[0_0_20px_rgba(245,158,11,0.4)] hover:scale-105 transition-all"
+              >
+                <Flame className="mr-1.5 size-4 fill-slate-950" /> Free Daily Spin
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
             <h2 className="font-display text-2xl neon-text flex items-center gap-2">
               <Sparkles className="size-5 text-primary" /> Popular Games
             </h2>
@@ -450,7 +495,7 @@ function Index() {
                   />
                   <div className="flex gap-2">
                     <Button type="submit" className="w-full font-display">
-                      Verify &amp; Sign In
+                      Verify &am; Sign In
                     </Button>
                     <Button
                       type="button"
@@ -469,7 +514,7 @@ function Index() {
 
       <TopUpModal isOpen={topUpOpen} onClose={() => setTopUpOpen(false)} />
       <WithdrawModal open={withdrawOpen} onOpenChange={setWithdrawOpen} />
+      <DailySpinModal open={dailySpinOpen} onOpenChange={setDailySpinOpen} />
     </main>
   );
 }
-
