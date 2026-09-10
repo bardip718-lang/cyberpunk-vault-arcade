@@ -74,6 +74,17 @@ export function PaymentSettingsPanel() {
         Stored in the shared database — the Deposit modal reads these values live for every player.
       </p>
       <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="set-passcode">Operator passcode</Label>
+          <Input
+            id="set-passcode"
+            type="password"
+            autoComplete="off"
+            value={passcode}
+            placeholder="Required to save"
+            onChange={(e) => setPasscode(e.target.value)}
+          />
+        </div>
         <div className="space-y-1.5">
           <Label htmlFor="set-upi">UPI ID</Label>
           <Input
