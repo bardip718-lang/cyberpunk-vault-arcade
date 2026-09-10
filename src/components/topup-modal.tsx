@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Copy, Check, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 import { useVault } from "@/lib/vault-store";
-import { useVaultRequests } from "@/lib/use-vault-requests";
 
 export interface TopUpModalProps {
   isOpen?: boolean;
@@ -28,8 +27,6 @@ export function TopUpModal(props: TopUpModalProps) {
   };
 
   const { user, payment } = useVault();
-  const { createRequest } = useVaultRequests();
-
   const [amount, setAmount] = useState("500");
   const [utr, setUtr] = useState("");
   const [copied, setCopied] = useState(false);
@@ -41,15 +38,15 @@ export function TopUpModal(props: TopUpModalProps) {
   const handleCopy = () => {
     navigator.clipboard.writeText(upiId);
     setCopied(true);
-    toast.success("UPI ID copied to clipboard!");
+    toast.success("UPI ID copied!");
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!utr || utr.trim().length < 6) {
-      toast.error("Please enter a valid 12-digit UTR/Reference number.");
+      toast.error("Please enter a valid UTR/Reference number.");
       return;
     }
 
@@ -57,33 +54,27 @@ export function TopUpModal(props: TopUpModalProps) {
 
     try {
       const parsedAmount = parseFloat(amount);
-      const userKey = user.email || user.id || "player";
-      const userName = user.name || "Player";
+      const phone = localStorage.getItem("win1_user_phone") || user.email || user.id || "8317848513";
 
-      // Direct hook integration with fallback to match all signature variations
-      if (typeof createRequest === "function") {
-        try {
-          await createRequest({
-            kind: "deposit",
-            amount: parsedAmount,
-            utr: utr.trim(),
-            userKey,
-            userName,
-            userEmail: user.email || "",
-          });
-        } catch {
-          // Alternative argument structure if hook accepts positional params
-          // @ts-ignore
-          await createRequest("deposit", parsedAmount, utr.trim());
-        }
-      }
+      const newReq = {
+        id: "dep_" + Date.now(),
+        kind: "deposit",
+        amount: parsedAmount,
+        status: "pending",
+        phone,
+        utr: utr.trim(),
+        createdAt: new Date().toISOString(),
+      };
 
-      toast.success("Deposit request submitted! Admin will verify shortly.");
+      const existing = JSON.parse(localStorage.getItem("win1_vault_requests") || "[]");
+      localStorage.setItem("win1_vault_requests", JSON.stringify([newReq, ...existing]));
+
+      toast.success("Deposit request submitted! Awaiting operator approval.");
       if (props.onSuccess) props.onSuccess(parsedAmount);
       setUtr("");
       handleClose();
-    } catch (err) {
-      toast.error("Could not submit request. Please retry.");
+    } catch {
+      toast.error("Failed to submit request.");
     } finally {
       setSubmitting(false);
     }
@@ -91,7 +82,7 @@ export function TopUpModal(props: TopUpModalProps) {
 
   return (
     <Dialog open={isModalOpen} onOpenChange={(val) => !val && handleClose()}>
-      <DialogContent className="max-w-md border-cyan-500/30 bg-slate-950 text-white shadow-2xl shadow-cyan-950/50">
+      <DialogContent className="max-w-md border-cyan-500/30 bg-slate-950 text-white shadow-2xl">
         <DialogHeader>
           <DialogTitle className="text-center text-xl font-black uppercase tracking-wider text-cyan-400">
             Deposit Funds
@@ -99,7 +90,6 @@ export function TopUpModal(props: TopUpModalProps) {
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Preset Buttons */}
           <div>
             <label className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
               Select Amount (₹)
@@ -125,11 +115,10 @@ export function TopUpModal(props: TopUpModalProps) {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="Enter Custom Amount"
-              className="mt-2 border-slate-800 bg-slate-900 text-white focus-visible:ring-cyan-500"
+              className="mt-2 border-slate-800 bg-slate-900 text-white"
             />
           </div>
 
-          {/* UPI Receiver Info */}
           <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-3">
             <div className="flex items-center justify-between">
               <div>
@@ -144,14 +133,13 @@ export function TopUpModal(props: TopUpModalProps) {
                 variant="outline"
                 type="button"
                 onClick={handleCopy}
-                className="border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20"
+                className="border-cyan-500/40 bg-cyan-500/10 text-cyan-300"
               >
                 {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <label className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
@@ -170,7 +158,7 @@ export function TopUpModal(props: TopUpModalProps) {
             <Button
               type="submit"
               disabled={submitting}
-              className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 font-bold uppercase tracking-wider text-white shadow-lg shadow-cyan-500/25 hover:from-cyan-400 hover:to-blue-500"
+              className="w-full bg-cyan-600 hover:bg-cyan-500 font-bold uppercase tracking-wider text-white py-3"
             >
               {submitting ? "Submitting..." : "Submit Payment Proof"}
               <ArrowUpRight className="ml-2 h-4 w-4" />
@@ -182,5 +170,4 @@ export function TopUpModal(props: TopUpModalProps) {
   );
 }
 
-export const TopupModal = TopUpModal;
 export default TopUpModal;
