@@ -16,7 +16,7 @@ const SYMBOLS = [
 const MULTIPLIERS = [1, 2, 3, 5, 10, 15];
 
 export function FortuneGemsGame() {
-  const { user, applyOutcome, lockWithdrawal, refundWithdrawal, creditBalance } = useVault() as any;
+  const { user, addScore } = useVault();
 
   const [betAmount, setBetAmount] = useState<number>(5);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -44,17 +44,13 @@ export function FortuneGemsGame() {
   const handleSpin = () => {
     if (isSpinning) return;
 
-    if (user && typeof user.balance === "number" && user.balance < betAmount) {
-      toast.error("Insufficient score balance! Please deposit.");
+    if (!user || user.balance < betAmount) {
+      toast.error("Insufficient vault score balance! Please deposit.");
       return;
     }
 
-    // Step 1: Immediately deduct bet from score balance
-    if (typeof applyOutcome === "function") {
-      applyOutcome({ bet: betAmount, won: 0, game: "fortunegems" });
-    } else if (typeof lockWithdrawal === "function") {
-      lockWithdrawal(betAmount);
-    }
+    // Direct deduction from store balance
+    addScore(-betAmount);
 
     setIsSpinning(true);
     setLastWin(0);
@@ -84,7 +80,7 @@ export function FortuneGemsGame() {
         setActiveMultiplier(finalMulti);
         setIsSpinning(false);
 
-        // Check center line win (row 1)
+        // Center line win check (row 1)
         const c0 = finalGrid[0][1];
         const c1 = finalGrid[1][1];
         const c2 = finalGrid[2][1];
@@ -98,15 +94,8 @@ export function FortuneGemsGame() {
           const sym = SYMBOLS.find((s) => s.id === symId) || SYMBOLS[0];
           const payout = Math.round(betAmount * (sym.pay / 2) * finalMulti);
 
-          // Step 2: Add win amount to balance
-          if (typeof applyOutcome === "function") {
-            applyOutcome({ bet: 0, won: payout, game: "fortunegems" });
-          } else if (typeof creditBalance === "function") {
-            creditBalance(payout);
-          } else if (typeof refundWithdrawal === "function") {
-            refundWithdrawal(payout);
-          }
-
+          // Direct credit to store balance
+          addScore(payout);
           setLastWin(payout);
           toast.success(`🎉 WIN! +₹${payout} (${finalMulti}x Multiplier applied!)`);
         }
@@ -220,3 +209,4 @@ export function FortuneGemsGame() {
 }
 
 export default FortuneGemsGame;
+    
