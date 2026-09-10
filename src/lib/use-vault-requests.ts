@@ -1,19 +1,42 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  resolveRequest,
-  submitRequest,
   type RequestKind,
   type RequestStatus,
   type VaultRequest,
 } from "@/lib/requests.functions";
-import { requestsQuery, REQUESTS_KEY } from "@/lib/requests-query";
+import { REQUESTS_KEY } from "@/lib/requests-query";
+
+const LOCAL_STORAGE_KEY = "win1_vault_requests_db";
+
+function getStoredRequests(): VaultRequest[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+function saveStoredRequests(list: VaultRequest[]) {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list));
+  } catch {
+    // ignore
+  }
+}
 
 export function useVaultRequests() {
   const queryClient = useQueryClient();
-  const { data, isLoading, refetch } = useQuery(requestsQuery);
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: REQUESTS_KEY,
+    queryFn: () => getStoredRequests(),
+    initialData: () => getStoredRequests(),
+  });
 
   const create = useMutation({
-    mutationFn: (input: {
+    mutationFn: async (input: {
       kind: RequestKind;
       userKey: string;
       userName: string;
@@ -22,20 +45,31 @@ export function useVaultRequests() {
       utr?: string;
       destination?: string;
       screenshotDataUrl?: string;
-    }) =>
-      submitRequest({
-        data: {
-          kind: input.kind,
-          userKey: input.userKey,
-          userName: input.userName,
-          userEmail: input.userEmail,
-          amount: Math.round(input.amount),
-          utr: input.utr ?? "",
-          destination: input.destination ?? "",
-          screenshotDataUrl: input.screenshotDataUrl ?? "",
-        },
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: REQUESTS_KEY }),
+    }) => {
+      const current = getStoredRequests();
+      const newReq: VaultRequest = {
+        id: "req_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
+        kind: input.kind,
+        userKey: input.userKey,
+        userName: input.userName,
+        userEmail: input.userEmail,
+        amount: Math.round(input.amount),
+        utr: input.utr ?? "",
+        destination: input.destination ?? "",
+        screenshotDataUrl: input.screenshotDataUrl ?? "",
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      };
+      const updated = [newReq, ...current];
+      saveStoredRequests(updated);
+      return newReq;
+    },
+    onSuccess: (newReq) => {
+      queryClient.setQueryData(REQUESTS_KEY, (old: VaultRequest[] | undefined) => [
+        newReq,
+        ...(old || []),
+      ]);
+    },
   });
 
   const resolve = useMutation({
@@ -45,39 +79,18 @@ export function useVaultRequests() {
       id: string;
       status: Exclude<RequestStatus, "pending">;
     }) => {
-      // Optimistically update React Query cache immediately
+      const current = getStoredRequests();
+      const updated = current.map((r) =>
+        r.id === input.id ? { ...r, status: input.status } : r
+      );
+      saveStoredRequests(updated);
+      return { id: input.id, status: input.status };
+    },
+    onSuccess: ({ id, status }) => {
       queryClient.setQueryData(REQUESTS_KEY, (old: VaultRequest[] | undefined) => {
         if (!old) return [];
-        return old.map((r) =>
-          r.id === input.id ? { ...r, status: input.status } : r
-        );
+        return old.map((r) => (r.id === id ? { ...r, status } : r));
       });
-
-      // Update local persistent requests
-      try {
-        const raw = localStorage.getItem("win1_vault_requests");
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          const updated = parsed.map((item: any) =>
-            item.id === input.id ? { ...item, status: input.status } : item
-          );
-          localStorage.setItem("win1_vault_requests", JSON.stringify(updated));
-        }
-      } catch {
-        // ignore
-      }
-
-      // Send to server function with both keys for compatibility
-      return await resolveRequest({
-        data: {
-          adminPasscode: input.adminPasscode || "789012",
-          id: input.id,
-          status: input.status,
-        } as any,
-      });
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: REQUESTS_KEY });
     },
   });
 
