@@ -18,6 +18,7 @@ import {
   Plane,
   Disc,
   ChevronLeft,
+  KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReelGame } from "@/components/reel-game";
@@ -34,6 +35,7 @@ import { useVault, ADMIN_EMAIL } from "@/lib/vault-store";
 import { useVaultRequests } from "@/lib/use-vault-requests";
 import { useSettleOwnRequests } from "@/lib/use-settle-requests";
 import { ReferEarn } from "@/components/refer-earn";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -115,6 +117,11 @@ function Index() {
   const [activeUserMobile, setActiveUserMobile] = useState<string | null>(null);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
 
+  // OTP Verification States
+  const [step, setStep] = useState<"phone" | "otp">("phone");
+  const [generatedOtp, setGeneratedOtp] = useState<string>("");
+  const [enteredOtp, setEnteredOtp] = useState<string>("");
+
   useEffect(() => {
     const savedPhone = localStorage.getItem("win1_user_phone");
     if (savedPhone) {
@@ -124,16 +131,42 @@ function Index() {
     }
   }, [user, playAsGuest]);
 
-  const handlePhoneLogin = (e: React.FormEvent) => {
+  const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanNumber = mobileNumber.replace(/\D/g, "");
     if (cleanNumber.length !== 10) {
-      alert("Please enter a valid 10-digit mobile number");
+      toast.error("Please enter a valid 10-digit mobile number");
       return;
     }
+
+    // Invalid prefix check for Indian mobile numbers (must start with 6, 7, 8, 9)
+    if (!/^[6-9]\d{9}$/.test(cleanNumber)) {
+      toast.error("Enter a valid Indian mobile number starting with 6, 7, 8, or 9.");
+      return;
+    }
+
+    // Generate 4-digit challenge code
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    setGeneratedOtp(code);
+    setStep("otp");
+    toast.info(`Security Verification Code: ${code}`, { duration: 15000 });
+  };
+
+  const handleVerifyOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (enteredOtp.trim() !== generatedOtp) {
+      toast.error("Invalid verification code! Please check again.");
+      return;
+    }
+
+    const cleanNumber = mobileNumber.replace(/\D/g, "");
     localStorage.setItem("win1_user_phone", cleanNumber);
     setActiveUserMobile(cleanNumber);
     setMobileAuthOpen(false);
+    setStep("phone");
+    setEnteredOtp("");
+    setGeneratedOtp("");
+    toast.success("Mobile number verified successfully!");
   };
 
   const handleLogout = () => {
@@ -144,10 +177,6 @@ function Index() {
 
   const isOperator = isAdminUnlocked || (!!user && !user.guest && user.email === ADMIN_EMAIL);
   const pending = requests ? requests.filter((r) => r.status === "pending").length : 0;
-
-  // A user is considered logged in if they have a verified mobile number OR an
-  // active (non-guest) vault session. Logged-in users open the deposit/withdraw
-  // modals directly; only guests are prompted to sign in with a real number.
   const isLoggedIn = !!activeUserMobile || (!!user && !user.guest);
 
   const openDeposit = () => {
@@ -157,6 +186,7 @@ function Index() {
     }
     setTopUpOpen(true);
   };
+
   const openWithdraw = () => {
     if (!isLoggedIn) {
       setMobileAuthOpen(true);
@@ -204,7 +234,7 @@ function Index() {
               <LogOut className="size-4" /> Sign out
             </Button>
           ) : (
-            <Button variant="ghost" onClick={() => setMobileAuthOpen(true)}>
+            <Button variant="ghost" onClick={() => { setStep("phone"); setMobileAuthOpen(true); }}>
               <LogIn className="size-4" /> Sign in
             </Button>
           )}
@@ -307,7 +337,7 @@ function Index() {
       {activeTab === "aviator" && <AviatorGame />}
       {activeTab === "mines" && <MinesGame />}
       {activeTab === "wallet" && <WalletView onDeposit={openDeposit} onWithdraw={openWithdraw} />}
-      {activeTab === "refer" && <ReferEarn onSignIn={() => setMobileAuthOpen(true)} />}
+      {activeTab === "refer" && <ReferEarn onSignIn={() => { setStep("phone"); setMobileAuthOpen(true); }} />}
 
       {isOperator ? (
         <div className="neon-panel mt-10 rounded-xl p-5 border border-primary/40">
@@ -348,39 +378,86 @@ function Index() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
           <div className="neon-panel w-full max-w-md rounded-xl p-6 shadow-2xl border border-primary/30">
             <div className="flex items-center gap-2 mb-2">
-              <Phone className="size-5 text-primary" />
-              <h2 className="font-display text-xl neon-text">Mobile Sign In / Sign Up</h2>
+              {step === "phone" ? (
+                <Phone className="size-5 text-primary" />
+              ) : (
+                <KeyRound className="size-5 text-primary" />
+              )}
+              <h2 className="font-display text-xl neon-text">
+                {step === "phone" ? "Mobile Verification" : "Confirm Security Code"}
+              </h2>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Enter your 10-digit mobile number for instant play and fast withdrawals. No password or email needed.
-            </p>
-            <form onSubmit={handlePhoneLogin} className="space-y-4">
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-background/80 px-3 py-2">
-                <span className="font-display text-sm text-muted-foreground">+91</span>
-                <input
-                  type="tel"
-                  maxLength={10}
-                  placeholder="Enter 10-digit Mobile Number"
-                  value={mobileNumber}
-                  onChange={(e) => setMobileNumber(e.target.value)}
-                  className="w-full bg-transparent font-display outline-none text-foreground"
-                  autoFocus
-                  required
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button type="submit" className="w-full font-display">
-                  Continue &amp; Play
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setMobileAuthOpen(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
+
+            {step === "phone" ? (
+              <>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Enter your 10-digit mobile number. A 4-digit security code verification is required.
+                </p>
+                <form onSubmit={handleSendOtp} className="space-y-4">
+                  <div className="flex items-center gap-2 rounded-lg border border-border bg-background/80 px-3 py-2">
+                    <span className="font-display text-sm text-muted-foreground">+91</span>
+                    <input
+                      type="tel"
+                      maxLength={10}
+                      placeholder="Enter 10-digit Mobile Number"
+                      value={mobileNumber}
+                      onChange={(e) => setMobileNumber(e.target.value)}
+                      className="w-full bg-transparent font-display outline-none text-foreground"
+                      autoFocus
+                      required
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="submit" className="w-full font-display">
+                      Send Verification Code
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setMobileAuthOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Enter the 4-digit code shown for <strong>+91 {mobileNumber}</strong>:
+                </p>
+                <div className="p-2 mb-3 bg-primary/10 border border-primary/30 rounded text-center">
+                  <span className="text-xs text-muted-foreground">Demo Security Code: </span>
+                  <span className="font-mono font-bold text-primary tracking-widest text-base">
+                    {generatedOtp}
+                  </span>
+                </div>
+                <form onSubmit={handleVerifyOtp} className="space-y-4">
+                  <input
+                    type="text"
+                    maxLength={4}
+                    placeholder="Enter 4-Digit Code"
+                    value={enteredOtp}
+                    onChange={(e) => setEnteredOtp(e.target.value)}
+                    className="w-full text-center tracking-widest text-xl font-mono py-2 rounded-lg border border-border bg-background/80 outline-none text-foreground"
+                    autoFocus
+                    required
+                  />
+                  <div className="flex gap-2">
+                    <Button type="submit" className="w-full font-display">
+                      Verify &amp; Sign In
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setStep("phone")}
+                    >
+                      Back
+                    </Button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -389,6 +466,4 @@ function Index() {
       <WithdrawModal open={withdrawOpen} onOpenChange={setWithdrawOpen} />
     </main>
   );
-          }
-
-
+            }
