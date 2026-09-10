@@ -147,7 +147,7 @@ export const submitRequest = createServerFn({ method: "POST" })
   });
 
 const resolveSchema = z.object({
-  adminEmail: z.string().min(3),
+  adminPasscode: z.string().min(1).max(200),
   id: z.string().min(1),
   status: z.enum(["approved", "rejected"]),
 });
@@ -155,10 +155,33 @@ const resolveSchema = z.object({
 export const resolveRequest = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => resolveSchema.parse(input))
   .handler(async ({ data }): Promise<VaultRequest> => {
-    if (data.adminEmail.trim().toLowerCase() !== ADMIN_EMAIL) {
-      throw new Error("Not authorized to resolve requests.");
-    }
+    const { assertOperator } = await import("@/lib/admin-auth.server");
+    assertOperator(data.adminPasscode);
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: current, error: readErr } = await supabaseAdmin
+      .from("transaction_requests")
+      .select("*")
+      .eq("id", data.id)
+      .single();
+    if (readErr) throw new Error(readErr.message);
+
+    const row = current as unknown as Row;
+    if (row.status !== "pending") {
+      throw new Error("This request has already been resolved.");
+    }
+
+    if (row.kind === "withdrawal" && data.status === "approved") {
+      const { settledBalance } = await import("@/lib/balance.server");
+      const settled = await settledBalance(row.user_key);
+      if (Number(row.amount) > settled) {
+        throw new Error(
+          `Cannot approve: player's verified balance is only ₹${settled}. This payout is not backed by approved deposits.`,
+        );
+      }
+    }
+
     const { data: updated, error } = await supabaseAdmin
       .from("transaction_requests")
       .update({
@@ -167,6 +190,7 @@ export const resolveRequest = createServerFn({ method: "POST" })
         updated_at: new Date().toISOString(),
       } as never)
       .eq("id", data.id)
+      .eq("status", "pending")
       .select("*")
       .single();
     if (error) throw new Error(error.message);
