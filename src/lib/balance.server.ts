@@ -29,3 +29,23 @@ export async function availableWithdrawable(userKey: string): Promise<number> {
 
   return Math.max(0, credited - debited);
 }
+
+/** Balance backed only by already-approved rows (used when approving a payout). */
+export async function settledBalance(userKey: string): Promise<number> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const { data, error } = await supabaseAdmin
+    .from("transaction_requests")
+    .select("kind, amount, status")
+    .eq("user_key", userKey)
+    .eq("status", "approved")
+    .limit(2000);
+  if (error) throw new Error(error.message);
+
+  let balance = 0;
+  for (const row of (data ?? []) as { kind: string; amount: number }[]) {
+    const amount = Number(row.amount) || 0;
+    balance += row.kind === "deposit" ? amount : -amount;
+  }
+  return Math.max(0, balance);
+}
