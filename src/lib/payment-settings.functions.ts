@@ -11,7 +11,7 @@ export type PaymentSettingsRow = {
   updatedAt: string;
 };
 
-const ADMIN_EMAIL = "bardip718@gmail.com";
+
 
 export const getPaymentSettings = createServerFn({ method: "GET" }).handler(
   async (): Promise<PaymentSettingsRow | null> => {
@@ -49,7 +49,7 @@ export const getPaymentSettings = createServerFn({ method: "GET" }).handler(
 );
 
 const saveSchema = z.object({
-  adminEmail: z.string().email(),
+  adminPasscode: z.string().min(1).max(200),
   upiId: z.string().min(5).max(100),
   displayName: z.string().min(1).max(60),
   qrUrl: z.string().max(500),
@@ -59,9 +59,8 @@ const saveSchema = z.object({
 export const savePaymentSettings = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => saveSchema.parse(input))
   .handler(async ({ data }): Promise<PaymentSettingsRow> => {
-    if (data.adminEmail.trim().toLowerCase() !== ADMIN_EMAIL) {
-      throw new Error("Not authorized to change payment settings.");
-    }
+    const { assertOperator } = await import("@/lib/admin-auth.server");
+    assertOperator(data.adminPasscode);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabaseAdmin
       .from("payment_settings")

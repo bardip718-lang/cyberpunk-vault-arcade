@@ -1,7 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import type { Database } from "@/integrations/supabase/types";
 
 export type ReferralProfile = {
   userKey: string;
@@ -36,23 +34,6 @@ function mapRow(row: Row): ReferralProfile {
     bonusEarned: row.bonus_earned,
     invitedCount: row.invited_count,
   };
-}
-
-function publicClient() {
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-  return createClient<Database>(process.env["SUPABASE_URL"]!, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: {
-      fetch: (input, init) => {
-        const h = new Headers(init?.headers);
-        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) {
-          h.delete("Authorization");
-        }
-        h.set("apikey", key);
-        return fetch(input, { ...init, headers: h });
-      },
-    },
-  });
 }
 
 function makeCode(seed: string) {
@@ -122,7 +103,9 @@ const getSchema = z.object({ userKey: z.string().min(1).max(120) });
 export const getReferralProfile = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => getSchema.parse(input))
   .handler(async ({ data }): Promise<ReferralProfile | null> => {
-    const supabase = publicClient();
+    // The referrals table is no longer publicly readable; look up only the
+    // single requested row server-side.
+    const { supabaseAdmin: supabase } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabase
       .from("referrals")
       .select(SELECT_COLUMNS)

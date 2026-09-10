@@ -39,7 +39,11 @@ export function useVaultRequests() {
   });
 
   const resolve = useMutation({
-    mutationFn: (input: { adminEmail: string; id: string; status: Exclude<RequestStatus, "pending"> }) =>
+    mutationFn: (input: {
+      adminPasscode: string;
+      id: string;
+      status: Exclude<RequestStatus, "pending">;
+    }) =>
       resolveRequest({ data: input }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: REQUESTS_KEY }),
   });

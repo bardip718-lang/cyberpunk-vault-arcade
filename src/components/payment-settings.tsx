@@ -4,13 +4,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useVault } from "@/lib/vault-store";
+import { useAdminPasscode } from "@/lib/use-admin-passcode";
 import { savePaymentSettings } from "@/lib/payment-settings.functions";
 import { paymentSettingsQuery, PAYMENT_SETTINGS_KEY } from "@/lib/payment-settings-query";
 import { toast } from "sonner";
 
 export function PaymentSettingsPanel() {
-  const { user } = useVault();
+  const { passcode, setPasscode, hasPasscode } = useAdminPasscode();
   const queryClient = useQueryClient();
   const { data: settings } = useQuery(paymentSettingsQuery);
   const save = useServerFn(savePaymentSettings);
@@ -30,7 +30,7 @@ export function PaymentSettingsPanel() {
 
   const mutation = useMutation({
     mutationFn: (vars: { upiId: string; displayName: string; qrUrl: string; referralBonus: number }) =>
-      save({ data: { ...vars, adminEmail: user?.email ?? "" } }),
+      save({ data: { ...vars, adminPasscode: passcode } }),
     onSuccess: async (row) => {
       queryClient.setQueryData(PAYMENT_SETTINGS_KEY, row);
       await queryClient.invalidateQueries({ queryKey: PAYMENT_SETTINGS_KEY });
@@ -41,6 +41,10 @@ export function PaymentSettingsPanel() {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!hasPasscode) {
+      toast.error("Enter your operator passcode to save settings.");
+      return;
+    }
     const id = upiId.trim();
     if (id.length < 5 || id.length > 100 || !/^[\w.\-]{2,}@[\w.\-]{2,}$/.test(id)) {
       toast.error("Enter a valid UPI ID like name@bank");
@@ -70,6 +74,17 @@ export function PaymentSettingsPanel() {
         Stored in the shared database — the Deposit modal reads these values live for every player.
       </p>
       <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="set-passcode">Operator passcode</Label>
+          <Input
+            id="set-passcode"
+            type="password"
+            autoComplete="off"
+            value={passcode}
+            placeholder="Required to save"
+            onChange={(e) => setPasscode(e.target.value)}
+          />
+        </div>
         <div className="space-y-1.5">
           <Label htmlFor="set-upi">UPI ID</Label>
           <Input

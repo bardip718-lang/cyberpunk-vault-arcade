@@ -4,9 +4,10 @@ import { BadgeCheck, XCircle, Loader2, ImageIcon, Clock3, Inbox } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { useVaultRequests } from "@/lib/use-vault-requests";
 import { useVault } from "@/lib/vault-store";
+import { useAdminPasscode } from "@/lib/use-admin-passcode";
+import { Input } from "@/components/ui/input";
 import type { VaultRequest } from "@/lib/requests.functions";
 
-const ADMIN_EMAIL = "bardip718@gmail.com";
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -22,6 +23,7 @@ function formatTime(iso: string): string {
 export function PendingDeposits() {
   const { requests, isLoading, resolveRequest } = useVaultRequests();
   const { settleRequest } = useVault();
+  const { passcode, setPasscode, hasPasscode } = useAdminPasscode();
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const pending = requests.filter(
@@ -30,13 +32,15 @@ export function PendingDeposits() {
 
   const handleResolve = async (r: VaultRequest, status: "approved" | "rejected") => {
     if (busyId) return;
+    if (!hasPasscode) {
+      toast.error("Enter your operator passcode first.");
+      return;
+    }
     setBusyId(r.id);
     try {
-      if (typeof resolveRequest === "function") {
-        await resolveRequest({ adminEmail: ADMIN_EMAIL, id: r.id, status });
-      }
+      await resolveRequest({ adminPasscode: passcode, id: r.id, status });
 
-      // Direct balance credit to the player's wallet store
+      // Mirror the confirmed decision into this browser's wallet view.
       settleRequest({
         id: r.id,
         kind: "deposit",
@@ -50,14 +54,7 @@ export function PendingDeposits() {
         toast.success("Deposit rejected.");
       }
     } catch (err) {
-      // Fallback: Agar backend fail bhi kare, client side wallet balance zaroor update karein
-      settleRequest({
-        id: r.id,
-        kind: "deposit",
-        status,
-        amount: Number(r.amount),
-      });
-      toast.success(status === "approved" ? `₹${r.amount} approved and credited!` : "Deposit rejected.");
+      toast.error(err instanceof Error ? err.message : "Could not update this request.");
     } finally {
       setBusyId(null);
     }
@@ -75,6 +72,20 @@ export function PendingDeposits() {
         <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded font-mono font-bold">
           {pending.length} WAITING
         </span>
+      </div>
+
+      <div className="space-y-1">
+        <Input
+          type="password"
+          value={passcode}
+          autoComplete="off"
+          placeholder="Operator passcode"
+          onChange={(e) => setPasscode(e.target.value)}
+          className="font-mono text-xs"
+        />
+        <p className="text-[10px] text-muted-foreground">
+          Required to approve or reject. Checked on the server; kept only in this tab.
+        </p>
       </div>
 
       {isLoading ? (
