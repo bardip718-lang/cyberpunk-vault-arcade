@@ -21,6 +21,7 @@ import {
   KeyRound,
   ExternalLink,
   Flame,
+  LayoutGrid,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReelGame } from "@/components/reel-game";
@@ -55,9 +56,12 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
+type GameCategory = "all" | "slots" | "crash" | "instant";
+
 const GAMES = [
   {
     id: "fortunegems",
+    category: "slots",
     name: "Fortune Gems 2",
     tagline: "3 Reels + 15x Multiplier Special Reel",
     badge: "HOT",
@@ -67,17 +71,8 @@ const GAMES = [
     gradient: "from-amber-500/20 via-primary/10 to-transparent",
   },
   {
-    id: "roulette",
-    name: "Neon Roulette",
-    tagline: "Red, Black & 14x Green Wheel",
-    badge: "NEW",
-    badgeColor: "bg-purple-500/20 text-purple-400 border-purple-500/30",
-    icon: Disc,
-    players: "1,890 Playing",
-    gradient: "from-purple-500/20 via-primary/10 to-transparent",
-  },
-  {
     id: "aviator",
+    category: "crash",
     name: "Aviator Crash",
     tagline: "High Multiplier Real-Time Cashout",
     badge: "HOT",
@@ -88,6 +83,7 @@ const GAMES = [
   },
   {
     id: "mines",
+    category: "instant",
     name: "Cyber Mines",
     tagline: "Uncover Gems & Avoid the Traps",
     badge: "POPULAR",
@@ -97,7 +93,19 @@ const GAMES = [
     gradient: "from-emerald-500/20 via-primary/10 to-transparent",
   },
   {
+    id: "roulette",
+    category: "instant",
+    name: "Neon Roulette",
+    tagline: "Red, Black & 14x Green Wheel",
+    badge: "NEW",
+    badgeColor: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+    icon: Disc,
+    players: "1,890 Playing",
+    gradient: "from-purple-500/20 via-primary/10 to-transparent",
+  },
+  {
     id: "reels",
+    category: "slots",
     name: "Neon Reels 3x5",
     tagline: "Classic Vegas Multi-Line Slot",
     badge: "CLASSIC",
@@ -108,6 +116,7 @@ const GAMES = [
   },
   {
     id: "cards",
+    category: "instant",
     name: "Data Match Matrix",
     tagline: "Cyberpunk Memory & Card Grid",
     badge: "SKILL",
@@ -124,6 +133,7 @@ function Index() {
   useSettleOwnRequests();
 
   const [activeTab, setActiveTab] = useState<string>("lobby");
+  const [selectedCategory, setSelectedCategory] = useState<GameCategory>("all");
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [dailySpinOpen, setDailySpinOpen] = useState(false);
@@ -132,7 +142,7 @@ function Index() {
   const [activeUserMobile, setActiveUserMobile] = useState<string | null>(null);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
 
-  // Live Jackpot Running Counter
+  // Live Jackpot Counter
   const [jackpotAmount, setJackpotAmount] = useState(1101901);
 
   useEffect(() => {
@@ -237,6 +247,10 @@ function Index() {
     }
   };
 
+  const filteredGames = GAMES.filter((g) =>
+    selectedCategory === "all" ? true : g.category === selectedCategory
+  );
+
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-16 pt-6">
       <header className="neon-panel mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl p-4">
@@ -324,7 +338,7 @@ function Index() {
 
       {activeTab === "lobby" && (
         <div className="space-y-6">
-          {/* 1win Inspired Live Jackpot Banner */}
+          {/* Live Jackpot Banner */}
           <div className="relative overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 via-background to-cyan-950/40 p-5 shadow-xl">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
@@ -351,15 +365,44 @@ function Index() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-2xl neon-text flex items-center gap-2">
-              <Sparkles className="size-5 text-primary" /> Popular Games
-            </h2>
-            <span className="text-xs text-muted-foreground">Select a game to start</span>
+          {/* 1win / Yono Inspired Game Category Filter Bar */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <Button
+              size="sm"
+              variant={selectedCategory === "all" ? "default" : "outline"}
+              onClick={() => setSelectedCategory("all")}
+              className="h-9 px-4 font-display text-xs tracking-wider"
+            >
+              <LayoutGrid className="mr-1.5 size-3.5" /> All Games
+            </Button>
+            <Button
+              size="sm"
+              variant={selectedCategory === "slots" ? "default" : "outline"}
+              onClick={() => setSelectedCategory("slots")}
+              className="h-9 px-4 font-display text-xs tracking-wider"
+            >
+              <Flame className="mr-1.5 size-3.5 text-amber-400" /> Slots (777)
+            </Button>
+            <Button
+              size="sm"
+              variant={selectedCategory === "crash" ? "default" : "outline"}
+              onClick={() => setSelectedCategory("crash")}
+              className="h-9 px-4 font-display text-xs tracking-wider"
+            >
+              <Plane className="mr-1.5 size-3.5 text-rose-400" /> Crash Games
+            </Button>
+            <Button
+              size="sm"
+              variant={selectedCategory === "instant" ? "default" : "outline"}
+              onClick={() => setSelectedCategory("instant")}
+              className="h-9 px-4 font-display text-xs tracking-wider"
+            >
+              <Zap className="mr-1.5 size-3.5 text-cyan-400" /> Instant Win
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {GAMES.map((g) => {
+            {filteredGames.map((g) => {
               const IconComp = g.icon;
               return (
                 <div
@@ -462,8 +505,8 @@ function Index() {
                   Enter your real 10-digit mobile number. Verification via WhatsApp is required.
                 </p>
                 <form onSubmit={handleSendOtp} className="space-y-4">
-                  <div className="flex items-center gap-2 rounded-lg border border-border bg-background/80 px-3 py-2">
-                    <span className="font-display text-sm text-muted-foreground">+91</span>
+                  <div className="flex items-center gap-2 rounded-lg border border-border bg-background/80 px-3 py-
+                      <span className="font-display text-sm text-muted-foreground">+91</span>
                     <input
                       type="tel"
                       maxLength={10}
