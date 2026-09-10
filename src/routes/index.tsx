@@ -33,6 +33,7 @@ import { WalletView } from "@/components/wallet-view";
 import { AviatorGame } from "@/components/aviator-game";
 import { MinesGame } from "@/components/mines-game";
 import { DailySpinModal } from "@/components/daily-spin-modal";
+import { FortuneGemsGame } from "@/components/fortune-gems-game";
 import { SUPPORT_WHATSAPP } from "@/lib/notify";
 import { useVault, ADMIN_EMAIL } from "@/lib/vault-store";
 import { useVaultRequests } from "@/lib/use-vault-requests";
@@ -55,6 +56,16 @@ export const Route = createFileRoute("/")({
 });
 
 const GAMES = [
+  {
+    id: "fortunegems",
+    name: "Fortune Gems 2",
+    tagline: "3 Reels + 15x Multiplier Special Reel",
+    badge: "HOT",
+    badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+    icon: Flame,
+    players: "2,350 Playing",
+    gradient: "from-amber-500/20 via-primary/10 to-transparent",
+  },
   {
     id: "roulette",
     name: "Neon Roulette",
@@ -387,6 +398,7 @@ function Index() {
         </div>
       )}
 
+      {activeTab === "fortunegems" && <FortuneGemsGame />}
       {activeTab === "roulette" && <RouletteGame />}
       {activeTab === "reels" && <ReelGame />}
       {activeTab === "cards" && <CardGame />}
@@ -495,7 +507,7 @@ function Index() {
                   />
                   <div className="flex gap-2">
                     <Button type="submit" className="w-full font-display">
-                      Verify &am; Sign In
+                      Verify &amp; Sign In
                     </Button>
                     <Button
                       type="button"
