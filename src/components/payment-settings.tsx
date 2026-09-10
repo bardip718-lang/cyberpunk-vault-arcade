@@ -4,13 +4,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useVault } from "@/lib/vault-store";
+import { useAdminPasscode } from "@/lib/use-admin-passcode";
 import { savePaymentSettings } from "@/lib/payment-settings.functions";
 import { paymentSettingsQuery, PAYMENT_SETTINGS_KEY } from "@/lib/payment-settings-query";
 import { toast } from "sonner";
 
 export function PaymentSettingsPanel() {
-  const { user } = useVault();
+  const { passcode, setPasscode, hasPasscode } = useAdminPasscode();
   const queryClient = useQueryClient();
   const { data: settings } = useQuery(paymentSettingsQuery);
   const save = useServerFn(savePaymentSettings);
@@ -30,7 +30,7 @@ export function PaymentSettingsPanel() {
 
   const mutation = useMutation({
     mutationFn: (vars: { upiId: string; displayName: string; qrUrl: string; referralBonus: number }) =>
-      save({ data: { ...vars, adminEmail: user?.email ?? "" } }),
+      save({ data: { ...vars, adminPasscode: passcode } }),
     onSuccess: async (row) => {
       queryClient.setQueryData(PAYMENT_SETTINGS_KEY, row);
       await queryClient.invalidateQueries({ queryKey: PAYMENT_SETTINGS_KEY });
