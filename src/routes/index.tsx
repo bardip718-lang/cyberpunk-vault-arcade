@@ -365,7 +365,7 @@ function Index() {
             </div>
           </div>
 
-          {/* 1win / Yono Inspired Game Category Filter Bar */}
+          {/* Game Category Filter Bar */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
             <Button
               size="sm"
@@ -505,8 +505,8 @@ function Index() {
                   Enter your real 10-digit mobile number. Verification via WhatsApp is required.
                 </p>
                 <form onSubmit={handleSendOtp} className="space-y-4">
-                  <div className="flex items-center gap-2 rounded-lg border border-border bg-background/80 px-3 py-
-                      <span className="font-display text-sm text-muted-foreground">+91</span>
+                  <div className="flex items-center gap-2 rounded-lg border border-border bg-background/80 px-3 py-2">
+                       <span className="font-display text-sm text-muted-foreground">+91</span>
                     <input
                       type="tel"
                       maxLength={10}
