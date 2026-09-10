@@ -19,6 +19,7 @@ import {
   Disc,
   ChevronLeft,
   KeyRound,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReelGame } from "@/components/reel-game";
@@ -117,9 +118,9 @@ function Index() {
   const [activeUserMobile, setActiveUserMobile] = useState<string | null>(null);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
 
-  // OTP Verification States
+  // Secure Verification Flow
   const [step, setStep] = useState<"phone" | "otp">("phone");
-  const [generatedOtp, setGeneratedOtp] = useState<string>("");
+  const [secretCode, setSecretCode] = useState<string>("");
   const [enteredOtp, setEnteredOtp] = useState<string>("");
 
   useEffect(() => {
@@ -134,28 +135,30 @@ function Index() {
   const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanNumber = mobileNumber.replace(/\D/g, "");
-    if (cleanNumber.length !== 10) {
-      toast.error("Please enter a valid 10-digit mobile number");
-      return;
-    }
 
-    // Invalid prefix check for Indian mobile numbers (must start with 6, 7, 8, 9)
+    // Valid Indian Mobile Regex Check (Starts with 6,7,8,9 and exactly 10 digits)
     if (!/^[6-9]\d{9}$/.test(cleanNumber)) {
-      toast.error("Enter a valid Indian mobile number starting with 6, 7, 8, or 9.");
+      toast.error("Please enter a valid 10-digit mobile number starting with 6, 7, 8 or 9.");
       return;
     }
 
-    // Generate 4-digit challenge code
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
-    setGeneratedOtp(code);
+    // Generate random 4-digit code (NOT shown on screen)
+    const randomOtp = Math.floor(1000 + Math.random() * 9000).toString();
+    setSecretCode(randomOtp);
     setStep("otp");
-    toast.info(`Security Verification Code: ${code}`, { duration: 15000 });
+
+    // WhatsApp Direct Verification link
+    const waText = encodeURIComponent(`Hi Admin, please verify my Win1 account.\nPhone: +91${cleanNumber}\nVerification Code: ${randomOtp}`);
+    const waUrl = `${SUPPORT_WHATSAPP}?text=${waText}`;
+    window.open(waUrl, "_blank");
+
+    toast.success("WhatsApp opened. Send the verification message to get approved!");
   };
 
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
-    if (enteredOtp.trim() !== generatedOtp) {
-      toast.error("Invalid verification code! Please check again.");
+    if (!secretCode || enteredOtp.trim() !== secretCode) {
+      toast.error("Incorrect verification code! Ask Admin on WhatsApp.");
       return;
     }
 
@@ -165,7 +168,7 @@ function Index() {
     setMobileAuthOpen(false);
     setStep("phone");
     setEnteredOtp("");
-    setGeneratedOtp("");
+    setSecretCode("");
     toast.success("Mobile number verified successfully!");
   };
 
@@ -384,14 +387,14 @@ function Index() {
                 <KeyRound className="size-5 text-primary" />
               )}
               <h2 className="font-display text-xl neon-text">
-                {step === "phone" ? "Mobile Verification" : "Confirm Security Code"}
+                {step === "phone" ? "Mobile Verification" : "Enter Verification OTP"}
               </h2>
             </div>
 
             {step === "phone" ? (
               <>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Enter your 10-digit mobile number. A 4-digit security code verification is required.
+                  Enter your real 10-digit mobile number. Verification via WhatsApp is required.
                 </p>
                 <form onSubmit={handleSendOtp} className="space-y-4">
                   <div className="flex items-center gap-2 rounded-lg border border-border bg-background/80 px-3 py-2">
@@ -409,7 +412,7 @@ function Index() {
                   </div>
                   <div className="flex gap-2">
                     <Button type="submit" className="w-full font-display">
-                      Send Verification Code
+                      Verify on WhatsApp <ExternalLink className="ml-1 size-3.5" />
                     </Button>
                     <Button
                       type="button"
@@ -424,19 +427,13 @@ function Index() {
             ) : (
               <>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Enter the 4-digit code shown for <strong>+91 {mobileNumber}</strong>:
+                  Verification message sent to Admin for <strong>+91 {mobileNumber}</strong>. Enter the 4-digit code provided by Admin:
                 </p>
-                <div className="p-2 mb-3 bg-primary/10 border border-primary/30 rounded text-center">
-                  <span className="text-xs text-muted-foreground">Demo Security Code: </span>
-                  <span className="font-mono font-bold text-primary tracking-widest text-base">
-                    {generatedOtp}
-                  </span>
-                </div>
                 <form onSubmit={handleVerifyOtp} className="space-y-4">
                   <input
                     type="text"
                     maxLength={4}
-                    placeholder="Enter 4-Digit Code"
+                    placeholder="Enter 4-Digit OTP"
                     value={enteredOtp}
                     onChange={(e) => setEnteredOtp(e.target.value)}
                     className="w-full text-center tracking-widest text-xl font-mono py-2 rounded-lg border border-border bg-background/80 outline-none text-foreground"
@@ -466,4 +463,4 @@ function Index() {
       <WithdrawModal open={withdrawOpen} onOpenChange={setWithdrawOpen} />
     </main>
   );
-            }
+}
