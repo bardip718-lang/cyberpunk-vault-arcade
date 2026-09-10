@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-const ADMIN_EMAIL = "bardip718@gmail.com";
 const BUCKET = "deposit-proofs";
 
 export type RequestKind = "deposit" | "withdrawal";
@@ -101,6 +100,16 @@ export const submitRequest = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => submitSchema.parse(input))
   .handler(async ({ data }): Promise<VaultRequest> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (data.kind === "withdrawal") {
+      const { availableWithdrawable } = await import("@/lib/balance.server");
+      const available = await availableWithdrawable(data.userKey);
+      if (data.amount > available) {
+        throw new Error(
+          `Withdrawal exceeds your verified balance. You can withdraw up to ₹${available}.`,
+        );
+      }
+    }
 
     let screenshotPath = "";
     if (data.screenshotDataUrl.startsWith("data:image/")) {
