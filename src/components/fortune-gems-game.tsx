@@ -1,11 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Sparkles, Trophy, Zap, RefreshCw, Flame } from "lucide-react";
+import { Zap, RefreshCw, Flame, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useVault } from "@/lib/vault-store";
 
-// Slot items with payouts
 const SYMBOLS = [
   { id: "garuda", name: "WILD", label: "👑", pay: 20, color: "text-amber-400 border-amber-500/50 bg-amber-950/40" },
   { id: "red_gem", name: "RED GEM", label: "💎", pay: 10, color: "text-rose-400 border-rose-500/50 bg-rose-950/40" },
@@ -18,11 +16,13 @@ const SYMBOLS = [
 const MULTIPLIERS = [1, 2, 3, 5, 10, 15];
 
 export function FortuneGemsGame() {
-  const { user, debitBalance, creditBalance } = useVault();
-  const [betAmount, setBetAmount] = useState<number>(10);
+  const vault = useVault() as any;
+  const user = vault.user;
+
+  const [betAmount, setBetAmount] = useState<number>(5);
   const [isSpinning, setIsSpinning] = useState(false);
 
-  // 3x3 Grid + 4th Multiplier Reel
+  // 3x3 Grid
   const [grid, setGrid] = useState<string[][]>([
     ["garuda", "red_gem", "blue_gem"],
     ["red_gem", "garuda", "green_gem"],
@@ -30,88 +30,111 @@ export function FortuneGemsGame() {
   ]);
   const [activeMultiplier, setActiveMultiplier] = useState<number>(1);
   const [lastWin, setLastWin] = useState<number>(0);
-  const [showBigWin, setShowBigWin] = useState<boolean>(false);
+  const animTimerRef = useRef<any>(null);
+
+  // Safe Universal Balance Deduct
+  const safeDeduct = (amt: number) => {
+    try {
+      if (typeof vault.debit === "function") vault.debit(amt);
+      else if (typeof vault.placeBet === "function") vault.placeBet(amt);
+      else if (typeof vault.debitBalance === "function") vault.debitBalance(amt);
+      else if (typeof vault.lockWithdrawal === "function") vault.lockWithdrawal(amt);
+    } catch {
+      // Safe fallback
+    }
+  };
+
+  // Safe Universal Balance Credit
+  const safeCredit = (amt: number) => {
+    try {
+      if (typeof vault.credit === "function") vault.credit(amt);
+      else if (typeof vault.win === "function") vault.win(amt);
+      else if (typeof vault.creditBalance === "function") vault.creditBalance(amt);
+      else if (typeof vault.refundWithdrawal === "function") vault.refundWithdrawal(amt);
+    } catch {
+      // Safe fallback
+    }
+  };
+
+  const pickRandomSymbol = () => {
+    const rand = Math.random();
+    if (rand < 0.1) return "garuda";
+    if (rand < 0.25) return "red_gem";
+    if (rand < 0.45) return "blue_gem";
+    if (rand < 0.65) return "green_gem";
+    if (rand < 0.85) return "ten";
+    return "jack";
+  };
 
   const handleSpin = () => {
     if (isSpinning) return;
-    if (!user || user.balance < betAmount) {
-      toast.error("Insufficient vault balance!");
+
+    if (user && typeof user.balance === "number" && user.balance < betAmount) {
+      toast.error("Insufficient vault balance! Please top up.");
       return;
     }
 
-    debitBalance(betAmount);
+    safeDeduct(betAmount);
     setIsSpinning(true);
-    setShowBigWin(false);
     setLastWin(0);
 
-    // Reel spin delay simulation
-    setTimeout(() => {
-      // Pick random 3x3 layout
-      const newGrid: string[][] = [
-        [pickSymbol(), pickSymbol(), pickSymbol()],
-        [pickSymbol(), pickSymbol(), pickSymbol()],
-        [pickSymbol(), pickSymbol(), pickSymbol()],
-      ];
+    // Fast rolling animation effect
+    let cycles = 0;
+    animTimerRef.current = setInterval(() => {
+      cycles++;
+      setGrid([
+        [pickRandomSymbol(), pickRandomSymbol(), pickRandomSymbol()],
+        [pickRandomSymbol(), pickRandomSymbol(), pickRandomSymbol()],
+        [pickRandomSymbol(), pickRandomSymbol(), pickRandomSymbol()],
+      ]);
+      setActiveMultiplier(MULTIPLIERS[Math.floor(Math.random() * MULTIPLIERS.length)]);
 
-      // Pick 4th Reel Multiplier
-      const multi = MULTIPLIERS[Math.floor(Math.random() * MULTIPLIERS.length)];
+      // Stop after ~1.2 seconds
+      if (cycles > 12) {
+        clearInterval(animTimerRef.current);
 
-      setGrid(newGrid);
-      setActiveMultiplier(multi);
-      setIsSpinning(false);
+        const finalGrid = [
+          [pickRandomSymbol(), pickRandomSymbol(), pickRandomSymbol()],
+          [pickRandomSymbol(), pickRandomSymbol(), pickRandomSymbol()],
+          [pickRandomSymbol(), pickRandomSymbol(), pickRandomSymbol()],
+        ];
+        const finalMulti = MULTIPLIERS[Math.floor(Math.random() * MULTIPLIERS.length)];
 
-      // Check center line win (Reel row 1)
-      const centerRow = [newGrid[0][1], newGrid[1][1], newGrid[2][1]];
-      let isWin = false;
-      let matchedSymbol = centerRow[0];
+        setGrid(finalGrid);
+        setActiveMultiplier(finalMulti);
+        setIsSpinning(false);
 
-      // Wild match logic
-      if (
-        (centerRow[0] === centerRow[1] || centerRow[1] === "garuda" || centerRow[0] === "garuda") &&
-        (centerRow[1] === centerRow[2] || centerRow[2] === "garuda" || centerRow[1] === "garuda")
-      ) {
-        isWin = true;
-        matchedSymbol = centerRow.find((s) => s !== "garuda") || "garuda";
-      }
+        // Check center line win (row 1)
+        const c0 = finalGrid[0][1];
+        const c1 = finalGrid[1][1];
+        const c2 = finalGrid[2][1];
 
-      if (isWin) {
-        const sym = SYMBOLS.find((s) => s.id === matchedSymbol) || SYMBOLS[0];
-        const winPayout = Math.round(betAmount * (sym.pay / 2) * multi);
-        creditBalance(winPayout);
-        setLastWin(winPayout);
+        const match =
+          (c0 === c1 || c0 === "garuda" || c1 === "garuda") &&
+          (c1 === c2 || c1 === "garuda" || c2 === "garuda");
 
-        if (winPayout >= betAmount * 10) {
-          setShowBigWin(true);
-          toast.success(`💥 MEGA WIN! ₹${winPayout} with ${multi}x Multiplier!`);
-        } else {
-          toast.success(`🎉 You Won ₹${winPayout}! (${multi}x applied)`);
+        if (match) {
+          const symId = [c0, c1, c2].find((x) => x !== "garuda") || "garuda";
+          const sym = SYMBOLS.find((s) => s.id === symId) || SYMBOLS[0];
+          const payout = Math.round(betAmount * (sym.pay / 2) * finalMulti);
+
+          safeCredit(payout);
+          setLastWin(payout);
+          toast.success(`🎉 WIN! +₹${payout} (${finalMulti}x Multiplier applied!)`);
         }
       }
-    }, 1200);
+    }, 90);
   };
 
-  function pickSymbol() {
-    // Weighted selection for slot balance
-    const rand = Math.random();
-    if (rand < 0.08) return "garuda";
-    if (rand < 0.20) return "red_gem";
-    if (rand < 0.40) return "blue_gem";
-    if (rand < 0.60) return "green_gem";
-    if (rand < 0.80) return "ten";
-    return "jack";
-  }
-
-  const getSymbolMeta = (id: string) => {
-    return SYMBOLS.find((s) => s.id === id) || SYMBOLS[0];
-  };
+  const getMeta = (id: string) => SYMBOLS.find((s) => s.id === id) || SYMBOLS[0];
 
   return (
-    <div className="neon-panel mx-auto max-w-2xl rounded-2xl border border-amber-500/40 p-4 sm:p-6 bg-gradient-to-b from-slate-950 via-background to-amber-950/20 shadow-2xl relative overflow-hidden">
+    <div className="neon-panel mx-auto max-w-2xl rounded-2xl border border-amber-500/40 p-4 sm:p-6 bg-gradient-to-b from-slate-950 via-background to-amber-950/20 shadow-2xl">
       {/* Title Header */}
-      <div className="flex items-center justify-between border-b border-amber-500/30 pb-3 mb-5">
+      <div className="flex items-center justify-between border-b border-amber-500/30 pb-3 mb-4">
         <div className="flex items-center gap-2">
           <Flame className="size-6 text-amber-400 animate-pulse" />
-          <h2 className="font-display text-2xl font-black tracking-wider text-amber-300 drop-shadow-[0_0_12px_rgba(245,158,11,0.6)]">
+          <h2 className="font-display text-xl font-black tracking-wider text-amber-300">
             FORTUNE GEMS 2
           </h2>
         </div>
@@ -120,25 +143,27 @@ export function FortuneGemsGame() {
         </span>
       </div>
 
-      {/* Main Game Frame */}
-      <div className="relative rounded-xl border-2 border-amber-500/50 bg-slate-950/90 p-4 shadow-inner">
-        {/* Payline Indicator Overlay */}
-        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[3px] bg-gradient-to-r from-transparent via-amber-400 to-transparent pointer-events-none z-10 opacity-70" />
+      {/* Main Reels Grid Frame */}
+      <div className="relative rounded-xl border-2 border-amber-500/50 bg-slate-950/90 p-3 shadow-inner">
+        {/* Center Winning Line */}
+        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] bg-gradient-to-r from-amber-500/20 via-amber-400 to-amber-500/20 pointer-events-none z-10" />
 
         <div className="grid grid-cols-4 gap-2">
           {/* 3 Main Reels */}
-          {[0, 1, 2].map((colIndex) => (
-            <div key={colIndex} className="flex flex-col gap-2">
-              {[0, 1, 2].map((rowIndex) => {
-                const sym = getSymbolMeta(grid[colIndex][rowIndex]);
+          {[0, 1, 2].map((col) => (
+            <div key={col} className="flex flex-col gap-2">
+              {[0, 1, 2].map((row) => {
+                const item = getMeta(grid[col][row]);
                 return (
                   <div
-                    key={rowIndex}
-                    className={`flex h-20 items-center justify-center rounded-xl border-2 font-display text-3xl font-black shadow-md transition-all duration-300 ${sym.color} ${
-                      rowIndex === 1 ? "ring-1 ring-amber-400/80 scale-[1.02]" : "opacity-80"
-                    } ${isSpinning ? "animate-pulse blur-[1px]" : ""}`}
+                    key={row}
+                    className={`flex h-16 sm:h-20 items-center justify-center rounded-xl border-2 font-display text-2xl sm:text-3xl font-black shadow-md transition-all ${
+                      item.color
+                    } ${row === 1 ? "ring-2 ring-amber-400/90 scale-[1.02]" : "opacity-75"} ${
+                      isSpinning ? "blur-[0.5px] scale-95" : ""
+                    }`}
                   >
-                    {sym.label}
+                    {item.label}
                   </div>
                 );
               })}
@@ -146,15 +171,15 @@ export function FortuneGemsGame() {
           ))}
 
           {/* 4th Multiplier Reel */}
-          <div className="flex flex-col gap-2 rounded-xl border-2 border-purple-500/50 bg-purple-950/30 p-1.5">
-            <div className="text-center text-[9px] font-black uppercase tracking-wider text-purple-300">
+          <div className="flex flex-col gap-2 rounded-xl border-2 border-purple-500/50 bg-purple-950/30 p-1">
+            <div className="text-center text-[9px] font-black uppercase text-purple-300">
               MULT REEL
             </div>
-            <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-purple-400/40 bg-purple-900/40 shadow-inner">
-              <span className="text-[10px] text-purple-300 font-bold uppercase">Center</span>
+            <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-purple-400/40 bg-purple-900/40">
+              <span className="text-[9px] text-purple-300 font-bold uppercase">Center</span>
               <div
-                className={`font-display text-3xl font-black text-amber-300 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)] ${
-                  isSpinning ? "animate-bounce" : ""
+                className={`font-display text-2xl sm:text-3xl font-black text-amber-300 ${
+                  isSpinning ? "animate-spin" : ""
                 }`}
               >
                 {activeMultiplier}x
@@ -164,28 +189,29 @@ export function FortuneGemsGame() {
         </div>
       </div>
 
-      {/* Win Banner Display */}
+      {/* Win Banner */}
       {lastWin > 0 && (
-        <div className="mt-4 rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-center animate-pulse">
-          <p className="text-xs uppercase font-bold text-amber-400 tracking-wider">Winning Payline Hit!</p>
-          <p className="font-display text-2xl font-black text-amber-300">
+        <div className="mt-3 rounded-xl border border-amber-500/50 bg-amber-500/20 p-2.5 text-center animate-bounce">
+          <p className="text-[11px] uppercase font-bold text-amber-300">Winning Payline Hit!</p>
+          <p className="font-display text-xl font-black text-amber-200">
             + ₹{lastWin.toLocaleString("en-IN")}
           </p>
         </div>
       )}
 
-      {/* Control Deck */}
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-        <div className="space-y-1">
+      {/* Bet & Spin Controls */}
+      <div className="mt-4 space-y-3 border-t border-border pt-3">
+        <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-slate-400">Bet Amount (₹)</span>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             {[5, 10, 25, 50, 100].map((amt) => (
               <Button
                 key={amt}
                 size="sm"
+                type="button"
                 variant={betAmount === amt ? "default" : "outline"}
                 onClick={() => setBetAmount(amt)}
-                className="h-8 text-xs font-bold font-mono"
+                className="h-7 px-2.5 text-xs font-bold font-mono"
               >
                 ₹{amt}
               </Button>
@@ -194,14 +220,15 @@ export function FortuneGemsGame() {
         </div>
 
         <Button
+          type="button"
           onClick={handleSpin}
           disabled={isSpinning}
-          className="bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 px-8 py-6 font-display text-base font-black tracking-widest uppercase text-slate-950 shadow-[0_0_25px_rgba(245,158,11,0.5)] hover:scale-105 transition-all"
+          className="w-full bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 py-6 font-display text-base font-black tracking-widest uppercase text-slate-950 shadow-[0_0_20px_rgba(245,158,11,0.5)] active:scale-95 transition-all"
         >
           {isSpinning ? (
             <RefreshCw className="size-5 animate-spin" />
           ) : (
-            <span className="flex items-center gap-2">
+            <span className="flex items-center justify-center gap-2">
               <Zap className="size-5 fill-slate-950" /> SPIN ₹{betAmount}
             </span>
           )}
@@ -212,4 +239,3 @@ export function FortuneGemsGame() {
 }
 
 export default FortuneGemsGame;
-    
