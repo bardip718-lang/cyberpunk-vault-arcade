@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Volume2, VolumeX } from "lucide-react";
-import { useVault } from "@/lib/vault-store";
 import { toast } from "sonner";
 
 type GamePhase = "WAITING" | "FLYING" | "CRASHED";
@@ -11,12 +10,13 @@ interface BetDeck {
   queuedForNext: boolean;
   cashedOut: boolean;
   cashedAmount: number;
-  autoCashout: boolean;
-  autoTarget: number;
 }
 
-export function CrashGame() {
-  const { user, addScore } = useVault();
+export function AviatorGame() {
+  const [balance, setBalance] = useState<number>(() => {
+    const saved = localStorage.getItem("user_balance");
+    return saved ? Number(saved) : 2000;
+  });
 
   const [phase, setPhase] = useState<GamePhase>("WAITING");
   const [multiplier, setMultiplier] = useState(1.0);
@@ -30,8 +30,6 @@ export function CrashGame() {
     queuedForNext: false,
     cashedOut: false,
     cashedAmount: 0,
-    autoCashout: false,
-    autoTarget: 2.0,
   });
 
   const [deck2, setDeck2] = useState<BetDeck>({
@@ -40,20 +38,26 @@ export function CrashGame() {
     queuedForNext: false,
     cashedOut: false,
     cashedAmount: 0,
-    autoCashout: false,
-    autoTarget: 2.0,
   });
 
   const crashTargetRef = useRef(1.0);
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
 
+  const updateBalance = (delta: number) => {
+    setBalance((prev) => {
+      const next = Math.max(0, prev + delta);
+      localStorage.setItem("user_balance", next.toString());
+      return next;
+    });
+  };
+
   const generateCrashPoint = (): number => {
     const rand = Math.random();
-    if (rand < 0.10) return +(1.00 + Math.random() * 0.1).toFixed(2);
-    if (rand < 0.60) return +(1.1 + Math.random() * 0.89).toFixed(2);
-    if (rand < 0.90) return +(2.0 + Math.random() * 2.99).toFixed(2);
-    return +(5.0 + Math.random() * 10.0).toFixed(2);
+    if (rand < 0.15) return +(1.00 + Math.random() * 0.15).toFixed(2);
+    if (rand < 0.65) return +(1.15 + Math.random() * 0.85).toFixed(2);
+    if (rand < 0.90) return +(2.00 + Math.random() * 2.5).toFixed(2);
+    return +(5.00 + Math.random() * 8.0).toFixed(2);
   };
 
   const playFx = (type: "cashout" | "crash") => {
@@ -100,8 +104,8 @@ export function CrashGame() {
 
             setDeck1((d1) => {
               if (d1.queuedForNext) {
-                if ((user?.balance ?? 0) >= d1.amount) {
-                  addScore(-d1.amount);
+                if (balance >= d1.amount) {
+                  updateBalance(-d1.amount);
                   return { ...d1, active: true, queuedForNext: false, cashedOut: false };
                 } else {
                   toast.error("Panel 1: Insufficient Balance!");
@@ -113,8 +117,8 @@ export function CrashGame() {
 
             setDeck2((d2) => {
               if (d2.queuedForNext) {
-                if ((user?.balance ?? 0) >= d2.amount) {
-                  addScore(-d2.amount);
+                if (balance >= d2.amount) {
+                  updateBalance(-d2.amount);
                   return { ...d2, active: true, queuedForNext: false, cashedOut: false };
                 } else {
                   toast.error("Panel 2: Insufficient Balance!");
@@ -158,29 +162,6 @@ export function CrashGame() {
         }
 
         setMultiplier(currentMulti);
-
-        setDeck1((d) => {
-          if (d.active && !d.cashedOut && d.autoCashout && currentMulti >= d.autoTarget) {
-            const win = Math.round(d.amount * d.autoTarget);
-            addScore(win);
-            playFx("cashout");
-            toast.success(`🎉 Panel 1 Auto-Cashout: +₹${win}`);
-            return { ...d, active: false, cashedOut: true, cashedAmount: win };
-          }
-          return d;
-        });
-
-        setDeck2((d) => {
-          if (d.active && !d.cashedOut && d.autoCashout && currentMulti >= d.autoTarget) {
-            const win = Math.round(d.amount * d.autoTarget);
-            addScore(win);
-            playFx("cashout");
-            toast.success(`🎉 Panel 2 Auto-Cashout: +₹${win}`);
-            return { ...d, active: false, cashedOut: true, cashedAmount: win };
-          }
-          return d;
-        });
-
         animationFrameRef.current = requestAnimationFrame(loop);
       };
 
@@ -191,7 +172,7 @@ export function CrashGame() {
         clearTimeout(timer);
       };
     }
-  }, [phase]);
+  }, [phase, balance]);
 
   const handleBetClick = (deckNum: 1 | 2) => {
     const deck = deckNum === 1 ? deck1 : deck2;
@@ -201,7 +182,7 @@ export function CrashGame() {
       if (deck.queuedForNext || deck.active) {
         setDeck((d) => ({ ...d, queuedForNext: false, active: false }));
       } else {
-        if ((user?.balance ?? 0) < deck.amount) {
+        if (balance < deck.amount) {
           toast.error("Insufficient Balance!");
           return;
         }
@@ -212,7 +193,7 @@ export function CrashGame() {
         setDeck((d) => ({ ...d, queuedForNext: false }));
         toast.info("Next round bet cancelled");
       } else {
-        if ((user?.balance ?? 0) < deck.amount) {
+        if (balance < deck.amount) {
           toast.error("Insufficient Balance!");
           return;
         }
@@ -231,7 +212,7 @@ export function CrashGame() {
     if (!deck.active || deck.cashedOut) return;
 
     const win = Math.round(deck.amount * multiplier);
-    addScore(win);
+    updateBalance(win);
     playFx("cashout");
 
     setDeck((d) => ({
@@ -247,7 +228,7 @@ export function CrashGame() {
   return (
     <div className="relative mx-auto flex w-full max-w-[380px] flex-col overflow-hidden rounded-3xl border-4 border-[#1e293b] bg-[#0b0e14] shadow-2xl font-sans select-none text-slate-100 pb-2">
       
-      {/* Top Multiplier History */}
+      {/* Top Header & History */}
       <div className="flex items-center justify-between border-b border-slate-800 bg-[#0f141c] px-3 py-2">
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
           {history.map((h, i) => (
@@ -265,18 +246,20 @@ export function CrashGame() {
             </span>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={() => setSound(!sound)}
-          className="text-slate-400 hover:text-white"
-        >
-          {sound ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs font-black text-emerald-400">₹{balance}</span>
+          <button
+            type="button"
+            onClick={() => setSound(!sound)}
+            className="text-slate-400 hover:text-white"
+          >
+            {sound ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+          </button>
+        </div>
       </div>
 
       {/* Flight Radar Screen */}
       <div className="relative mx-3 mt-2 h-52 overflow-hidden rounded-2xl border border-slate-800/80 bg-gradient-to-b from-[#0f1422] to-[#080a10]">
-        
         {phase === "WAITING" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40">
             <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
@@ -392,5 +375,7 @@ export function CrashGame() {
   );
 }
 
-export default CrashGame;
-                                            
+// Export both names to prevent any missing export error
+export const CrashGame = AviatorGame;
+export default AviatorGame;
+          
