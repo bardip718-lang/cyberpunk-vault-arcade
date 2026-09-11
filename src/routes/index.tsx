@@ -13,10 +13,8 @@ import {
   Phone,
   Sparkles,
   Zap,
-  Layers,
   Bomb,
   Plane,
-  Disc,
   ChevronLeft,
   KeyRound,
   ExternalLink,
@@ -25,7 +23,6 @@ import {
   User as UserIcon,
   Search,
   TrendingUp,
-  History,
   Menu
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,11 +48,11 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "1win — Cyberpunk Gaming & Reward Vault" },
+      { title: "1win — Arcade Gaming & Reward Vault" },
       {
         name: "description",
         content:
-          "1win is a neon cyberpunk reward vault: spin reels, crash aviator, sweep mines and play roulette.",
+          "1win is a high-reward vault: Aviator crash, Fortune Gems 2 slots, Mines, and Lightning Roulette.",
       },
     ],
   }),
@@ -71,10 +68,10 @@ const GAME_CARDS = [
     title: "AVIATOR",
     provider: "SPRIBE",
     players: "1,467",
-    bgGradient: "from-[#ef4444] via-[#b91c1c] to-[#450a0a]",
     badge: "HOT",
-    badgeBg: "bg-[#ef4444]",
-    emoji: "✈️",
+    badgeBg: "bg-rose-600",
+    image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=500&auto=format&fit=crop&q=80",
+    gradient: "from-rose-950/80 via-transparent to-black/90",
   },
   {
     id: "fortunegems",
@@ -82,10 +79,10 @@ const GAME_CARDS = [
     title: "FORTUNE GEMS 2",
     provider: "JILI GAMES",
     players: "2,350",
-    bgGradient: "from-[#f59e0b] via-[#d97706] to-[#78350f]",
     badge: "TOP",
-    badgeBg: "bg-[#f59e0b]",
-    emoji: "💎",
+    badgeBg: "bg-amber-500",
+    image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=80",
+    gradient: "from-amber-950/80 via-transparent to-black/90",
   },
   {
     id: "mines",
@@ -93,21 +90,21 @@ const GAME_CARDS = [
     title: "MINES",
     provider: "1WIN GAMES",
     players: "614",
-    bgGradient: "from-[#0284c7] via-[#0369a1] to-[#082f49]",
     badge: "EASY",
-    badgeBg: "bg-[#0284c7]",
-    emoji: "💣",
+    badgeBg: "bg-sky-600",
+    image: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=500&auto=format&fit=crop&q=80",
+    gradient: "from-sky-950/80 via-transparent to-black/90",
   },
   {
     id: "roulette",
     category: "instant",
-    title: "LIGHTNING ROULETTE",
+    title: "ROULETTE",
     provider: "EVOLUTION",
     players: "1,890",
     badge: "LIVE",
-    badgeBg: "bg-[#8b5cf6]",
-    bgGradient: "from-[#8b5cf6] via-[#6d28d9] to-[#3b0764]",
-    emoji: "🎡",
+    badgeBg: "bg-purple-600",
+    image: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=500&auto=format&fit=crop&q=80",
+    gradient: "from-purple-950/80 via-transparent to-black/90",
   },
   {
     id: "reels",
@@ -116,20 +113,20 @@ const GAME_CARDS = [
     provider: "1WIN GAMES",
     players: "750",
     badge: "CLASSIC",
-    badgeBg: "bg-[#ec4899]",
-    bgGradient: "from-[#ec4899] via-[#be185d] to-[#500724]",
-    emoji: "🎰",
+    badgeBg: "bg-emerald-600",
+    image: "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=500&auto=format&fit=crop&q=80",
+    gradient: "from-emerald-950/80 via-transparent to-black/90",
   },
   {
     id: "cards",
     category: "instant",
-    title: "BLACKJACK MATRIX",
+    title: "BLACKJACK",
     provider: "1WIN GAMES",
     players: "410",
-    badge: "PRO",
-    badgeBg: "bg-[#06b6d4]",
-    bgGradient: "from-[#06b6d4] via-[#0e7490] to-[#164e63]",
-    emoji: "🃏",
+    badge: "SKILL",
+    badgeBg: "bg-blue-600",
+    image: "https://images.unsplash.com/photo-1511193311914-0346f16efe90?w=500&auto=format&fit=crop&q=80",
+    gradient: "from-blue-950/80 via-transparent to-black/90",
   },
 ];
 
@@ -215,6 +212,12 @@ function Index() {
     setEnteredOtp("");
     setSecretCode("");
     toast.success("Mobile number verified successfully!");
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("win1_user_phone");
+    setActiveUserMobile(null);
+    if (signOut) signOut();
   };
 
   const isOperator = isAdminUnlocked || (!!user && !user.guest && user.email === ADMIN_EMAIL);
@@ -356,7 +359,7 @@ function Index() {
             ))}
           </div>
 
-          {/* 1win Authentic 3-Column Poster Grid */}
+          {/* 1win Authentic 3-Column Poster Grid (Real 3D Graphics) */}
           <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
             {filteredGames.map((g) => (
               <div
@@ -367,12 +370,20 @@ function Index() {
                 {/* 3:4 Vertical Aspect Poster */}
                 <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-[#0e131f] border border-white/10 shadow-xl group-hover:border-blue-500/40">
                   
-                  {/* Poster Dynamic Gradient Base */}
-                  <div className={`absolute inset-0 bg-gradient-to-b ${g.bgGradient} opacity-35`} />
+                  {/* High Quality Game Visual Asset */}
+                  <img
+                    src={g.image}
+                    alt={g.title}
+                    className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-110"
+                    loading="lazy"
+                  />
+
+                  {/* Contrast Gradient Overlay */}
+                  <div className={`absolute inset-0 bg-gradient-to-b ${g.gradient}`} />
 
                   {/* Top Provider Ribbon Tag & Badge */}
                   <div className="absolute top-1.5 left-0 right-0 flex items-center justify-between px-1.5 z-20">
-                    <span className="text-[7.5px] font-black uppercase tracking-wider text-slate-300 bg-black/70 backdrop-blur-md px-1.5 py-0.5 rounded truncate max-w-[65%]">
+                    <span className="text-[7.5px] font-black uppercase tracking-wider text-slate-200 bg-black/80 backdrop-blur-md px-1.5 py-0.5 rounded truncate max-w-[65%]">
                       {g.provider}
                     </span>
                     {g.badge && (
@@ -384,20 +395,13 @@ function Index() {
 
                   {/* 1win Style Bold Title at Top */}
                   <div className="absolute top-6 left-0 right-0 px-1 z-20 text-center">
-                    <h3 className="font-sans font-black text-white text-[11px] sm:text-[12px] leading-tight tracking-tight drop-shadow-[0_2px_5px_rgba(0,0,0,0.9)] uppercase">
+                    <h3 className="font-sans font-black text-white text-[11px] sm:text-[12px] leading-tight tracking-tight drop-shadow-[0_2px_6px_rgba(0,0,0,1)] uppercase">
                       {g.title}
                     </h3>
                   </div>
 
-                  {/* 3D Game Visual Center Element */}
-                  <div className="absolute inset-0 flex items-center justify-center pt-5">
-                    <span className="text-4xl filter drop-shadow-[0_10px_20px_rgba(0,0,0,0.9)] transform group-hover:scale-115 transition-transform duration-200">
-                      {g.emoji}
-                    </span>
-                  </div>
-
-                  {/* Bottom Vignette Gloss */}
-                  <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
+                  {/* Gloss Vignette Bottom */}
+                  <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
                 </div>
 
                 {/* Live Playing Counter Under Poster */}
@@ -424,7 +428,7 @@ function Index() {
             )}
           </div>
 
-          {/* Admin Operator Console (if logged/unlocked) */}
+          {/* Admin Operator Console */}
           {isOperator && (
             <div className="mt-4 rounded-xl border border-blue-500/40 p-4 bg-blue-950/10">
               <div className="flex items-center justify-between mb-3">
@@ -453,6 +457,10 @@ function Index() {
           <Gift className="size-5" />
           <span className="absolute top-0 right-2 size-2 bg-rose-500 rounded-full border border-[#0a0d14]"></span>
           <span className="text-[9px] font-bold">Bonus</span>
+        </button>
+        <button onClick={() => setActiveTab("refer")} className={`flex flex-col items-center gap-1 w-12 ${activeTab === "refer" ? "text-blue-500" : "text-slate-500 hover:text-slate-300"}`}>
+          <TrendingUp className="size-5" />
+          <span className="text-[9px] font-bold">Earn</span>
         </button>
         <button onClick={() => setActiveTab("refer")} className={`flex flex-col items-center gap-1 w-12 ${activeTab === "refer" ? "text-blue-500" : "text-slate-500 hover:text-slate-300"}`}>
           <TrendingUp className="size-5" />
@@ -499,7 +507,7 @@ function Index() {
         </div>
       )}
 
-      {/* Modals Mounting */}
+      {/* Modals */}
       <TopUpModal isOpen={topUpOpen} onClose={() => setTopUpOpen(false)} />
       <WithdrawModal open={withdrawOpen} onOpenChange={setWithdrawOpen} />
       <DailySpinModal open={dailySpinOpen} onOpenChange={setDailySpinOpen} />
