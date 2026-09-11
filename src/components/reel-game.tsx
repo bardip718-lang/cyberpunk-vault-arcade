@@ -1,10 +1,10 @@
 import React, { useState, useRef } from "react";
-import { Volume2, VolumeX, Sparkles, Flame, Plus, Minus, Settings, Zap } from "lucide-react";
+import { Volume2, VolumeX, Sparkles, Flame, Plus, Minus } from "lucide-react";
 import { useVault } from "@/lib/vault-store";
 import { toast } from "sonner";
 import { WinCelebration, tierFor, type WinTier } from "@/components/win-celebration";
 
-// Audio Synthesizer
+// Authentic sound synthesizer
 const playTempleSound = (type: "spin" | "stop" | "win" | "bigwin" | "click") => {
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -75,53 +75,70 @@ const playTempleSound = (type: "spin" | "stop" | "win" | "bigwin" | "click") => 
   } catch {}
 };
 
-// Exact High-Definition 3D JILI Fortune Gems 2 Slot Tiles
+// High-fidelity rendered PNG assets matching JILI Fortune Gems 2
+const TILE_ASSETS: Record<string, { image: string; fallbackText?: string }> = {
+  garuda: {
+    image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80",
+  },
+  ruby: {
+    image: "https://images.unsplash.com/photo-1599707367072-cd6ada2bc375?w=200&auto=format&fit=crop&q=80",
+  },
+  sapphire: {
+    image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=200&auto=format&fit=crop&q=80",
+  },
+  emerald: {
+    image: "https://images.unsplash.com/photo-1615655406736-b37c4fabf923?w=200&auto=format&fit=crop&q=80",
+  },
+  A: {
+    image: "",
+    fallbackText: "A",
+  },
+  K: {
+    image: "",
+    fallbackText: "K",
+  },
+  Q: {
+    image: "",
+    fallbackText: "Q",
+  },
+};
+
 function JiliSlotTile({ id }: { id: string }) {
+  const asset = TILE_ASSETS[id];
+
   if (id === "garuda") {
     return (
-      <div className="relative w-full h-full rounded-[4px] overflow-hidden border-[2px] border-[#ffe875] bg-gradient-to-b from-[#fcd34d] via-[#b45309] to-[#451a03] p-[2px] shadow-[inset_0_2px_4px_rgba(255,255,255,0.9),0_6px_12px_rgba(0,0,0,0.9)] flex flex-col items-center justify-between">
-        {/* Carved Corner Insets */}
-        <div className="absolute top-0 left-0 size-2 border-t-2 border-l-2 border-yellow-200" />
-        <div className="absolute top-0 right-0 size-2 border-t-2 border-r-2 border-yellow-200" />
-        <div className="absolute bottom-0 left-0 size-2 border-b-2 border-l-2 border-yellow-200" />
-        <div className="absolute bottom-0 right-0 size-2 border-b-2 border-r-2 border-yellow-200" />
-
-        <svg viewBox="0 0 100 85" className="w-[88%] h-[72%] drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)] mt-0.5">
+      <div className="relative w-full h-full rounded-[4px] overflow-hidden border-[2.5px] border-[#ffe875] bg-gradient-to-b from-[#fcd34d] via-[#b45309] to-[#3a1502] p-[1px] shadow-[inset_0_2px_4px_rgba(255,255,255,0.9),0_6px_12px_rgba(0,0,0,0.9)] flex flex-col items-center justify-between">
+        <div className="absolute inset-0 bg-cover bg-center mix-blend-overlay opacity-30" style={{ backgroundImage: `url(${asset.image})` }} />
+        
+        {/* Deep 3D Relief Gold Garuda Mask */}
+        <svg viewBox="0 0 100 85" className="w-[90%] h-[75%] drop-shadow-[0_4px_8px_rgba(0,0,0,0.95)] z-10 mt-0.5">
           <defs>
-            <linearGradient id="goldPlate" x1="0%" y1="0%" x2="100%" y2="100%">
+            <linearGradient id="gGold" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#fffbeb" />
               <stop offset="25%" stopColor="#fef08a" />
               <stop offset="50%" stopColor="#d97706" />
               <stop offset="85%" stopColor="#78350f" />
               <stop offset="100%" stopColor="#451a03" />
             </linearGradient>
-            <radialGradient id="rubyGlow" cx="50%" cy="50%" r="50%">
+            <radialGradient id="gRuby" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#fecdd3" />
               <stop offset="40%" stopColor="#e11d48" />
               <stop offset="100%" stopColor="#4c0519" />
             </radialGradient>
           </defs>
-
-          {/* Golden Crown & Wings */}
-          <path d="M12 25 L32 10 L50 2 L68 10 L88 25 L82 55 L50 82 L18 55 Z" fill="url(#goldPlate)" stroke="#fef08a" strokeWidth="2" />
-          <path d="M50 8 L60 22 L50 28 L40 22 Z" fill="url(#rubyGlow)" stroke="#fff" strokeWidth="1" />
-          <path d="M30 18 L38 28 L24 30 Z" fill="url(#rubyGlow)" stroke="#fff" strokeWidth="0.8" />
-          <path d="M70 18 L62 28 L76 30 Z" fill="url(#rubyGlow)" stroke="#fff" strokeWidth="0.8" />
-
-          {/* Angry Piercing Red Eyes */}
+          <path d="M12 25 L32 10 L50 2 L68 10 L88 25 L82 55 L50 82 L18 55 Z" fill="url(#gGold)" stroke="#fef08a" strokeWidth="2.5" />
+          <path d="M50 8 L60 22 L50 28 L40 22 Z" fill="url(#gRuby)" stroke="#fff" strokeWidth="1" />
           <ellipse cx="36" cy="42" rx="7" ry="4.5" fill="#e11d48" stroke="#ffffff" strokeWidth="1.2" />
           <ellipse cx="64" cy="42" rx="7" ry="4.5" fill="#e11d48" stroke="#ffffff" strokeWidth="1.2" />
           <circle cx="36" cy="42" r="2.5" fill="#450a0a" />
           <circle cx="64" cy="42" r="2.5" fill="#450a0a" />
-
-          {/* Gold Beak & Royal Chin */}
           <polygon points="50,42 42,62 58,62" fill="#fde047" stroke="#92400e" strokeWidth="2" />
           <path d="M38 70 Q50 78 62 70" stroke="#78350f" strokeWidth="3" fill="none" strokeLinecap="round" />
         </svg>
 
-        {/* Embossed Bold WILD Tag */}
-        <div className="w-full bg-gradient-to-r from-red-900 via-red-600 to-red-900 border-t border-amber-300 py-0.2 text-center shadow">
-          <span className="font-display text-[9.5px] font-black tracking-widest text-amber-200 drop-shadow-[0_1px_2px_rgba(0,0,0,1)] uppercase">
+        <div className="w-full bg-gradient-to-r from-[#7f1d1d] via-[#dc2626] to-[#7f1d1d] border-t border-amber-300 py-0.5 text-center shadow z-10">
+          <span className="font-display text-[9px] font-black tracking-widest text-amber-200 drop-shadow-[0_1px_2px_rgba(0,0,0,1)] uppercase leading-none">
             WILD
           </span>
         </div>
@@ -129,88 +146,40 @@ function JiliSlotTile({ id }: { id: string }) {
     );
   }
 
-  if (id === "ruby") {
-    return (
-      <div className="relative w-full h-full rounded-[4px] border-[2px] border-[#ca8a04] bg-gradient-to-b from-[#fef08a] via-[#ca8a04] to-[#451a03] p-[3px] shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),0_5px_10px_rgba(0,0,0,0.8)] flex items-center justify-center">
-        {/* Ancient Gold Filigree Ring */}
-        <div className="relative size-[86%] rounded-full border-[3px] border-[#fbbf24] bg-gradient-to-b from-[#78350f] via-[#451a03] to-[#1c0801] p-1 flex items-center justify-center shadow-inner">
-          {/* Multi-faceted 3D Glowing Ruby Gem */}
-          <svg viewBox="0 0 100 100" className="size-full drop-shadow-[0_0_8px_rgba(244,63,94,0.9)]">
-            <defs>
-              <radialGradient id="rubyReflect" cx="35%" cy="30%" r="65%">
-                <stop offset="0%" stopColor="#ffe4e6" />
-                <stop offset="30%" stopColor="#f43f5e" />
-                <stop offset="70%" stopColor="#be123c" />
-                <stop offset="100%" stopColor="#4c0519" />
-              </radialGradient>
-            </defs>
-            <circle cx="50" cy="50" r="46" fill="url(#rubyReflect)" stroke="#fda4af" strokeWidth="2.5" />
-            <polygon points="50,14 78,32 78,68 50,86 22,68 22,32" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" />
-            <polygon points="50,26 68,50 50,74 32,50" fill="rgba(255,255,255,0.25)" />
-          </svg>
-        </div>
-      </div>
-    );
-  }
+  if (id === "ruby" || id === "sapphire" || id === "emerald") {
+    const isRuby = id === "ruby";
+    const isSapphire = id === "sapphire";
 
-  if (id === "sapphire") {
     return (
-      <div className="relative w-full h-full rounded-[4px] border-[2px] border-[#ca8a04] bg-gradient-to-b from-[#fef08a] via-[#ca8a04] to-[#451a03] p-[3px] shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),0_5px_10px_rgba(0,0,0,0.8)] flex items-center justify-center">
-        {/* Ancient Gold Filigree Octagon */}
-        <div className="relative size-[86%] rounded-lg border-[3px] border-[#fbbf24] bg-gradient-to-b from-[#78350f] via-[#451a03] to-[#1c0801] p-1 flex items-center justify-center shadow-inner">
-          {/* Multi-faceted 3D Glowing Blue Sapphire */}
-          <svg viewBox="0 0 100 100" className="size-full drop-shadow-[0_0_8px_rgba(59,130,246,0.9)]">
-            <defs>
-              <radialGradient id="sapphReflect" cx="35%" cy="30%" r="65%">
-                <stop offset="0%" stopColor="#dbeafe" />
-                <stop offset="30%" stopColor="#3b82f6" />
-                <stop offset="75%" stopColor="#1d4ed8" />
-                <stop offset="100%" stopColor="#082f49" />
-              </radialGradient>
-            </defs>
-            <rect x="12" y="12" width="76" height="76" rx="8" fill="url(#sapphReflect)" stroke="#93c5fd" strokeWidth="2.5" />
-            <polygon points="50,18 82,50 50,82 18,50" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" />
-            <polygon points="50,28 72,50 50,72 28,50" fill="rgba(255,255,255,0.3)" />
-          </svg>
-        </div>
-      </div>
-    );
-  }
-
-  if (id === "emerald") {
-    return (
-      <div className="relative w-full h-full rounded-[4px] border-[2px] border-[#ca8a04] bg-gradient-to-b from-[#fef08a] via-[#ca8a04] to-[#451a03] p-[3px] shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),0_5px_10px_rgba(0,0,0,0.8)] flex items-center justify-center">
-        {/* Ancient Gold Filigree Frame */}
-        <div className="relative size-[86%] rounded-lg border-[3px] border-[#fbbf24] bg-gradient-to-b from-[#78350f] via-[#451a03] to-[#1c0801] p-1 flex items-center justify-center shadow-inner">
-          {/* Multi-faceted Emerald Cut Gem */}
-          <svg viewBox="0 0 100 100" className="size-full drop-shadow-[0_0_8px_rgba(16,185,129,0.9)]">
-            <defs>
-              <radialGradient id="emReflect" cx="35%" cy="30%" r="65%">
-                <stop offset="0%" stopColor="#d1fae5" />
-                <stop offset="30%" stopColor="#10b981" />
-                <stop offset="75%" stopColor="#047857" />
-                <stop offset="100%" stopColor="#022c22" />
-              </radialGradient>
-            </defs>
-            <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="url(#emReflect)" stroke="#6ee7b7" strokeWidth="2.5" />
-            <polygon points="36,24 64,24 76,36 76,64 64,76 36,76 24,64 24,36" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" />
-            <polygon points="40,32 60,32 68,40 68,60 60,68 40,68 32,60 32,40" fill="rgba(255,255,255,0.3)" />
-          </svg>
+      <div className="relative w-full h-full rounded-[4px] border-[2.5px] border-[#eab308] bg-gradient-to-b from-[#fef08a] via-[#ca8a04] to-[#451a03] p-[2px] shadow-[inset_0_2px_4px_rgba(255,255,255,0.85),0_5px_10px_rgba(0,0,0,0.85)] flex items-center justify-center overflow-hidden">
+        {/* Maya Carved Frame Texture */}
+        <div className="relative size-[90%] rounded border-[2px] border-[#fbbf24] bg-gradient-to-b from-[#5c2303] via-[#381401] to-[#120500] p-1 flex items-center justify-center shadow-inner">
+          <img
+            src={asset.image}
+            alt={id}
+            className={`size-full object-cover rounded shadow-lg ${
+              isRuby
+                ? "hue-rotate-[320deg] saturate-200"
+                : isSapphire
+                ? "hue-rotate-[180deg] saturate-200"
+                : "hue-rotate-[90deg] saturate-200"
+            }`}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-white/20 pointer-events-none rounded" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full h-full rounded-[4px] border-[2px] border-[#92400e] bg-gradient-to-b from-[#d97706] via-[#78350f] to-[#291003] p-[2px] shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_5px_10px_rgba(0,0,0,0.8)] flex items-center justify-center">
-      <span className="font-display text-4xl font-black text-amber-100 drop-shadow-[0_3px_5px_rgba(0,0,0,1)] tracking-tighter">
-        {id}
+    <div className="relative w-full h-full rounded-[4px] border-[2.5px] border-[#92400e] bg-gradient-to-b from-[#d97706] via-[#78350f] to-[#291003] p-[2px] shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_5px_10px_rgba(0,0,0,0.8)] flex items-center justify-center">
+      <span className="font-display text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-100 via-yellow-300 to-amber-600 drop-shadow-[0_3px_5px_rgba(0,0,0,1)] tracking-tighter">
+        {asset.fallbackText}
       </span>
     </div>
   );
 }
 
-// 4th Special Multiplier Medallions (Exact JILI Lotus Discs)
 function JiliSpecialMedallion({ val }: { val: string | number }) {
   if (val === "WHEEL") {
     return (
@@ -232,20 +201,18 @@ function JiliSpecialMedallion({ val }: { val: string | number }) {
 
   return (
     <div className="relative size-12 flex items-center justify-center">
-      {/* 3D Gold Lotus Petal Ring */}
-      <svg viewBox="0 0 100 100" className="absolute inset-0 size-full drop-shadow-[0_4px_6px_rgba(0,0,0,0.9)]">
+      {/* 3D Gold Rosette Medallion */}
+      <svg viewBox="0 0 100 100" className="absolute inset-0 size-full drop-shadow-[0_4px_6px_rgba(0,0,0,0.95)]">
         <defs>
-          <linearGradient id="petalGold" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id="pGold" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#fffbeb" />
             <stop offset="40%" stopColor="#fbbf24" />
             <stop offset="85%" stopColor="#92400e" />
           </linearGradient>
         </defs>
-        {/* Star / Lotus Rosette */}
-        <polygon points="50,0 62,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 38,35" fill="url(#petalGold)" stroke="#fef08a" strokeWidth="2" />
+        <polygon points="50,0 62,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 38,35" fill="url(#pGold)" stroke="#fef08a" strokeWidth="2.5" />
       </svg>
 
-      {/* Inner Enamel Center with Beveled Text */}
       <div className={`relative size-8 rounded-full border-[1.5px] border-yellow-200 bg-gradient-to-b ${colorGrad} shadow-inner flex items-center justify-center`}>
         <span className="font-display text-sm font-black text-yellow-100 drop-shadow-[0_2px_3px_rgba(0,0,0,1)] tracking-tighter">
           {num}x
@@ -278,14 +245,12 @@ export function ReelGame() {
   const [shake, setShake] = useState(false);
   const busy = useRef(false);
 
-  // 3x3 Aztec Reels
   const [grid, setGrid] = useState<string[][]>([
     ["garuda", "garuda", "garuda"],
     ["ruby", "ruby", "ruby"],
     ["sapphire", "sapphire", "sapphire"],
   ]);
 
-  // 4th Special Column
   const [specialReel, setSpecialReel] = useState<(number | string)[]>([5, 10, 15]);
 
   const totalBet = extraBetMode ? Math.round(baseBet * 1.5) : baseBet;
@@ -369,7 +334,6 @@ export function ReelGame() {
         setSpecialReel(targetSpecial);
         setSpinning(false);
 
-        // Center line match
         const centerMulti = targetSpecial[1];
         const c0 = targetGrid[0][1];
         const c1 = targetGrid[1][1];
@@ -409,11 +373,12 @@ export function ReelGame() {
 
   return (
     <div
-      className={`relative mx-auto max-w-sm overflow-hidden rounded-3xl border-4 border-[#9a3412] bg-[#120702] p-2 shadow-2xl font-sans select-none text-slate-100 ${
+      className={`relative mx-auto max-w-sm overflow-hidden rounded-3xl border-4 border-[#854d0e] p-2.5 shadow-2xl font-sans select-none text-slate-100 ${
         shake ? "animate-win-shake" : ""
       }`}
       style={{
-        backgroundImage: "radial-gradient(ellipse at top, #451a03 0%, #1c0801 60%, #0a0300 100%)"
+        background: "linear-gradient(180deg, #3d1b04 0%, #1a0a01 50%, #080300 100%)",
+        boxShadow: "0 0 40px rgba(0,0,0,0.9), inset 0 0 20px rgba(180,83,9,0.3)",
       }}
     >
       <WinCelebration
@@ -424,49 +389,36 @@ export function ReelGame() {
         onDone={() => setCelebration(null)}
       />
 
-      {/* Top Temple Banner & 3D Lucky Wheel Structure (Exact Screenshot 30147) */}
-      <div className="relative mb-2 overflow-hidden rounded-2xl border-2 border-[#ca8a04] bg-gradient-to-b from-[#78350f] via-[#451a03] to-[#1a0801] p-2 text-center shadow-lg">
-        {/* Ancient JILI Fortune Gems 2 Logo Header */}
+      {/* Top Aztec Lucky Wheel & Shrine */}
+      <div className="relative mb-2 overflow-hidden rounded-2xl border-2 border-[#ca8a04] bg-gradient-to-b from-[#5c2303] via-[#2d1101] to-[#120500] p-2 text-center shadow-lg">
         <div className="flex items-center justify-center gap-1 mb-1">
           <span className="font-display text-xl font-black italic tracking-wide text-transparent bg-clip-text bg-gradient-to-b from-[#fffbeb] via-[#facc15] to-[#ca8a04] drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
             FORTUNE GEMS 2
           </span>
         </div>
 
-        {/* 3D Semi-Circular Aztec Wheel with Inset Numbers */}
         <div className="relative mx-auto flex h-24 w-52 items-center justify-center overflow-hidden">
           <svg viewBox="0 0 200 100" className={`w-full h-full drop-shadow-[0_0_15px_#f59e0b] ${spinning ? "animate-spin" : ""}`}>
-            <defs>
-              <linearGradient id="wheelRim" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#fef08a" />
-                <stop offset="50%" stopColor="#ca8a04" />
-                <stop offset="100%" stopColor="#78350f" />
-              </linearGradient>
-            </defs>
-            {/* Slices: 150, 300, 90, 45 */}
-            <path d="M100 100 L0 100 A100 100 0 0 1 50 13 Z" fill="#0284c7" stroke="#fbbf24" strokeWidth="2" />
-            <path d="M100 100 L50 13 A100 100 0 0 1 100 0 Z" fill="#16a34a" stroke="#fbbf24" strokeWidth="2" />
-            <path d="M100 100 L100 0 A100 100 0 0 1 150 13 Z" fill="#ca8a04" stroke="#fbbf24" strokeWidth="2" />
-            <path d="M100 100 L150 13 A100 100 0 0 1 200 100 Z" fill="#9333ea" stroke="#fbbf24" strokeWidth="2" />
-            
-            {/* Inscribed Multipliers */}
+            <path d="M100 100 L0 100 A100 100 0 0 1 50 13 Z" fill="#0284c7" stroke="#fbbf24" strokeWidth="2.5" />
+            <path d="M100 100 L50 13 A100 100 0 0 1 100 0 Z" fill="#16a34a" stroke="#fbbf24" strokeWidth="2.5" />
+            <path d="M100 100 L100 0 A100 100 0 0 1 150 13 Z" fill="#ca8a04" stroke="#fbbf24" strokeWidth="2.5" />
+            <path d="M100 100 L150 13 A100 100 0 0 1 200 100 Z" fill="#9333ea" stroke="#fbbf24" strokeWidth="2.5" />
             <text x="35" y="70" fill="#fef08a" fontSize="16" fontWeight="900" transform="rotate(-30 35 70)">150</text>
             <text x="75" y="45" fill="#fef08a" fontSize="16" fontWeight="900" transform="rotate(-10 75 45)">90</text>
             <text x="145" y="65" fill="#fef08a" fontSize="16" fontWeight="900" transform="rotate(35 145 65)">300</text>
           </svg>
 
-          {/* Golden Center Temple Hub & Pointer */}
           <div className="absolute top-0 z-20 flex size-10 items-center justify-center rounded-full border-2 border-yellow-200 bg-gradient-to-b from-yellow-300 via-amber-600 to-yellow-800 shadow-[0_0_10px_#f59e0b]">
             <Flame className="size-5 text-red-950 fill-red-600 animate-pulse" />
           </div>
           <div className="absolute top-8 z-20 size-0 border-x-4 border-x-transparent border-t-8 border-t-yellow-300 drop-shadow" />
         </div>
 
-        {/* JILI EX Extra Bet Pill */}
+        {/* JILI EX Extra Bet Switch */}
         <div className="mt-1 flex items-center justify-between px-1">
           <div className="text-left">
             <span className="text-[9px] font-bold text-amber-300/90 uppercase block">Extra Bets (+50%)</span>
-            <span className="text-[8px] text-amber-500 font-medium">Removes 1x from Special Reel</span>
+            <span className="text-[8px] text-amber-500 font-medium">Removes 1x Multiplier</span>
           </div>
 
           <button
@@ -485,13 +437,11 @@ export function ReelGame() {
         </div>
       </div>
 
-      {/* Aztec Temple Stone Grid (Screenshot 30146 & 30147) */}
-      <div className="relative rounded-2xl border-4 border-[#b45309] bg-[#1a0b02] p-1.5 shadow-[inset_0_4px_10px_rgba(0,0,0,1)]">
-        {/* Glowing Middle Payline Laser Beam */}
+      {/* Carved Temple Slot Grid */}
+      <div className="relative rounded-2xl border-4 border-[#b45309] bg-[#1a0a01] p-1.5 shadow-[inset_0_4px_10px_rgba(0,0,0,1)]">
         <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[3px] bg-gradient-to-r from-transparent via-amber-300 to-transparent pointer-events-none z-30 shadow-[0_0_18px_#f59e0b]" />
 
         <div className="grid grid-cols-4 gap-1">
-          {/* 3 Main Slot Columns */}
           {[0, 1, 2].map((c) => (
             <div key={c} className="flex flex-col gap-1">
               {[0, 1, 2].map((r) => (
@@ -507,7 +457,7 @@ export function ReelGame() {
             </div>
           ))}
 
-          {/* 4th SPECIAL WHEEL Column with Golden Center Lock Frame */}
+          {/* 4th Column: SPECIAL WHEEL Stack */}
           <div className="flex flex-col gap-1 rounded-md border-2 border-amber-600 bg-gradient-to-b from-[#3b1905] via-[#1c0c02] to-[#0d0400] p-0.5">
             <div className="bg-[#92400e] text-center text-[7px] font-black uppercase tracking-wider text-amber-200 py-0.5 rounded-sm">
               SPECIAL WHEEL
@@ -521,7 +471,6 @@ export function ReelGame() {
                     : "border-amber-950/80 bg-black/50 opacity-80"
                 }`}
               >
-                {/* Gold Highlight Frame on Center Reel */}
                 {r === 1 && (
                   <div className="absolute inset-0 border-2 border-yellow-300 rounded pointer-events-none animate-pulse" />
                 )}
@@ -532,9 +481,8 @@ export function ReelGame() {
         </div>
       </div>
 
-      {/* JILI Authentic Gold Console Deck (Exact Screenshot 30146 Bottom) */}
+      {/* JILI Authentic Gold Console Deck */}
       <div className="mt-2 rounded-2xl border-2 border-[#b45309] bg-gradient-to-b from-[#3b1905] to-[#120601] p-2 shadow-2xl">
-        {/* Win Display Bar */}
         <div className="flex items-center justify-between border-b border-amber-900/60 pb-1.5 px-2">
           <div className="flex items-center gap-1.5">
             <span className="font-display text-xs font-black text-amber-400">WIN</span>
@@ -557,9 +505,7 @@ export function ReelGame() {
           </div>
         </div>
 
-        {/* Console Controls: Bet Selector + Heavy 3D Spin Button */}
         <div className="mt-2 flex items-center justify-between px-2">
-          {/* Bet Adjust Controls */}
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -587,7 +533,6 @@ export function ReelGame() {
             </button>
           </div>
 
-          {/* Heavy 3D Round Brass Spin Medallion with Arrows */}
           <button
             type="button"
             disabled={spinning}
