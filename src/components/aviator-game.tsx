@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Volume2, VolumeX, ShieldAlert } from "lucide-react";
+import { Volume2, VolumeX } from "lucide-react";
 import { useVault } from "@/lib/vault-store";
 import { toast } from "sonner";
 
@@ -7,8 +7,8 @@ type GamePhase = "WAITING" | "FLYING" | "CRASHED";
 
 interface BetDeck {
   amount: number;
-  active: boolean; // Is round me actively bet lagi hai?
-  queuedForNext: boolean; // Next round ke liye queue me hai?
+  active: boolean;
+  queuedForNext: boolean;
   cashedOut: boolean;
   cashedAmount: number;
   autoCashout: boolean;
@@ -24,7 +24,6 @@ export function CrashGame() {
   const [sound, setSound] = useState(true);
   const [history, setHistory] = useState<number[]>([1.34, 4.22, 1.08, 12.85, 2.15, 1.18]);
 
-  // Two independent Spribe Bet Panels
   const [deck1, setDeck1] = useState<BetDeck>({
     amount: 200,
     active: false,
@@ -49,24 +48,18 @@ export function CrashGame() {
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
 
-  // Realistic Casino Crash RNG (Houses have 97% RTP, many low crashes)
   const generateCrashPoint = (): number => {
     const rand = Math.random();
-    // 10% instant insta-crash at 1.00x - 1.10x
-    if (rand < 0.10) return 1.00 + Math.random() * 0.1;
-    // 50% crash between 1.11x - 1.99x (House edge)
+    if (rand < 0.10) return +(1.00 + Math.random() * 0.1).toFixed(2);
     if (rand < 0.60) return +(1.1 + Math.random() * 0.89).toFixed(2);
-    // 30% crash between 2.00x - 4.99x
     if (rand < 0.90) return +(2.0 + Math.random() * 2.99).toFixed(2);
-    // 10% high flight (up to 15x)
     return +(5.0 + Math.random() * 10.0).toFixed(2);
   };
 
-  // Sound Engine
-  const playFx = (type: "beep" | "cashout" | "crash") => {
+  const playFx = (type: "cashout" | "crash") => {
     if (!sound) return;
     try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
       const osc = ctx.createOscillator();
@@ -93,21 +86,18 @@ export function CrashGame() {
     } catch {}
   };
 
-  // Main Aviator Round Controller
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
 
     if (phase === "WAITING") {
       setCountdown(5);
       setMultiplier(1.0);
 
-      // Start 5-second bet window countdown
       const countdownInterval = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(countdownInterval);
 
-            // Activate Queued Bets & Deduct Balance Strictly Here
             setDeck1((d1) => {
               if (d1.queuedForNext) {
                 if ((user?.balance ?? 0) >= d1.amount) {
@@ -134,7 +124,6 @@ export function CrashGame() {
               return d2;
             });
 
-            // Launch Flight
             crashTargetRef.current = generateCrashPoint();
             setPhase("FLYING");
             startTimeRef.current = performance.now();
@@ -148,25 +137,20 @@ export function CrashGame() {
     }
 
     if (phase === "FLYING") {
-      const flightDuration = Math.log(crashTargetRef.current) * 4500; // Exponential flight time
-
       const loop = (now: number) => {
         const elapsed = now - startTimeRef.current;
         const currentMulti = +(1.0 + Math.pow(elapsed / 3000, 1.9)).toFixed(2);
 
         if (currentMulti >= crashTargetRef.current) {
-          // FLEW AWAY (CRASH)
           setMultiplier(crashTargetRef.current);
           setPhase("CRASHED");
           playFx("crash");
 
-          setHistory((h) => [crashTargetRef.current, ...h.slice(0, 6)]);
+          setHistory((h) => [crashTargetRef.current, ...h.slice(0, 5)]);
 
-          // Mark Uncashed Active Bets as Lost
           setDeck1((d) => ({ ...d, active: false }));
           setDeck2((d) => ({ ...d, active: false }));
 
-          // Reset to next round after 2.5 seconds
           timer = setTimeout(() => {
             setPhase("WAITING");
           }, 2500);
@@ -175,7 +159,6 @@ export function CrashGame() {
 
         setMultiplier(currentMulti);
 
-        // Check Auto-Cashouts Mid-Flight
         setDeck1((d) => {
           if (d.active && !d.cashedOut && d.autoCashout && currentMulti >= d.autoTarget) {
             const win = Math.round(d.amount * d.autoTarget);
@@ -210,13 +193,11 @@ export function CrashGame() {
     }
   }, [phase]);
 
-  // Strict Bet Button Handler (Mid-flight bets are queued, NOT accepted into current flight)
   const handleBetClick = (deckNum: 1 | 2) => {
     const deck = deckNum === 1 ? deck1 : deck2;
     const setDeck = deckNum === 1 ? setDeck1 : setDeck2;
 
     if (phase === "WAITING") {
-      // Toggle instant bet for upcoming launch
       if (deck.queuedForNext || deck.active) {
         setDeck((d) => ({ ...d, queuedForNext: false, active: false }));
       } else {
@@ -227,7 +208,6 @@ export function CrashGame() {
         setDeck((d) => ({ ...d, queuedForNext: true }));
       }
     } else {
-      // Mid-Air: Can ONLY queue for the NEXT round (Cannot bet on live flying plane!)
       if (deck.queuedForNext) {
         setDeck((d) => ({ ...d, queuedForNext: false }));
         toast.info("Next round bet cancelled");
@@ -242,7 +222,6 @@ export function CrashGame() {
     }
   };
 
-  // Cashout Handler
   const handleCashout = (deckNum: 1 | 2) => {
     if (phase !== "FLYING") return;
 
@@ -298,7 +277,6 @@ export function CrashGame() {
       {/* Flight Radar Screen */}
       <div className="relative mx-3 mt-2 h-52 overflow-hidden rounded-2xl border border-slate-800/80 bg-gradient-to-b from-[#0f1422] to-[#080a10]">
         
-        {/* Waiting Countdown */}
         {phase === "WAITING" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40">
             <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
@@ -310,13 +288,11 @@ export function CrashGame() {
           </div>
         )}
 
-        {/* Flying State */}
         {phase === "FLYING" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="font-mono text-5xl font-black text-white tracking-tight drop-shadow-[0_0_20px_rgba(239,68,68,0.5)]">
               {multiplier.toFixed(2)}x
             </span>
-            {/* SVG Flight Curve */}
             <svg className="absolute inset-0 size-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
               <path
                 d="M 5 95 Q 40 90 90 25"
@@ -329,7 +305,6 @@ export function CrashGame() {
           </div>
         )}
 
-        {/* Crashed State */}
         {phase === "CRASHED" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/25 backdrop-blur-[1px]">
             <span className="font-display text-base font-black tracking-widest text-red-500 uppercase">
@@ -342,7 +317,7 @@ export function CrashGame() {
         )}
       </div>
 
-      {/* BET CONTROLS (PANEL 1 & PANEL 2) */}
+      {/* Bet Panels */}
       <div className="mt-2 flex flex-col gap-2 px-3">
         {[1, 2].map((num) => {
           const isDeck1 = num === 1;
@@ -366,7 +341,6 @@ export function CrashGame() {
                 )}
               </div>
 
-              {/* Amount Presets */}
               <div className="flex items-center gap-1">
                 {[50, 100, 200, 500].map((val) => (
                   <button
@@ -385,7 +359,6 @@ export function CrashGame() {
                 ))}
               </div>
 
-              {/* Main Action Button */}
               {canCashout ? (
                 <button
                   type="button"
@@ -420,4 +393,4 @@ export function CrashGame() {
 }
 
 export default CrashGame;
-          
+                                            
