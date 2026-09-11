@@ -443,6 +443,7 @@ function Index() {
         </div>
       )}
 
+    
       {/* 1win Bottom Navigation Bar */}
       <div className="fixed bottom-0 left-0 right-0 mx-auto max-w-md bg-[#0a0d14]/98 backdrop-blur-xl border-t border-slate-800/90 pb-safe pt-2 px-4 flex justify-between items-center z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
         <button onClick={() => setActiveTab("lobby")} className={`flex flex-col items-center gap-1 w-12 ${activeTab === "lobby" ? "text-blue-500" : "text-slate-500 hover:text-slate-300"}`}>
@@ -457,10 +458,6 @@ function Index() {
           <Gift className="size-5" />
           <span className="absolute top-0 right-2 size-2 bg-rose-500 rounded-full border border-[#0a0d14]"></span>
           <span className="text-[9px] font-bold">Bonus</span>
-        </button>
-        <button onClick={() => setActiveTab("refer")} className={`flex flex-col items-center gap-1 w-12 ${activeTab === "refer" ? "text-blue-500" : "text-slate-500 hover:text-slate-300"}`}>
-          <TrendingUp className="size-5" />
-          <span className="text-[9px] font-bold">Earn</span>
         </button>
         <button onClick={() => setActiveTab("refer")} className={`flex flex-col items-center gap-1 w-12 ${activeTab === "refer" ? "text-blue-500" : "text-slate-500 hover:text-slate-300"}`}>
           <TrendingUp className="size-5" />
