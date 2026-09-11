@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Volume2, VolumeX, Minus, Plus } from "lucide-react";
+import { Volume2, VolumeX, Minus, Plus, Settings, Zap, RotateCcw } from "lucide-react";
 import { useVault } from "@/lib/vault-store";
 import { toast } from "sonner";
-import { WinCelebration, tierFor, type WinTier } from "@/components/win-celebration";
 
-// Web Audio synthesizer for spins, stops, wins
-const playSound = (type: "spin" | "stop" | "win" | "click") => {
+// Web Audio synthesizer matching exact JILI chime, spin whir & win fanfare
+const playJiliSound = (type: "spin" | "stop" | "win" | "bigwin" | "click") => {
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtx) return;
@@ -14,572 +13,223 @@ const playSound = (type: "spin" | "stop" | "win" | "click") => {
     if (type === "spin") {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(180, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(320, ctx.currentTime + 0.08);
-      gain.gain.setValueAtTime(0.06, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(260, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(160, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
-      osc.stop(ctx.currentTime + 0.08);
+      osc.stop(ctx.currentTime + 0.1);
     } else if (type === "stop") {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
       osc.frequency.setValueAtTime(220, ctx.currentTime);
-      gain.gain.setValueAtTime(0.1, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
-      osc.stop(ctx.currentTime + 0.06);
+      osc.stop(ctx.currentTime + 0.08);
     } else if (type === "win") {
-      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+      [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "triangle";
-        osc.frequency.setValueAtTime(f, ctx.currentTime + i * 0.07);
-        gain.gain.setValueAtTime(0.12, ctx.currentTime + i * 0.07);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.07 + 0.2);
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.08);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime + i * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 0.25);
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(ctx.currentTime + i * 0.07);
-        osc.stop(ctx.currentTime + i * 0.07 + 0.2);
+        osc.start(ctx.currentTime + i * 0.08);
+        osc.stop(ctx.currentTime + i * 0.08 + 0.25);
+      });
+    } else if (type === "bigwin") {
+      [392, 523, 659, 783, 1046, 1318].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.09);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.09);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.09 + 0.3);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.09);
+        osc.stop(ctx.currentTime + i * 0.09 + 0.3);
       });
     } else if (type === "click") {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
-      osc.frequency.setValueAtTime(450, ctx.currentTime);
-      gain.gain.setValueAtTime(0.04, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03);
+      osc.frequency.setValueAtTime(460, ctx.currentTime);
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
-      osc.stop(ctx.currentTime + 0.03);
+      osc.stop(ctx.currentTime + 0.04);
     }
   } catch {}
 };
 
-type SymbolType = "garuda" | "ruby" | "sapphire" | "emerald" | "A" | "K" | "Q";
-
-interface SymbolConfig {
-  id: SymbolType;
-  payout: number;
+// High-fidelity Aztec Tile Components
+function TileGaruda() {
+  return (
+    <div className="relative w-full h-full rounded-[4px] border-[2px] border-[#ffe875] bg-gradient-to-b from-[#fcd34d] via-[#d97706] to-[#451a03] p-1 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),0_4px_8px_rgba(0,0,0,0.9)] flex flex-col items-center justify-between overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(254,240,138,0.4),_transparent_70%)]" />
+      {/* 3D Gold Mask Relief */}
+      <svg viewBox="0 0 100 85" className="w-[92%] h-[74%] drop-shadow-[0_4px_8px_rgba(0,0,0,0.95)] z-10 mt-0.5">
+        <defs>
+          <linearGradient id="garudaGold3D" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#fffbeb" />
+            <stop offset="25%" stopColor="#fef08a" />
+            <stop offset="55%" stopColor="#d97706" />
+            <stop offset="85%" stopColor="#78350f" />
+            <stop offset="100%" stopColor="#451a03" />
+          </linearGradient>
+          <radialGradient id="garudaEye" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#fee2e2" />
+            <stop offset="40%" stopColor="#dc2626" />
+            <stop offset="100%" stopColor="#450a0a" />
+          </radialGradient>
+        </defs>
+        <path d="M12 25 L32 10 L50 2 L68 10 L88 25 L82 55 L50 82 L18 55 Z" fill="url(#garudaGold3D)" stroke="#fef08a" strokeWidth="2" />
+        <path d="M50 8 L60 22 L50 28 L40 22 Z" fill="url(#garudaEye)" stroke="#fff" strokeWidth="1" />
+        <ellipse cx="36" cy="42" rx="7.5" ry="5" fill="url(#garudaEye)" stroke="#ffffff" strokeWidth="1.2" />
+        <ellipse cx="64" cy="42" rx="7.5" ry="5" fill="url(#garudaEye)" stroke="#ffffff" strokeWidth="1.2" />
+        <polygon points="50,42 42,62 58,62" fill="#fde047" stroke="#92400e" strokeWidth="1.8" />
+        <path d="M38 70 Q50 78 62 70" stroke="#78350f" strokeWidth="3" fill="none" strokeLinecap="round" />
+      </svg>
+      {/* Embossed Bold WILD Ribbon */}
+      <div className="w-full bg-gradient-to-r from-[#7f1d1d] via-[#dc2626] to-[#7f1d1d] border-t border-amber-300 py-0.5 text-center shadow z-10">
+        <span className="font-display text-[9px] font-black tracking-widest text-amber-100 drop-shadow-[0_1px_2px_rgba(0,0,0,1)] uppercase leading-none">
+          WILD
+        </span>
+      </div>
+    </div>
+  );
 }
 
-const SYMBOLS: SymbolConfig[] = [
-  { id: "garuda", payout: 25 },
-  { id: "ruby", payout: 12 },
-  { id: "sapphire", payout: 8 },
-  { id: "emerald", payout: 5 },
-  { id: "A", payout: 2.5 },
-  { id: "K", payout: 1.8 },
-  { id: "Q", payout: 1.2 },
-];
+function TileGem({ type }: { type: "ruby" | "sapphire" | "emerald" }) {
+  const isRuby = type === "ruby";
+  const isSapph = type === "sapphire";
+
+  const borderColor = isRuby ? "border-[#f43f5e]" : isSapph ? "border-[#60a5fa]" : "border-[#34d399]";
+  const gemGrad = isRuby
+    ? "from-[#ffe4e6] via-[#e11d48] to-[#4c0519]"
+    : isSapph
+    ? "from-[#dbeafe] via-[#2563eb] to-[#082f49]"
+    : "from-[#d1fae5] via-[#059669] to-[#022c22]";
+
+  return (
+    <div className="relative w-full h-full rounded-[4px] border-[2.5px] border-[#ca8a04] bg-gradient-to-b from-[#fef08a] via-[#ca8a04] to-[#451a03] p-1 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),0_4px_8px_rgba(0,0,0,0.85)] flex items-center justify-center">
+      {/* Ornate Gold Filigree Inset Frame */}
+      <div className="relative size-[86%] rounded border-[2px] border-[#fbbf24] bg-gradient-to-b from-[#5c2303] to-[#1a0801] p-1 flex items-center justify-center shadow-inner">
+        <div
+          className={`size-[84%] ${
+            isRuby ? "rounded-full" : isSapph ? "rotate-45 rounded-[4px]" : "rounded-lg"
+          } border-2 ${borderColor} bg-gradient-to-br ${gemGrad} shadow-[0_0_12px_rgba(0,0,0,0.8),inset_0_2px_4px_rgba(255,255,255,0.7)] flex items-center justify-center`}
+        >
+          <div className="size-[40%] bg-white/30 border border-white/60 rounded-sm" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TileLetter({ char }: { char: string }) {
+  return (
+    <div className="relative w-full h-full rounded-[4px] border-[2px] border-[#78350f] bg-gradient-to-b from-[#5c2805] via-[#351502] to-[#1a0800] p-1 shadow-[inset_0_2px_3px_rgba(255,255,255,0.3),0_4px_8px_rgba(0,0,0,0.8)] flex items-center justify-center">
+      <span className="font-display text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-[#fef08a] via-[#eab308] to-[#92400e] drop-shadow-[0_3px_4px_rgba(0,0,0,1)]">
+        {char}
+      </span>
+    </div>
+  );
+}
+
+function SpecialMedallion({ val }: { val: string | number }) {
+  if (val === "WHEEL") {
+    return (
+      <div className="relative size-12 rounded-full border-[3px] border-yellow-300 bg-gradient-to-tr from-amber-500 via-rose-600 to-yellow-300 shadow-[0_0_15px_#facc15] flex flex-col items-center justify-center animate-pulse">
+        <span className="font-display text-[8.5px] font-black tracking-widest text-amber-100 uppercase drop-shadow">
+          WHEEL
+        </span>
+      </div>
+    );
+  }
+
+  const num = Number(val);
+  const colorGrad =
+    num >= 15
+      ? "from-[#f87171] via-[#dc2626] to-[#450a0a]"
+      : num >= 10
+      ? "from-[#c084fc] via-[#9333ea] to-[#3b0764]"
+      : num >= 5
+      ? "from-[#60a5fa] via-[#2563eb] to-[#0f172a]"
+      : "from-[#34d399] via-[#059669] to-[#022c22]";
+
+  return (
+    <div className="relative size-11 flex items-center justify-center">
+      {/* 3D Rosette Petals */}
+      <svg viewBox="0 0 100 100" className="absolute inset-0 size-full drop-shadow-[0_3px_5px_rgba(0,0,0,0.9)]">
+        <polygon
+          points="50,0 62,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 38,35"
+          fill="#fbbf24"
+          stroke="#fef08a"
+          strokeWidth="3"
+        />
+      </svg>
+      <div
+        className={`relative size-7 rounded-full border-[1.5px] border-yellow-200 bg-gradient-to-b ${colorGrad} shadow-inner flex items-center justify-center`}
+      >
+        <span className="font-display text-[12px] font-black text-yellow-100 drop-shadow-[0_1px_2px_rgba(0,0,0,1)] tracking-tighter">
+          {num}x
+        </span>
+      </div>
+    </div>
+  );
+}
+
+const SYMBOLS_POOL = ["garuda", "ruby", "sapphire", "emerald", "A", "K", "Q", "J"];
 
 export function ReelGame() {
   const { user, addScore } = useVault();
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const [bet, setBet] = useState(3);
+  const [bet, setBet] = useState(30);
   const [extraBet, setExtraBet] = useState(false);
   const [sound, setSound] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [winAmount, setWinAmount] = useState(0);
+  const [bigWinActive, setBigWinActive] = useState(false);
 
-  const [celebration, setCelebration] = useState<{ tier: WinTier; amount: number; key: number } | null>(null);
+  // 3 Reels x 3 Rows
+  const [grid, setGrid] = useState<string[][]>([
+    ["garuda", "garuda", "garuda"],
+    ["ruby", "ruby", "ruby"],
+    ["sapphire", "sapphire", "sapphire"],
+  ]);
 
-  // Reel states (3 rows x 4 cols: cols 0..2 are slot symbols, col 3 is multiplier)
-  const reelsRef = useRef<{
-    cols: SymbolType[][];
-    multipliers: (number | string)[];
-    offsets: number[];
-    speeds: number[];
-  }>({
-    cols: [
-      ["garuda", "ruby", "sapphire"],
-      ["ruby", "garuda", "emerald"],
-      ["sapphire", "emerald", "A"],
-    ],
-    multipliers: [5, 10, 15],
-    offsets: [0, 0, 0, 0],
-    speeds: [0, 0, 0, 0],
-  });
+  // 4th Special Column
+  const [specialCol, setSpecialCol] = useState<(string | number)[]>([5, 10, 15]);
 
-  const wheelAngleRef = useRef(0);
-  const animIdRef = useRef<number | null>(null);
-
+  const wheelRotationRef = useRef(0);
   const totalBet = extraBet ? Math.round(bet * 1.5) : bet;
 
-  // Custom 2D Graphics Renderers
-  const drawGaruda = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number) => {
-    ctx.save();
-    ctx.translate(x, y);
-
-    // Beveled Gold Frame Tile
-    const grad = ctx.createLinearGradient(0, 0, 0, size);
-    grad.addColorStop(0, "#fde047");
-    grad.addColorStop(0.5, "#ca8a04");
-    grad.addColorStop(1, "#451a03");
-    ctx.fillStyle = grad;
-    ctx.fillRect(2, 2, size - 4, size - 4);
-
-    ctx.strokeStyle = "#ffe875";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(3, 3, size - 6, size - 6);
-
-    // Mask Silhouette
-    const maskGrad = ctx.createRadialGradient(size / 2, size / 2, 4, size / 2, size / 2, size / 2);
-    maskGrad.addColorStop(0, "#fef08a");
-    maskGrad.addColorStop(0.6, "#d97706");
-    maskGrad.addColorStop(1, "#78350f");
-    ctx.fillStyle = maskGrad;
-
-    ctx.beginPath();
-    ctx.moveTo(size * 0.5, size * 0.12);
-    ctx.lineTo(size * 0.85, size * 0.32);
-    ctx.lineTo(size * 0.8, size * 0.65);
-    ctx.lineTo(size * 0.5, size * 0.82);
-    ctx.lineTo(size * 0.2, size * 0.65);
-    ctx.lineTo(size * 0.15, size * 0.32);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Red Gem Crown
-    ctx.fillStyle = "#e11d48";
-    ctx.beginPath();
-    ctx.arc(size * 0.5, size * 0.22, size * 0.08, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Piercing Crimson Eyes
-    ctx.fillStyle = "#dc2626";
-    ctx.beginPath();
-    ctx.ellipse(size * 0.36, size * 0.44, size * 0.08, size * 0.05, 0, 0, Math.PI * 2);
-    ctx.ellipse(size * 0.64, size * 0.44, size * 0.08, size * 0.05, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Golden Beak
-    ctx.fillStyle = "#fef08a";
-    ctx.beginPath();
-    ctx.moveTo(size * 0.5, size * 0.42);
-    ctx.lineTo(size * 0.42, size * 0.62);
-    ctx.lineTo(size * 0.58, size * 0.62);
-    ctx.closePath();
-    ctx.fill();
-
-    // WILD Badge Strip
-    ctx.fillStyle = "#b91c1c";
-    ctx.fillRect(4, size - 14, size - 8, 12);
-    ctx.fillStyle = "#fef08a";
-    ctx.font = "bold 9px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("WILD", size / 2, size - 8);
-
-    ctx.restore();
-  };
-
-  const drawRuby = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number) => {
-    ctx.save();
-    ctx.translate(x, y);
-
-    // Gold Aztec Filigree Plate
-    const g = ctx.createLinearGradient(0, 0, 0, size);
-    g.addColorStop(0, "#fde047");
-    g.addColorStop(0.5, "#a16207");
-    g.addColorStop(1, "#290c01");
-    ctx.fillStyle = g;
-    ctx.fillRect(2, 2, size - 4, size - 4);
-    ctx.strokeStyle = "#ca8a04";
-    ctx.strokeRect(3, 3, size - 6, size - 6);
-
-    // Concentric Carved Ring
-    ctx.fillStyle = "#451a03";
-    ctx.beginPath();
-    ctx.arc(size / 2, size / 2, size * 0.38, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#fef08a";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // 3D Faceted Ruby Gem
-    const rubyGrad = ctx.createRadialGradient(size * 0.4, size * 0.4, 2, size / 2, size / 2, size * 0.3);
-    rubyGrad.addColorStop(0, "#ffe4e6");
-    rubyGrad.addColorStop(0.3, "#f43f5e");
-    rubyGrad.addColorStop(0.8, "#be123c");
-    rubyGrad.addColorStop(1, "#4c0519");
-    ctx.fillStyle = rubyGrad;
-    ctx.beginPath();
-    ctx.arc(size / 2, size / 2, size * 0.3, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Gem Facet Cuts
-    ctx.strokeStyle = "rgba(255,255,255,0.7)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(size * 0.36, size * 0.36, size * 0.28, size * 0.28);
-
-    ctx.restore();
-  };
-
-  const drawSapphire = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number) => {
-    ctx.save();
-    ctx.translate(x, y);
-
-    const g = ctx.createLinearGradient(0, 0, 0, size);
-    g.addColorStop(0, "#fde047");
-    g.addColorStop(0.5, "#a16207");
-    g.addColorStop(1, "#290c01");
-    ctx.fillStyle = g;
-    ctx.fillRect(2, 2, size - 4, size - 4);
-
-    // Carved Dark Inset
-    ctx.fillStyle = "#1e1003";
-    ctx.fillRect(size * 0.12, size * 0.12, size * 0.76, size * 0.76);
-    ctx.strokeStyle = "#ca8a04";
-    ctx.strokeRect(size * 0.12, size * 0.12, size * 0.76, size * 0.76);
-
-    // Octagonal 3D Sapphire
-    const sapphGrad = ctx.createRadialGradient(size * 0.4, size * 0.4, 3, size / 2, size / 2, size * 0.32);
-    sapphGrad.addColorStop(0, "#dbeafe");
-    sapphGrad.addColorStop(0.35, "#3b82f6");
-    sapphGrad.addColorStop(0.8, "#1d4ed8");
-    sapphGrad.addColorStop(1, "#082f49");
-    ctx.fillStyle = sapphGrad;
-
-    const r = size * 0.28;
-    const cx = size / 2;
-    const cy = size / 2;
-    ctx.beginPath();
-    for (let i = 0; i < 8; i++) {
-      const a = (i * Math.PI) / 4;
-      const px = cx + r * Math.cos(a);
-      const py = cy + r * Math.sin(a);
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = "#bfdbfe";
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-
-    ctx.restore();
-  };
-
-  const drawEmerald = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number) => {
-    ctx.save();
-    ctx.translate(x, y);
-
-    const g = ctx.createLinearGradient(0, 0, 0, size);
-    g.addColorStop(0, "#fde047");
-    g.addColorStop(0.5, "#a16207");
-    g.addColorStop(1, "#290c01");
-    ctx.fillStyle = g;
-    ctx.fillRect(2, 2, size - 4, size - 4);
-
-    // Hexagonal Emerald
-    ctx.fillStyle = "#150a01";
-    ctx.fillRect(size * 0.12, size * 0.12, size * 0.76, size * 0.76);
-
-    const emGrad = ctx.createRadialGradient(size * 0.4, size * 0.4, 3, size / 2, size / 2, size * 0.32);
-    emGrad.addColorStop(0, "#d1fae5");
-    emGrad.addColorStop(0.3, "#10b981");
-    emGrad.addColorStop(0.75, "#047857");
-    emGrad.addColorStop(1, "#022c22");
-    ctx.fillStyle = emGrad;
-
-    const r = size * 0.28;
-    const cx = size / 2;
-    const cy = size / 2;
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const a = (i * Math.PI) / 3;
-      const px = cx + r * Math.cos(a);
-      const py = cy + r * Math.sin(a);
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = "#a7f3d0";
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-
-    ctx.restore();
-  };
-
-  const drawLetter = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number, char: string) => {
-    ctx.save();
-    ctx.translate(x, y);
-
-    // Rustic Wood/Bronze Tile
-    const g = ctx.createLinearGradient(0, 0, 0, size);
-    g.addColorStop(0, "#78350f");
-    g.addColorStop(0.5, "#451a03");
-    g.addColorStop(1, "#1c0700");
-    ctx.fillStyle = g;
-    ctx.fillRect(2, 2, size - 4, size - 4);
-    ctx.strokeStyle = "#92400e";
-    ctx.strokeRect(3, 3, size - 6, size - 6);
-
-    // Embossed Gold Text
-    const textGrad = ctx.createLinearGradient(0, size * 0.2, 0, size * 0.8);
-    textGrad.addColorStop(0, "#fffbeb");
-    textGrad.addColorStop(0.5, "#facc15");
-    textGrad.addColorStop(1, "#ca8a04");
-    ctx.fillStyle = textGrad;
-    ctx.font = `900 ${Math.round(size * 0.52)}px sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.shadowColor = "rgba(0,0,0,0.9)";
-    ctx.shadowOffsetY = 2;
-    ctx.shadowBlur = 4;
-    ctx.fillText(char, size / 2, size / 2);
-
-    ctx.restore();
-  };
-
-  const drawMultiplierMedallion = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    size: number,
-    val: number | string,
-    isCenter: boolean
-  ) => {
-    ctx.save();
-    ctx.translate(x, y);
-
-    // Center Gold Selection Bracket
-    if (isCenter) {
-      ctx.strokeStyle = "#facc15";
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect(1, 1, size - 2, size - 2);
-    }
-
-    const num = Number(val);
-    const colorGrad = ctx.createLinearGradient(0, 0, 0, size);
-    if (num >= 15) {
-      colorGrad.addColorStop(0, "#f87171");
-      colorGrad.addColorStop(1, "#7f1d1d");
-    } else if (num >= 10) {
-      colorGrad.addColorStop(0, "#c084fc");
-      colorGrad.addColorStop(1, "#581c87");
-    } else {
-      colorGrad.addColorStop(0, "#60a5fa");
-      colorGrad.addColorStop(1, "#1e3a8a");
-    }
-
-    // Outer Star Lotus
-    ctx.fillStyle = "#fbbf24";
-    ctx.beginPath();
-    ctx.arc(size / 2, size / 2, size * 0.42, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#fef08a";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // Inner Disc
-    ctx.fillStyle = colorGrad;
-    ctx.beginPath();
-    ctx.arc(size / 2, size / 2, size * 0.32, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Text Multiplier
-    ctx.fillStyle = "#fffbeb";
-    ctx.font = `900 ${Math.round(size * 0.3)}px sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(`${val}x`, size / 2, size / 2);
-
-    ctx.restore();
-  };
-
-  // Main Canvas Render Loop
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let running = true;
-
-    const render = () => {
-      if (!running) return;
-
-      const w = canvas.width;
-      const h = canvas.height;
-
-      ctx.clearRect(0, 0, w, h);
-
-      // 1. Ancient Stone Temple Background
-      const bg = ctx.createLinearGradient(0, 0, 0, h);
-      bg.addColorStop(0, "#2c1304");
-      bg.addColorStop(0.5, "#140701");
-      bg.addColorStop(1, "#070200");
-      ctx.fillStyle = bg;
-      ctx.fillRect(0, 0, w, h);
-
-      // 2. Top Semi-Circular Lucky Wheel
-      const wheelCenterX = w / 2;
-      const wheelCenterY = 110;
-      const wheelRadius = 88;
-
-      ctx.save();
-      ctx.translate(wheelCenterX, wheelCenterY);
-      ctx.rotate(wheelAngleRef.current);
-
-      const slices = [
-        { label: "150", color: "#0284c7" },
-        { label: "90", color: "#16a34a" },
-        { label: "300", color: "#ca8a04" },
-        { label: "45", color: "#9333ea" },
-        { label: "500", color: "#dc2626" },
-        { label: "20", color: "#0d9488" },
-      ];
-      const sliceAngle = (Math.PI * 2) / slices.length;
-
-      slices.forEach((s, idx) => {
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.arc(0, 0, wheelRadius, idx * sliceAngle, (idx + 1) * sliceAngle);
-        ctx.closePath();
-        ctx.fillStyle = s.color;
-        ctx.fill();
-        ctx.strokeStyle = "#fbbf24";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        ctx.save();
-        ctx.rotate(idx * sliceAngle + sliceAngle / 2);
-        ctx.fillStyle = "#fffbeb";
-        ctx.font = "bold 13px sans-serif";
-        ctx.textAlign = "right";
-        ctx.fillText(s.label, wheelRadius - 12, 5);
-        ctx.restore();
-      });
-
-      // Gold Outer Rim
-      ctx.beginPath();
-      ctx.arc(0, 0, wheelRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = "#facc15";
-      ctx.lineWidth = 4;
-      ctx.stroke();
-
-      ctx.restore();
-
-      // Wheel Arrow Pointer & Hub
-      ctx.fillStyle = "#ca8a04";
-      ctx.beginPath();
-      ctx.arc(wheelCenterX, wheelCenterY, 18, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "#fef08a";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      ctx.fillStyle = "#facc15";
-      ctx.beginPath();
-      ctx.moveTo(wheelCenterX - 6, wheelCenterY - 20);
-      ctx.lineTo(wheelCenterX + 6, wheelCenterY - 20);
-      ctx.lineTo(wheelCenterX, wheelCenterY - 32);
-      ctx.closePath();
-      ctx.fill();
-
-      // Title Banner Under Wheel
-      ctx.fillStyle = "#facc15";
-      ctx.font = "italic 900 16px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("FORTUNE GEMS 2", w / 2, 138);
-
-      // 3. Slot Matrix Frame (3x3 + 1 Special Reel)
-      const startX = 14;
-      const startY = 152;
-      const tileSize = 66;
-      const gap = 4;
-
-      // Outer Carved Stone Frame
-      ctx.fillStyle = "#3d1804";
-      ctx.fillRect(startX - 6, startY - 6, tileSize * 4 + gap * 3 + 12, tileSize * 3 + gap * 2 + 12);
-      ctx.strokeStyle = "#b45309";
-      ctx.lineWidth = 3;
-      ctx.strokeRect(startX - 6, startY - 6, tileSize * 4 + gap * 3 + 12, tileSize * 3 + gap * 2 + 12);
-
-      // Columns 0..2 (Slot Symbols)
-      for (let c = 0; c < 3; c++) {
-        for (let r = 0; r < 3; r++) {
-          const px = startX + c * (tileSize + gap);
-          const py = startY + r * (tileSize + gap);
-          const sym = reelsRef.current.cols[c][r];
-
-          if (sym === "garuda") drawGaruda(ctx, px, py, tileSize);
-          else if (sym === "ruby") drawRuby(ctx, px, py, tileSize);
-          else if (sym === "sapphire") drawSapphire(ctx, px, py, tileSize);
-          else if (sym === "emerald") drawEmerald(ctx, px, py, tileSize);
-          else drawLetter(ctx, px, py, tileSize, sym);
-        }
-      }
-
-      // Column 3: Special Wheel Multiplier Reel
-      const specX = startX + 3 * (tileSize + gap);
-      ctx.fillStyle = "#1e0b02";
-      ctx.fillRect(specX, startY, tileSize, tileSize * 3 + gap * 2);
-      ctx.strokeStyle = "#ca8a04";
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(specX, startY, tileSize, tileSize * 3 + gap * 2);
-
-      for (let r = 0; r < 3; r++) {
-        const py = startY + r * (tileSize + gap);
-        drawMultiplierMedallion(ctx, specX, py, tileSize, reelsRef.current.multipliers[r], r === 1);
-      }
-
-      // Center Laser Payline Beam
-      const centerY = startY + tileSize + gap / 2 + tileSize / 2;
-      const beamGrad = ctx.createLinearGradient(startX, 0, startX + tileSize * 4 + gap * 3, 0);
-      beamGrad.addColorStop(0, "rgba(250,204,21,0.0)");
-      beamGrad.addColorStop(0.5, "rgba(250,204,21,0.9)");
-      beamGrad.addColorStop(1, "rgba(250,204,21,0.0)");
-      ctx.strokeStyle = beamGrad;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(startX, centerY);
-      ctx.lineTo(startX + tileSize * 4 + gap * 3, centerY);
-      ctx.stroke();
-
-      animIdRef.current = requestAnimationFrame(render);
-    };
-
-    render();
-
-    return () => {
-      running = false;
-      if (animIdRef.current) cancelAnimationFrame(animIdRef.current);
-    };
-  }, []);
-
-  const getRandomSymbol = (): SymbolType => {
+  const pickRandom = () => {
     const r = Math.random();
     if (r < 0.12) return "garuda";
     if (r < 0.28) return "ruby";
-    if (r < 0.48) return "sapphire";
-    if (r < 0.68) return "emerald";
-    if (r < 0.82) return "A";
-    if (r < 0.92) return "K";
-    return "Q";
+    if (r < 0.46) return "sapphire";
+    if (r < 0.64) return "emerald";
+    if (r < 0.76) return "A";
+    if (r < 0.86) return "K";
+    if (r < 0.94) return "Q";
+    return "J";
   };
 
-  const handleBetChange = (delta: number) => {
-    if (spinning) return;
-    if (sound) playSound("click");
-    const bets = [1, 2, 3, 5, 10, 25, 50, 100];
-    const idx = bets.indexOf(bet);
-    const nextIdx = Math.max(0, Math.min(bets.length - 1, idx + delta));
-    setBet(bets[nextIdx]);
-  };
-
-  const handleSpin = () => {
+  const spin = () => {
     if (spinning) return;
     if (!user || user.balance < totalBet) {
       toast.error("Insufficient balance! Please deposit to play.");
@@ -589,162 +239,262 @@ export function ReelGame() {
     setSpinning(true);
     addScore(-totalBet);
     setWinAmount(0);
-    setCelebration(null);
-    if (sound) playSound("spin");
+    setBigWinActive(false);
+    if (sound) playJiliSound("spin");
 
-    const multiPool = extraBet ? [2, 3, 5, 10, 15] : [1, 2, 3, 5, 10, 15];
+    const multiPool = extraBet ? [2, 3, 5, 10, 15, "WHEEL"] : [1, 2, 3, 5, 10, 15, "WHEEL"];
     let ticks = 0;
 
     const interval = setInterval(() => {
       ticks++;
-      wheelAngleRef.current += 0.25;
+      wheelRotationRef.current += 18;
 
-      // Randomize during spin animation
-      reelsRef.current.cols = [
-        [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()],
-        [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()],
-        [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()],
-      ];
-      reelsRef.current.multipliers = [
+      setGrid([
+        [pickRandom(), pickRandom(), pickRandom()],
+        [pickRandom(), pickRandom(), pickRandom()],
+        [pickRandom(), pickRandom(), pickRandom()],
+      ]);
+
+      setSpecialCol([
         multiPool[Math.floor(Math.random() * multiPool.length)],
         multiPool[Math.floor(Math.random() * multiPool.length)],
         multiPool[Math.floor(Math.random() * multiPool.length)],
-      ];
+      ]);
 
-      if (sound && ticks % 2 === 0) playSound("spin");
+      if (sound && ticks % 2 === 0) playJiliSound("spin");
 
-      if (ticks > 18) {
+      if (ticks > 16) {
         clearInterval(interval);
-        if (sound) playSound("stop");
+        if (sound) playJiliSound("stop");
 
-        // Land Final Results
-        const finalCols: SymbolType[][] = [
-          [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()],
-          [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()],
-          [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()],
+        // Final Land
+        const finalGrid = [
+          [pickRandom(), pickRandom(), pickRandom()],
+          [pickRandom(), pickRandom(), pickRandom()],
+          [pickRandom(), pickRandom(), pickRandom()],
         ];
 
-        const finalMultipliers = [
+        const finalSpecial = [
           multiPool[Math.floor(Math.random() * multiPool.length)],
           multiPool[Math.floor(Math.random() * multiPool.length)],
           multiPool[Math.floor(Math.random() * multiPool.length)],
         ];
 
-        reelsRef.current.cols = finalCols;
-        reelsRef.current.multipliers = finalMultipliers;
+        setGrid(finalGrid);
+        setSpecialCol(finalSpecial);
         setSpinning(false);
 
-        // Center line evaluation (Middle Row)
-        const centerMulti = Number(finalMultipliers[1]);
-        const s0 = finalCols[0][1];
-        const s1 = finalCols[1][1];
-        const s2 = finalCols[2][1];
+        // Center line evaluation
+        const centerMulti = finalSpecial[1];
+        const c0 = finalGrid[0][1];
+        const c1 = finalGrid[1][1];
+        const c2 = finalGrid[2][1];
 
         const isMatch =
-          (s0 === s1 || s0 === "garuda" || s1 === "garuda") &&
-          (s1 === s2 || s1 === "garuda" || s2 === "garuda");
+          (c0 === c1 || c0 === "garuda" || c1 === "garuda") &&
+          (c1 === c2 || c1 === "garuda" || c2 === "garuda");
 
         if (isMatch) {
-          const matchId = [s0, s1, s2].find((x) => x !== "garuda") || "garuda";
-          const cfg = SYMBOLS.find((s) => s.id === matchId) || SYMBOLS[0];
-          const payout = Math.round(bet * (cfg.payout / 2) * centerMulti);
+          const multiNum = typeof centerMulti === "number" ? centerMulti : 20;
+          const payout = Math.round(bet * 4 * multiNum);
 
           addScore(payout);
           setWinAmount(payout);
 
-          const tier = tierFor(centerMulti);
-          setCelebration({ tier, amount: payout, key: Date.now() });
-          if (sound) playSound("win");
-          toast.success(`🎉 Aztec Win! +₹${payout} (${centerMulti}x Multiplier)`);
+          if (multiNum >= 10 || payout >= bet * 10) {
+            setBigWinActive(true);
+            if (sound) playJiliSound("bigwin");
+          } else {
+            if (sound) playJiliSound("win");
+          }
+
+          toast.success(`🎉 Aztec Hit! +₹${payout} (${multiNum}x Multiplier)`);
         }
       }
     }, 70);
   };
 
   return (
-    <div className="relative mx-auto max-w-sm overflow-hidden rounded-3xl border-2 border-amber-800 bg-[#0d0401] p-2 shadow-2xl font-sans select-none text-slate-100">
+    <div className="relative mx-auto max-w-[360px] overflow-hidden rounded-3xl border-4 border-[#854d0e] bg-[#0c0501] shadow-2xl font-sans select-none text-slate-100">
       
-      <WinCelebration
-        key={celebration?.key ?? "idle"}
-        active={!!celebration}
-        tier={celebration?.tier ?? "nice"}
-        amount={celebration?.amount ?? 0}
-        onDone={() => setCelebration(null)}
-      />
-
-      {/* Top Controls: EX Extra Bet + Audio */}
-      <div className="flex items-center justify-between border-b border-amber-900/60 pb-1.5 px-2">
-        <button
-          type="button"
-          onClick={() => setSound(!sound)}
-          className="rounded p-1 text-amber-400 hover:text-amber-200"
-        >
-          {sound ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
-        </button>
+      {/* 1win Header Top Bar */}
+      <div className="flex items-center justify-between border-b border-amber-900/60 bg-[#140802] px-3 py-1.5 z-20">
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setSound(!sound)}
+            className="text-amber-400 hover:text-amber-200"
+          >
+            {sound ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+          </button>
+          <span className="text-[10px] font-black uppercase tracking-wider text-amber-300">
+            JILI Games
+          </span>
+        </div>
 
         <button
           type="button"
           disabled={spinning}
           onClick={() => setExtraBet(!extraBet)}
-          className={`flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-black transition-all ${
+          className={`flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[9.5px] font-black tracking-wider transition-all ${
             extraBet
               ? "bg-gradient-to-r from-yellow-400 to-amber-600 border-yellow-200 text-slate-950 shadow-[0_0_12px_#f59e0b]"
-              : "bg-[#200a02] border-amber-800 text-amber-300"
+              : "bg-[#240e02] border-amber-800 text-amber-300"
           }`}
         >
           <span className="rounded bg-black/60 px-1 text-[8px] text-yellow-300">EX</span>
-          <span>{extraBet ? "ON (+50%)" : "OFF"}</span>
+          <span>{extraBet ? "ON" : "OFF"}</span>
         </button>
       </div>
 
-      {/* 100% Client-Side High-Res HTML5 Canvas Viewport */}
-      <div className="mt-1 flex justify-center overflow-hidden rounded-2xl border border-amber-900/80 bg-black shadow-inner">
-        <canvas
-          ref={canvasRef}
-          width={310}
-          height={380}
-          className="w-full max-w-[310px] select-none block"
-        />
+      {/* Main Temple Environment (Screenshots 30253, 30258, 30260) */}
+      <div
+        className="relative px-2 pt-2 pb-1"
+        style={{
+          background: "linear-gradient(180deg, #421c05 0%, #1f0b01 40%, #0d0400 100%)",
+        }}
+      >
+        {/* JILI Logo Header */}
+        <div className="text-center mb-1">
+          <h2 className="font-display text-xl font-black italic tracking-wide text-transparent bg-clip-text bg-gradient-to-b from-[#fffbeb] via-[#facc15] to-[#b45309] drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
+            FORTUNE GEMS 2
+          </h2>
+        </div>
+
+        {/* 360° Circular Aztec Lucky Wheel tucked in background shrine */}
+        <div className="relative mx-auto flex h-36 w-64 items-center justify-center overflow-hidden">
+          <div
+            className="absolute -top-16 size-60 rounded-full border-4 border-[#facc15] shadow-[0_0_25px_#f59e0b] transition-transform duration-75"
+            style={{
+              transform: `rotate(${wheelRotationRef.current}deg)`,
+              background:
+                "conic-gradient(#dc2626 0deg 36deg, #ea580c 36deg 72deg, #ca8a04 72deg 108deg, #16a34a 108deg 144deg, #0284c7 144deg 180deg, #9333ea 180deg 216deg, #dc2626 216deg 252deg, #ca8a04 252deg 288deg, #16a34a 288deg 324deg, #0284c7 324deg 360deg)",
+            }}
+          >
+            {/* Center Garuda Face Coin */}
+            <div className="absolute inset-0 m-auto size-14 rounded-full border-2 border-yellow-200 bg-gradient-to-b from-yellow-300 to-amber-700 shadow-md flex items-center justify-center">
+              <span className="text-[9px] font-black text-red-950 font-mono">20,000</span>
+            </div>
+          </div>
+
+          {/* Golden Center Locking Shrine Frame */}
+          <div className="absolute top-0 z-20 size-0 border-x-6 border-x-transparent border-t-10 border-t-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]" />
+        </div>
+
+        {/* Aztec Stone Reels Structure */}
+        <div className="relative rounded-2xl border-4 border-[#b45309] bg-[#1a0a01] p-1.5 shadow-[inset_0_4px_12px_rgba(0,0,0,1)]">
+          {/* Middle Winning Payline Beam */}
+          <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[3px] bg-gradient-to-r from-transparent via-amber-300 to-transparent pointer-events-none z-30 shadow-[0_0_18px_#f59e0b]" />
+
+          <div className="grid grid-cols-4 gap-1">
+            {/* 3 Main Slot Columns */}
+            {[0, 1, 2].map((colIdx) => (
+              <div key={colIdx} className="flex flex-col gap-1">
+                {[0, 1, 2].map((rowIdx) => {
+                  const item = grid[colIdx][rowIdx];
+                  const isCenter = rowIdx === 1;
+
+                  return (
+                    <div
+                      key={rowIdx}
+                      className={`aspect-square w-full rounded-md transition-all ${
+                        isCenter ? "scale-[1.02] z-10" : "opacity-90"
+                      } ${spinning ? "blur-[0.5px]" : ""}`}
+                    >
+                      {item === "garuda" && <TileGaruda />}
+                      {item === "ruby" && <TileGem type="ruby" />}
+                      {item === "sapphire" && <TileGem type="sapphire" />}
+                      {item === "emerald" && <TileGem type="emerald" />}
+                      {["A", "K", "Q", "J"].includes(item) && <TileLetter char={item} />}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+
+            {/* 4th Column: SPECIAL WHEEL Tower */}
+            <div className="flex flex-col gap-1 rounded-md border-2 border-amber-600 bg-gradient-to-b from-[#3b1905] via-[#1c0c02] to-[#0d0400] p-0.5">
+              <div className="bg-[#92400e] text-center text-[7px] font-black uppercase tracking-wider text-amber-200 py-0.5 rounded-sm">
+                SPECIAL
+              </div>
+              {[0, 1, 2].map((r) => (
+                <div
+                  key={r}
+                  className={`relative flex aspect-square w-full items-center justify-center rounded border ${
+                    r === 1
+                      ? "border-yellow-300 bg-amber-500/25 shadow-[0_0_15px_#f59e0b] scale-[1.04] z-10"
+                      : "border-amber-950/80 bg-black/50 opacity-80"
+                  }`}
+                >
+                  {r === 1 && (
+                    <div className="absolute inset-0 border-2 border-yellow-300 rounded pointer-events-none animate-pulse" />
+                  )}
+                  <SpecialMedallion val={specialCol[r]} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Big Win Pop Overlay (Screenshots 30256, 30257) */}
+        {bigWinActive && (
+          <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/75 backdrop-blur-sm animate-in zoom-in-95">
+            <h3 className="font-display text-4xl font-black italic text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 via-yellow-400 to-amber-600 drop-shadow-[0_4px_10px_#f59e0b] animate-bounce">
+              BIG WIN!
+            </h3>
+            <span className="font-mono text-3xl font-black text-white mt-1 drop-shadow">
+              ₹{winAmount.toLocaleString("en-IN")}
+            </span>
+            <button
+              onClick={() => setBigWinActive(false)}
+              className="mt-3 rounded-full bg-emerald-600 px-4 py-1 text-xs font-bold text-white shadow-lg"
+            >
+              Collect
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* JILI Authentic Console Deck */}
-      <div className="mt-2 rounded-2xl border border-amber-800/80 bg-gradient-to-b from-[#240c02] to-[#0a0300] p-2 shadow-xl">
-        <div className="flex items-center justify-between border-b border-amber-900/60 pb-1 px-2">
-          <div className="flex items-center gap-1 text-xs font-black">
-            <span className="text-amber-400">WIN</span>
-            <span className="font-mono text-emerald-400">
+      {/* JILI Authentic Console Deck (Bottom of all screenshots) */}
+      <div className="border-t-2 border-[#b45309] bg-gradient-to-b from-[#2a1204] to-[#0d0400] p-2.5 shadow-2xl">
+        {/* Win Bar & Balance */}
+        <div className="flex items-center justify-between border-b border-amber-900/60 pb-1.5 px-2">
+          <div className="flex items-center gap-1.5">
+            <span className="font-display text-xs font-black text-amber-400">WIN</span>
+            <span className="font-mono text-sm font-black text-emerald-400">
               ₹{winAmount > 0 ? winAmount.toLocaleString("en-IN") : "0.00"}
             </span>
           </div>
-          <span className="text-[11px] font-mono text-amber-300">
-            Bal: <strong className="text-white">₹{user?.balance || 0}</strong>
+          <span className="text-[11px] font-mono text-amber-300 font-bold">
+            Balance: <strong className="text-white">₹{user?.balance || 0}</strong>
           </span>
         </div>
 
+        {/* Controls Deck */}
         <div className="mt-2 flex items-center justify-between px-2">
           {/* Bet Increment / Decrement */}
           <div className="flex items-center gap-2">
             <button
               type="button"
               disabled={spinning}
-              onClick={() => handleBetChange(-1)}
-              className="flex size-8 items-center justify-center rounded-full border border-amber-600 bg-[#1e0a02] text-amber-200 active:scale-95"
+              onClick={() => setBet((b) => Math.max(10, b - 10))}
+              className="flex size-8 items-center justify-center rounded-full border border-amber-600 bg-[#241004] text-amber-200 active:scale-95 shadow"
             >
               <Minus className="size-4" />
             </button>
 
-            <div className="rounded-xl border border-amber-700 bg-black/60 px-3 py-1 text-center">
+            <div className="rounded-xl border border-amber-600 bg-[#0f0501] px-3 py-1 text-center shadow-inner">
               <span className="block text-[8px] uppercase tracking-wider text-amber-400/80 font-bold">
                 Bet
               </span>
-              <span className="font-mono text-xs font-black text-white">₹{totalBet}</span>
+              <span className="font-mono text-sm font-black text-white">₹{totalBet}</span>
             </div>
 
             <button
               type="button"
               disabled={spinning}
-              onClick={() => handleBetChange(1)}
-              className="flex size-8 items-center justify-center rounded-full border border-amber-600 bg-[#1e0a02] text-amber-200 active:scale-95"
+              onClick={() => setBet((b) => b + 10)}
+              className="flex size-8 items-center justify-center rounded-full border border-amber-600 bg-[#241004] text-amber-200 active:scale-95 shadow"
             >
               <Plus className="size-4" />
             </button>
@@ -754,16 +504,16 @@ export function ReelGame() {
           <button
             type="button"
             disabled={spinning}
-            onClick={handleSpin}
-            className={`relative flex size-14 items-center justify-center rounded-full border-4 border-[#fef08a] bg-gradient-to-b from-[#fde047] via-[#ca8a04] to-[#713f12] shadow-[0_0_20px_#f59e0b,inset_0_2px_4px_rgba(255,255,255,0.8)] active:scale-90 transition-transform ${
-              spinning ? "opacity-75 cursor-not-allowed" : "cursor-pointer"
+            onClick={spin}
+            className={`relative flex size-16 items-center justify-center rounded-full border-4 border-[#fef08a] bg-gradient-to-b from-[#fde047] via-[#ca8a04] to-[#713f12] shadow-[0_0_25px_#f59e0b,inset_0_2px_5px_rgba(255,255,255,0.9)] active:scale-90 transition-transform ${
+              spinning ? "opacity-80 cursor-not-allowed" : "cursor-pointer"
             }`}
           >
             <div className="flex flex-col items-center justify-center">
-              <span className="font-display text-[11px] font-black tracking-wider text-[#451a03] drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)]">
+              <span className="font-display text-[12px] font-black tracking-wider text-[#451a03] drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)]">
                 SPIN
               </span>
-              <span className="font-mono text-[8px] font-black text-red-950">
+              <span className="font-mono text-[8.5px] font-black text-red-950">
                 ₹{totalBet}
               </span>
             </div>
