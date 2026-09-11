@@ -66,76 +66,70 @@ type GameCategory = "all" | "slots" | "crash" | "instant";
 
 const GAME_CARDS = [
   {
-    id: "fortunegems",
-    category: "slots",
-    title: "FORTUNE GEMS 2",
-    provider: "JILI GAMES",
-    players: 892,
-    badge: "TOP",
-    gradient: "from-amber-500/30 via-orange-900/20 to-transparent",
-    border: "border-amber-500/30",
-    icon: Sparkles,
-    color: "text-amber-400 animate-pulse drop-shadow-[0_0_12px_rgba(245,158,11,0.6)]",
-  },
-  {
     id: "aviator",
     category: "crash",
     title: "AVIATOR",
     provider: "SPRIBE",
-    players: 1467,
+    players: "1,467",
+    bgGradient: "from-[#ef4444] via-[#b91c1c] to-[#450a0a]",
     badge: "HOT",
-    gradient: "from-rose-600/30 via-red-900/20 to-transparent",
-    border: "border-rose-500/30",
-    icon: Plane,
-    color: "text-rose-500 -rotate-12 drop-shadow-[0_0_12px_rgba(244,63,94,0.6)]",
+    badgeBg: "bg-[#ef4444]",
+    emoji: "✈️",
+  },
+  {
+    id: "fortunegems",
+    category: "slots",
+    title: "FORTUNE GEMS 2",
+    provider: "JILI GAMES",
+    players: "2,350",
+    bgGradient: "from-[#f59e0b] via-[#d97706] to-[#78350f]",
+    badge: "TOP",
+    badgeBg: "bg-[#f59e0b]",
+    emoji: "💎",
   },
   {
     id: "mines",
     category: "instant",
     title: "MINES",
     provider: "1WIN GAMES",
-    players: 614,
+    players: "614",
+    bgGradient: "from-[#0284c7] via-[#0369a1] to-[#082f49]",
     badge: "EASY",
-    gradient: "from-sky-600/30 via-blue-900/20 to-transparent",
-    border: "border-sky-500/30",
-    icon: Bomb,
-    color: "text-sky-400 drop-shadow-[0_0_12px_rgba(56,189,248,0.6)]",
+    badgeBg: "bg-[#0284c7]",
+    emoji: "💣",
   },
   {
     id: "roulette",
     category: "instant",
-    title: "ROULETTE",
+    title: "LIGHTNING ROULETTE",
     provider: "EVOLUTION",
-    players: 1890,
+    players: "1,890",
     badge: "LIVE",
-    gradient: "from-purple-600/30 via-purple-900/20 to-transparent",
-    border: "border-purple-500/30",
-    icon: Disc,
-    color: "text-purple-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.6)]",
+    badgeBg: "bg-[#8b5cf6]",
+    bgGradient: "from-[#8b5cf6] via-[#6d28d9] to-[#3b0764]",
+    emoji: "🎡",
   },
   {
     id: "reels",
     category: "slots",
-    title: "NEON REELS",
+    title: "NEON REELS 777",
     provider: "1WIN GAMES",
-    players: 750,
+    players: "750",
     badge: "CLASSIC",
-    gradient: "from-amber-600/30 via-yellow-900/20 to-transparent",
-    border: "border-amber-500/30",
-    icon: Zap,
-    color: "text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.6)]",
+    badgeBg: "bg-[#ec4899]",
+    bgGradient: "from-[#ec4899] via-[#be185d] to-[#500724]",
+    emoji: "🎰",
   },
   {
     id: "cards",
     category: "instant",
-    title: "DATA MATCH",
+    title: "BLACKJACK MATRIX",
     provider: "1WIN GAMES",
-    players: 410,
-    badge: "SKILL",
-    gradient: "from-cyan-500/30 via-teal-900/20 to-transparent",
-    border: "border-cyan-500/30",
-    icon: Layers,
-    color: "text-cyan-400 drop-shadow-[0_0_12px_rgba(6,182,212,0.6)]",
+    players: "410",
+    badge: "PRO",
+    badgeBg: "bg-[#06b6d4]",
+    bgGradient: "from-[#06b6d4] via-[#0e7490] to-[#164e63]",
+    emoji: "🃏",
   },
 ];
 
@@ -223,12 +217,6 @@ function Index() {
     toast.success("Mobile number verified successfully!");
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("win1_user_phone");
-    setActiveUserMobile(null);
-    if (signOut) signOut();
-  };
-
   const isOperator = isAdminUnlocked || (!!user && !user.guest && user.email === ADMIN_EMAIL);
   const pending = requests ? requests.filter((r) => r.status === "pending").length : 0;
   const isLoggedIn = !!activeUserMobile || (!!user && !user.guest);
@@ -266,10 +254,10 @@ function Index() {
   });
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-md bg-[#080b11] text-slate-100 font-sans px-3 pb-24 pt-3">
+    <main className="mx-auto min-h-screen w-full max-w-md bg-[#080b11] text-slate-100 font-sans px-3 pb-24 pt-3 select-none">
       
       {/* 1win Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-800/80 mb-4 sticky top-0 bg-[#080b11] z-40">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-800/80 mb-3 sticky top-0 bg-[#080b11]/95 backdrop-blur-md z-40">
         <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => setActiveTab("lobby")}>
           <span className="text-2xl font-black italic tracking-tighter text-blue-500">1win</span>
           <span className="text-[9px] bg-blue-600/20 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded font-bold">PRO</span>
@@ -278,7 +266,6 @@ function Index() {
         <div className="flex items-center gap-2">
           {isLoggedIn ? (
             <>
-              {/* Balance Box */}
               <div 
                 onClick={() => setProfileOpen(true)}
                 className="bg-[#101622] border border-slate-800 rounded-lg px-2.5 py-0.5 text-right cursor-pointer hover:border-slate-700"
@@ -289,25 +276,25 @@ function Index() {
                 </span>
               </div>
 
-              <button onClick={openDeposit} className="bg-emerald-600 p-1.5 rounded-lg text-white">
+              <button onClick={openDeposit} className="bg-emerald-600 p-1.5 rounded-lg text-white active:scale-95 transition-transform">
                 <ArrowDownToLine className="size-4" />
               </button>
-              <button onClick={() => setProfileOpen(true)} className="bg-[#151c2a] border border-slate-700 p-1.5 rounded-lg text-slate-300">
+              <button onClick={() => setProfileOpen(true)} className="bg-[#151c2a] border border-slate-700 p-1.5 rounded-lg text-slate-300 active:scale-95 transition-transform">
                 <UserIcon className="size-4" />
               </button>
             </>
           ) : (
-            <button onClick={() => { setStep("phone"); setMobileAuthOpen(true); }} className="bg-blue-600 text-white text-[11px] font-black px-3.5 py-2 rounded-lg shadow-md shadow-blue-500/20 tracking-wide">
+            <button onClick={() => { setStep("phone"); setMobileAuthOpen(true); }} className="bg-blue-600 text-white text-[11px] font-black px-3.5 py-2 rounded-lg shadow-md shadow-blue-500/20 tracking-wide active:scale-95">
               LOG IN
             </button>
           )}
         </div>
       </div>
 
-      {/* Main Content Router */}
+      {/* Main Screen Switcher */}
       {activeTab !== "lobby" && activeTab !== "wallet" && activeTab !== "refer" ? (
         <div className="animate-in fade-in duration-200">
-          <button onClick={() => setActiveTab("lobby")} className="mb-4 flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-[#111724] border border-slate-800 px-3 py-1.5 rounded-lg">
+          <button onClick={() => setActiveTab("lobby")} className="mb-4 flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-[#111724] border border-slate-800 px-3 py-1.5 rounded-lg active:scale-95">
             <ChevronLeft className="size-4" /> Back to Lobby
           </button>
           
@@ -323,100 +310,121 @@ function Index() {
       ) : activeTab === "refer" ? (
         <ReferEarn onSignIn={() => { setStep("phone"); setMobileAuthOpen(true); }} />
       ) : (
-        <div className="space-y-4 animate-in fade-in duration-200">
+        <div className="space-y-3.5 animate-in fade-in duration-200">
           
           {/* Jackpot Banner */}
-          <div className="rounded-xl border border-slate-800 bg-gradient-to-r from-blue-950/40 via-indigo-950/30 to-[#0e131d] p-3 flex items-center justify-between shadow-lg">
+          <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-blue-950/40 via-indigo-950/30 to-[#0e131d] p-3.5 flex items-center justify-between shadow-lg">
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="size-1.5 rounded-full bg-emerald-500 animate-ping" />
                 <span className="text-[9px] uppercase font-extrabold text-blue-400 tracking-wider">Live Jackpot</span>
               </div>
-              <h4 className="text-[17px] font-black text-white mt-0.5 tracking-tight">₹{jackpotAmount.toLocaleString("en-IN")}</h4>
+              <h4 className="text-[18px] font-black text-white mt-0.5 tracking-tight">₹{jackpotAmount.toLocaleString("en-IN")}</h4>
             </div>
-            <button onClick={() => setDailySpinOpen(true)} className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black px-3 py-1.5 rounded-lg">
+            <button onClick={() => setDailySpinOpen(true)} className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black px-3.5 py-2 rounded-xl shadow-md active:scale-95">
               <Gift className="size-3.5" /> FREE SPIN
             </button>
           </div>
 
-          {/* Search & Filters */}
-          <div>
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500" />
-              <input type="text" placeholder="Search 1win games..." value={search} onChange={(e)=>setSearch(e.target.value)} className="w-full bg-[#0f1420] border border-slate-800 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-200 outline-none focus:border-blue-500" />
-            </div>
-
-            <div className="flex gap-2 overflow-x-auto pb-1 text-[11px] font-bold scrollbar-none">
-              {[
-                { id: "all", label: "All Games", icon: <LayoutGrid className="size-3" /> },
-                { id: "slots", label: "Slots 777", icon: <Flame className="size-3" /> },
-                { id: "crash", label: "Crash", icon: <Plane className="size-3" /> },
-                { id: "instant", label: "Instant", icon: <Zap className="size-3" /> },
-              ].map((cat) => (
-                <button key={cat.id} onClick={() => setSelectedCategory(cat.id as any)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg shrink-0 border transition-all ${selectedCategory === cat.id ? "bg-blue-600 border-blue-500 text-white" : "bg-[#0e141f] border-slate-800 text-slate-400"}`}>
-                  {cat.icon} {cat.label}
-                </button>
-              ))}
-            </div>
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500" />
+            <input 
+              type="text" 
+              placeholder="Search 1win games..." 
+              value={search} 
+              onChange={(e)=>setSearch(e.target.value)} 
+              className="w-full bg-[#0f1420] border border-slate-800 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-200 outline-none focus:border-blue-500" 
+            />
           </div>
 
-          {/* 1win 3-Column Grid */}
+          {/* Categories Horizontal Pills */}
+          <div className="flex gap-2 overflow-x-auto pb-1 text-[11px] font-bold scrollbar-none">
+            {[
+              { id: "all", label: "All Games", icon: <LayoutGrid className="size-3" /> },
+              { id: "slots", label: "Slots 777", icon: <Flame className="size-3" /> },
+              { id: "crash", label: "Crash", icon: <Plane className="size-3" /> },
+              { id: "instant", label: "Instant", icon: <Zap className="size-3" /> },
+            ].map((cat) => (
+              <button 
+                key={cat.id} 
+                onClick={() => setSelectedCategory(cat.id as any)} 
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg shrink-0 border transition-all ${selectedCategory === cat.id ? "bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-500/20" : "bg-[#0e141f] border-slate-800 text-slate-400"}`}
+              >
+                {cat.icon} {cat.label}
+              </button>
+            ))}
+          </div>
+
+          {/* 1win Authentic 3-Column Poster Grid */}
           <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
-            {filteredGames.map((g) => {
-              const IconComp = g.icon;
-              return (
-                <div key={g.id} onClick={() => setActiveTab(g.id)} className={`relative flex aspect-[3/4] flex-col justify-between overflow-hidden rounded-xl border ${g.border} bg-[#0e131f] p-1.5 sm:p-2 cursor-pointer shadow-lg active:scale-95 transition-transform`}>
+            {filteredGames.map((g) => (
+              <div
+                key={g.id}
+                onClick={() => setActiveTab(g.id)}
+                className="group cursor-pointer select-none flex flex-col active:scale-95 transition-transform duration-150"
+              >
+                {/* 3:4 Vertical Aspect Poster */}
+                <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-[#0e131f] border border-white/10 shadow-xl group-hover:border-blue-500/40">
                   
-                  {/* Provider Strip */}
-                  <div className="flex items-center justify-between z-10">
-                    <span className="bg-black/60 backdrop-blur-sm text-[7px] font-black tracking-wider text-slate-300 px-1 py-0.5 rounded truncate max-w-[60%]">
+                  {/* Poster Dynamic Gradient Base */}
+                  <div className={`absolute inset-0 bg-gradient-to-b ${g.bgGradient} opacity-35`} />
+
+                  {/* Top Provider Ribbon Tag & Badge */}
+                  <div className="absolute top-1.5 left-0 right-0 flex items-center justify-between px-1.5 z-20">
+                    <span className="text-[7.5px] font-black uppercase tracking-wider text-slate-300 bg-black/70 backdrop-blur-md px-1.5 py-0.5 rounded truncate max-w-[65%]">
                       {g.provider}
                     </span>
                     {g.badge && (
-                      <span className="bg-rose-600 text-white text-[7px] font-black px-1 py-0.5 rounded">
+                      <span className={`text-[7px] font-black uppercase text-white ${g.badgeBg} px-1 py-0.5 rounded shadow`}>
                         {g.badge}
                       </span>
                     )}
                   </div>
 
-                  {/* 3D Icon Container */}
-                  <div className="relative flex flex-1 items-center justify-center mt-1">
-                    <div className={`absolute inset-0 bg-gradient-to-b ${g.gradient}`} />
-                    <IconComp className={`size-9 sm:size-11 z-10 ${g.color}`} />
-                  </div>
-
-                  {/* Title & Live Dot */}
-                  <div className="z-10 pt-1">
-                    <p className="text-[9px] sm:text-[10px] font-black truncate text-white leading-none">
+                  {/* 1win Style Bold Title at Top */}
+                  <div className="absolute top-6 left-0 right-0 px-1 z-20 text-center">
+                    <h3 className="font-sans font-black text-white text-[11px] sm:text-[12px] leading-tight tracking-tight drop-shadow-[0_2px_5px_rgba(0,0,0,0.9)] uppercase">
                       {g.title}
-                    </p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <span className="size-1 rounded-full bg-emerald-500 animate-ping" />
-                      <span className="text-[7px] sm:text-[8px] font-bold text-slate-400">
-                        {g.players}
-                      </span>
-                    </div>
+                    </h3>
                   </div>
 
+                  {/* 3D Game Visual Center Element */}
+                  <div className="absolute inset-0 flex items-center justify-center pt-5">
+                    <span className="text-4xl filter drop-shadow-[0_10px_20px_rgba(0,0,0,0.9)] transform group-hover:scale-115 transition-transform duration-200">
+                      {g.emoji}
+                    </span>
+                  </div>
+
+                  {/* Bottom Vignette Gloss */}
+                  <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
                 </div>
-              );
-            })}
+
+                {/* Live Playing Counter Under Poster */}
+                <div className="mt-1 flex items-center gap-1.5 px-0.5">
+                  <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981] animate-pulse" />
+                  <span className="text-[9.5px] font-bold text-slate-400">
+                    {g.players} playing
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Help & Support (Tucked at bottom) */}
-          <div className="mt-8 rounded-xl border border-slate-800 bg-[#0e131f] p-4 text-center">
+          {/* WhatsApp Support Button */}
+          <div className="mt-8 rounded-2xl border border-slate-800 bg-[#0e131f] p-4 text-center">
             <h3 className="text-xs font-bold text-slate-300 mb-2">Need Help?</h3>
-            <Button asChild variant="outline" size="sm" className="w-full bg-[#151c2a] border-slate-700 text-[11px]">
+            <Button asChild variant="outline" size="sm" className="w-full bg-[#151c2a] border-slate-700 text-[11px] active:scale-95">
               <a href={SUPPORT_WHATSAPP} target="_blank" rel="noopener noreferrer">
                 <MessageCircle className="mr-1.5 size-3.5 text-emerald-400" /> WhatsApp Support
               </a>
             </Button>
             {!isOperator && (
-              <p onClick={handleAdminAccess} className="text-[10px] text-slate-600 mt-3 cursor-pointer">Admin Portal</p>
+              <p onClick={handleAdminAccess} className="text-[10px] text-slate-600 mt-3 cursor-pointer">Operator Portal</p>
             )}
           </div>
 
-          {/* Admin Console (if unlocked) */}
+          {/* Admin Operator Console (if logged/unlocked) */}
           {isOperator && (
             <div className="mt-4 rounded-xl border border-blue-500/40 p-4 bg-blue-950/10">
               <div className="flex items-center justify-between mb-3">
@@ -431,7 +439,7 @@ function Index() {
         </div>
       )}
 
-      {/* 1win Bottom Navigation Dock */}
+      {/* 1win Bottom Navigation Bar */}
       <div className="fixed bottom-0 left-0 right-0 mx-auto max-w-md bg-[#0a0d14]/98 backdrop-blur-xl border-t border-slate-800/90 pb-safe pt-2 px-4 flex justify-between items-center z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
         <button onClick={() => setActiveTab("lobby")} className={`flex flex-col items-center gap-1 w-12 ${activeTab === "lobby" ? "text-blue-500" : "text-slate-500 hover:text-slate-300"}`}>
           <Menu className="size-5" />
@@ -456,7 +464,7 @@ function Index() {
         </button>
       </div>
 
-      {/* Mobile Auth Modal (Untouched Logic) */}
+      {/* Mobile WhatsApp Auth Modal */}
       {mobileAuthOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm rounded-2xl bg-[#0e131f] p-5 shadow-2xl border border-slate-700">
@@ -491,7 +499,7 @@ function Index() {
         </div>
       )}
 
-      {/* Global Modals */}
+      {/* Modals Mounting */}
       <TopUpModal isOpen={topUpOpen} onClose={() => setTopUpOpen(false)} />
       <WithdrawModal open={withdrawOpen} onOpenChange={setWithdrawOpen} />
       <DailySpinModal open={dailySpinOpen} onOpenChange={setDailySpinOpen} />
