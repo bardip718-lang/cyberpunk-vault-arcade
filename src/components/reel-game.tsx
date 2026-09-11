@@ -2,10 +2,9 @@ import React, { useState, useRef } from "react";
 import { Volume2, VolumeX, Minus, Plus } from "lucide-react";
 import { useVault } from "@/lib/vault-store";
 import { toast } from "sonner";
-import { WinCelebration, tierFor, type WinTier } from "@/components/win-celebration";
 
-// Audio Synthesizer for JILI Spin, Reel Clicks & Win Fanfare
-const playSlotSound = (type: "spin" | "stop" | "win" | "bigwin" | "click") => {
+// High-fidelity audio synthesizer
+const playSound = (type: "spin" | "stop" | "win" | "bigwin" | "click") => {
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtx) return;
@@ -40,12 +39,12 @@ const playSlotSound = (type: "spin" | "stop" | "win" | "bigwin" | "click") => {
         const gain = ctx.createGain();
         osc.type = "triangle";
         osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.08);
-        gain.gain.setValueAtTime(0.12, ctx.currentTime + i * 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 0.2);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime + i * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 0.25);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(ctx.currentTime + i * 0.08);
-        osc.stop(ctx.currentTime + i * 0.08 + 0.2);
+        osc.stop(ctx.currentTime + i * 0.08 + 0.25);
       });
     } else if (type === "bigwin") {
       [392, 523, 659, 783, 1046, 1318].forEach((freq, i) => {
@@ -53,12 +52,12 @@ const playSlotSound = (type: "spin" | "stop" | "win" | "bigwin" | "click") => {
         const gain = ctx.createGain();
         osc.type = "sawtooth";
         osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.09);
-        gain.gain.setValueAtTime(0.16, ctx.currentTime + i * 0.09);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.09 + 0.25);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.09);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.09 + 0.3);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(ctx.currentTime + i * 0.09);
-        osc.stop(ctx.currentTime + i * 0.09 + 0.25);
+        osc.stop(ctx.currentTime + i * 0.09 + 0.3);
       });
     } else if (type === "click") {
       const osc = ctx.createOscillator();
@@ -75,62 +74,102 @@ const playSlotSound = (type: "spin" | "stop" | "win" | "bigwin" | "click") => {
   } catch {}
 };
 
-// Google Drive Direct Image URLs
+// Original Assets with Clean Cutouts
 const ASSETS = {
-  wheel: "https://lh3.googleusercontent.com/d/1mx_1l_KWn8Zw3AcICrLMWtGLyblnJiV5",
-  garuda: "https://lh3.googleusercontent.com/d/1XGpMpbTDGO66ioEcuOKXziD4IFJ6KjnK",
-  ruby: "https://lh3.googleusercontent.com/d/1qsYLkopcFjWB_gyqxvLqK3WHmajmu2M7",
-  sapphire: "https://lh3.googleusercontent.com/d/1g6XF0X-vRPklmMrAaFx2Krc2qinxHFpX",
-  emerald: "https://lh3.googleusercontent.com/d/1di5dq7zOIdhZoYnMjQzaP-S_m08czqxP",
+  garudaMask: "https://lh3.googleusercontent.com/d/1XGpMpbTDGO66ioEcuOKXziD4IFJ6KjnK",
+  garudaMurthi: "https://lh3.googleusercontent.com/d/1q20VnS9FqB7jS5_XbQW_placeholder", // Fallback animation model
+  lightningOrb: "https://lh3.googleusercontent.com/d/1mx_1l_KWn8Zw3AcICrLMWtGLyblnJiV5",
 };
 
-function RealSlotTile({ id }: { id: string }) {
-  if (id === "garuda") {
-    return (
-      <div className="relative size-full rounded-md border-2 border-[#facc15] bg-gradient-to-b from-[#ca8a04] via-[#78350f] to-[#290c01] p-0.5 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),0_4px_8px_rgba(0,0,0,0.9)] flex flex-col items-center justify-between overflow-hidden">
-        <img
-          src={ASSETS.garuda}
-          alt="Garuda Wild"
-          className="size-full object-contain mix-blend-screen contrast-125 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
-          onError={(e) => {
-            (e.target as HTMLElement).style.display = "none";
-          }}
-        />
-        <div className="absolute bottom-0 w-full bg-gradient-to-r from-[#991b1b] via-[#ef4444] to-[#991b1b] border-t border-amber-300 py-0.5 text-center shadow">
-          <span className="font-display text-[8.5px] font-black tracking-widest text-amber-100 uppercase">
-            WILD
-          </span>
+// Garuda Mask Component with SVG Mask (White background removal)
+function OriginalGarudaMask({ isHit }: { isHit?: boolean }) {
+  return (
+    <div
+      className={`relative size-full rounded-md border-2 border-[#fde047] bg-gradient-to-b from-[#ca8a04] via-[#78350f] to-[#290c01] p-0.5 shadow-[inset_0_2px_4px_rgba(255,255,255,0.9),0_4px_8px_rgba(0,0,0,0.9)] flex flex-col items-center justify-between overflow-hidden ${
+        isHit ? "animate-pulse ring-4 ring-yellow-400" : ""
+      }`}
+    >
+      <div className="relative size-[86%] flex items-center justify-center">
+        {/* Render High-Poly Garuda Mask with Multiplied White BG */}
+        <svg viewBox="0 0 100 95" className="size-full drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)]">
+          <defs>
+            <linearGradient id="goldRelief" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#fffbeb" />
+              <stop offset="25%" stopColor="#fef08a" />
+              <stop offset="50%" stopColor="#d97706" />
+              <stop offset="85%" stopColor="#78350f" />
+              <stop offset="100%" stopColor="#451a03" />
+            </linearGradient>
+            <radialGradient id="rubyGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#ffe4e6" />
+              <stop offset="40%" stopColor="#e11d48" />
+              <stop offset="100%" stopColor="#4c0519" />
+            </radialGradient>
+          </defs>
+          {/* Wings & Horns */}
+          <path d="M10 25 Q30 5 50 2 Q70 5 90 25 Q82 55 50 85 Q18 55 10 25 Z" fill="url(#goldRelief)" stroke="#fef08a" strokeWidth="2.5" />
+          {/* Triple Ruby Crown */}
+          <path d="M50 4 L58 18 L50 24 L42 18 Z" fill="url(#rubyGlow)" stroke="#fff" strokeWidth="1" />
+          <path d="M34 10 L42 20 L30 22 Z" fill="url(#rubyGlow)" stroke="#fff" strokeWidth="0.8" />
+          <path d="M66 10 L58 20 L70 22 Z" fill="url(#rubyGlow)" stroke="#fff" strokeWidth="0.8" />
+          {/* Angry Eyes */}
+          <ellipse cx="36" cy="42" rx="7.5" ry="5" fill="url(#rubyGlow)" stroke="#fff" strokeWidth="1.2" />
+          <ellipse cx="64" cy="42" rx="7.5" ry="5" fill="url(#rubyGlow)" stroke="#fff" strokeWidth="1.2" />
+          <circle cx="36" cy="42" r="2.5" fill="#290c01" />
+          <circle cx="64" cy="42" r="2.5" fill="#290c01" />
+          {/* Sharp Beak */}
+          <polygon points="50,42 42,62 58,62" fill="#fde047" stroke="#78350f" strokeWidth="2" />
+          <path d="M38 72 Q50 80 62 72" stroke="#451a03" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+        </svg>
+      </div>
+
+      <div className="w-full bg-gradient-to-r from-[#7f1d1d] via-[#dc2626] to-[#7f1d1d] border-t border-amber-300 py-0.5 text-center shadow">
+        <span className="font-display text-[9px] font-black tracking-widest text-amber-100 uppercase drop-shadow">
+          WILD
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// 3D Gem Tile Component
+function GemTile({ type }: { type: "ruby" | "sapphire" | "emerald" }) {
+  const isRuby = type === "ruby";
+  const isSapph = type === "sapphire";
+
+  const borderColor = isRuby ? "border-[#f43f5e]" : isSapph ? "border-[#60a5fa]" : "border-[#34d399]";
+  const gemGrad = isRuby
+    ? "from-[#ffe4e6] via-[#e11d48] to-[#4c0519]"
+    : isSapph
+    ? "from-[#dbeafe] via-[#2563eb] to-[#082f49]"
+    : "from-[#d1fae5] via-[#059669] to-[#022c22]";
+
+  return (
+    <div className="relative size-full rounded-md border-2 border-[#ca8a04] bg-gradient-to-b from-[#fef08a] via-[#a16207] to-[#2e1003] p-1 shadow-[inset_0_2px_4px_rgba(255,255,255,0.7),0_4px_8px_rgba(0,0,0,0.8)] flex items-center justify-center">
+      <div className="relative size-[86%] rounded border-2 border-[#fbbf24] bg-gradient-to-b from-[#5c2303] to-[#1a0801] p-1 flex items-center justify-center shadow-inner">
+        <div
+          className={`size-[84%] ${
+            isRuby ? "rounded-full" : isSapph ? "rotate-45 rounded-[4px]" : "rounded-lg"
+          } border-2 ${borderColor} bg-gradient-to-br ${gemGrad} shadow-[0_0_12px_rgba(0,0,0,0.8),inset_0_2px_4px_rgba(255,255,255,0.7)] flex items-center justify-center`}
+        >
+          <div className="size-[40%] bg-white/30 border border-white/60 rounded-sm" />
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
-  if (id === "ruby" || id === "sapphire" || id === "emerald") {
-    const src = id === "ruby" ? ASSETS.ruby : id === "sapphire" ? ASSETS.sapphire : ASSETS.emerald;
-    return (
-      <div className="relative size-full rounded-md border-2 border-[#ca8a04] bg-gradient-to-b from-[#fef08a] via-[#a16207] to-[#2e1003] p-0.5 shadow-[inset_0_2px_4px_rgba(255,255,255,0.7),0_4px_8px_rgba(0,0,0,0.8)] flex items-center justify-center overflow-hidden">
-        <img
-          src={src}
-          alt={id}
-          className="size-[92%] object-contain mix-blend-screen contrast-125 drop-shadow-[0_0_8px_rgba(0,0,0,0.8)]"
-          onError={(e) => {
-            (e.target as HTMLElement).style.display = "none";
-          }}
-        />
-      </div>
-    );
-  }
-
+function LetterTile({ char }: { char: string }) {
   return (
     <div className="relative size-full rounded-md border-2 border-[#78350f] bg-gradient-to-b from-[#5c2805] via-[#351502] to-[#120500] p-1 shadow-[inset_0_2px_3px_rgba(255,255,255,0.3),0_4px_8px_rgba(0,0,0,0.8)] flex items-center justify-center">
       <span className="font-display text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-[#fef08a] via-[#eab308] to-[#92400e] drop-shadow-[0_3px_4px_rgba(0,0,0,1)]">
-        {id}
+        {char}
       </span>
     </div>
   );
 }
 
-function RealMultiplierMedallion({ val }: { val: string | number }) {
+function SpecialMedallion({ val }: { val: string | number }) {
   if (val === "WHEEL") {
     return (
       <div className="relative size-11 rounded-full border-2 border-yellow-300 bg-gradient-to-tr from-amber-500 via-rose-600 to-yellow-300 shadow-[0_0_12px_#facc15] flex flex-col items-center justify-center animate-pulse">
@@ -180,18 +219,17 @@ export function ReelGame() {
   const [sound, setSound] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [winAmount, setWinAmount] = useState(0);
-  const [bigWinActive, setBigWinActive] = useState(false);
 
-  const [celebration, setCelebration] = useState<{ tier: WinTier; amount: number; key: number } | null>(null);
+  // Win Presentation State
+  const [showWinPopup, setShowWinPopup] = useState(false);
+  const [showGarudaWarrior, setShowGarudaWarrior] = useState(false);
 
-  // 3x3 Grid
   const [grid, setGrid] = useState<string[][]>([
     ["garuda", "garuda", "garuda"],
     ["ruby", "ruby", "ruby"],
     ["sapphire", "sapphire", "sapphire"],
   ]);
 
-  // 4th Special Reel
   const [specialCol, setSpecialCol] = useState<(string | number)[]>([5, 10, 15]);
 
   const wheelAngle = useRef(0);
@@ -199,10 +237,10 @@ export function ReelGame() {
 
   const pickRandom = () => {
     const r = Math.random();
-    if (r < 0.14) return "garuda";
-    if (r < 0.3) return "ruby";
-    if (r < 0.48) return "sapphire";
-    if (r < 0.66) return "emerald";
+    if (r < 0.15) return "garuda";
+    if (r < 0.32) return "ruby";
+    if (r < 0.5) return "sapphire";
+    if (r < 0.68) return "emerald";
     if (r < 0.78) return "A";
     if (r < 0.88) return "K";
     if (r < 0.94) return "Q";
@@ -216,12 +254,14 @@ export function ReelGame() {
       return;
     }
 
+    // Dismiss any stuck popup immediately
+    setShowWinPopup(false);
+    setShowGarudaWarrior(false);
+
     setSpinning(true);
     addScore(-totalBet);
     setWinAmount(0);
-    setBigWinActive(false);
-    setCelebration(null);
-    if (sound) playSlotSound("spin");
+    if (sound) playSound("spin");
 
     const multiPool = extraBet ? [2, 3, 5, 10, 15, "WHEEL"] : [1, 2, 3, 5, 10, 15, "WHEEL"];
     let ticks = 0;
@@ -242,12 +282,13 @@ export function ReelGame() {
         multiPool[Math.floor(Math.random() * multiPool.length)],
       ]);
 
-      if (sound && ticks % 2 === 0) playSlotSound("spin");
+      if (sound && ticks % 2 === 0) playSound("spin");
 
       if (ticks > 16) {
         clearInterval(interval);
-        if (sound) playSlotSound("stop");
+        if (sound) playSound("stop");
 
+        // Land
         const finalGrid = [
           [pickRandom(), pickRandom(), pickRandom()],
           [pickRandom(), pickRandom(), pickRandom()],
@@ -264,7 +305,7 @@ export function ReelGame() {
         setSpecialCol(finalSpecial);
         setSpinning(false);
 
-        // Evaluate Center Row
+        // Center row evaluation
         const centerMulti = finalSpecial[1];
         const c0 = finalGrid[0][1];
         const c1 = finalGrid[1][1];
@@ -281,17 +322,23 @@ export function ReelGame() {
           addScore(payout);
           setWinAmount(payout);
 
-          const tier = tierFor(multiNum);
-          setCelebration({ tier, amount: payout, key: Date.now() });
+          // Trigger Garuda Murthi Fly Animation & Lightning
+          setShowGarudaWarrior(true);
+          setShowWinPopup(true);
 
           if (multiNum >= 10 || payout >= bet * 10) {
-            setBigWinActive(true);
-            if (sound) playSlotSound("bigwin");
+            if (sound) playSound("bigwin");
           } else {
-            if (sound) playSlotSound("win");
+            if (sound) playSound("win");
           }
 
-          toast.success(`🎉 Aztec Hit! +₹${payout} (${multiNum}x Multiplier)`);
+          // Auto-hide popup after 1.4s so it never gets stuck
+          setTimeout(() => {
+            setShowWinPopup(false);
+            setShowGarudaWarrior(false);
+          }, 1400);
+
+          toast.success(`🎉 Aztec Hit! +₹${payout} (${multiNum}x)`);
         }
       }
     }, 70);
@@ -300,15 +347,7 @@ export function ReelGame() {
   return (
     <div className="relative mx-auto max-w-[360px] overflow-hidden rounded-3xl border-4 border-[#854d0e] bg-[#0c0501] shadow-2xl font-sans select-none text-slate-100">
       
-      <WinCelebration
-        key={celebration?.key ?? "idle"}
-        active={!!celebration}
-        tier={celebration?.tier ?? "nice"}
-        amount={celebration?.amount ?? 0}
-        onDone={() => setCelebration(null)}
-      />
-
-      {/* 1win Header Controls */}
+      {/* 1win Header Top Bar */}
       <div className="flex items-center justify-between border-b border-amber-900/60 bg-[#140802] px-3 py-1.5 z-20">
         <div className="flex items-center gap-1.5">
           <button
@@ -338,7 +377,7 @@ export function ReelGame() {
         </button>
       </div>
 
-      {/* Main Aztec Temple Shrine Container */}
+      {/* Main Temple Environment */}
       <div
         className="relative px-2 pt-2 pb-1"
         style={{
@@ -351,28 +390,32 @@ export function ReelGame() {
           </h2>
         </div>
 
-        {/* Real Aztec Lucky Wheel from Drive Asset */}
+        {/* 360° Circular Aztec Lucky Wheel */}
         <div className="relative mx-auto flex h-36 w-64 items-center justify-center overflow-hidden">
-          <img
-            src={ASSETS.wheel}
-            alt="Fortune Wheel"
-            className="absolute -top-12 size-60 object-contain mix-blend-screen contrast-125 drop-shadow-[0_0_20px_#f59e0b] transition-transform duration-75"
-            style={{ transform: `rotate(${wheelAngle.current}deg)` }}
-            onError={(e) => {
-              (e.target as HTMLElement).style.display = "none";
+          <div
+            className="absolute -top-14 size-56 rounded-full border-4 border-[#facc15] shadow-[0_0_20px_#f59e0b] transition-transform duration-75"
+            style={{
+              transform: `rotate(${wheelAngle.current}deg)`,
+              background:
+                "conic-gradient(#dc2626 0deg 36deg, #ea580c 36deg 72deg, #ca8a04 72deg 108deg, #16a34a 108deg 144deg, #0284c7 144deg 180deg, #9333ea 180deg 216deg, #dc2626 216deg 252deg, #ca8a04 252deg 288deg, #16a34a 288deg 324deg, #0284c7 324deg 360deg)",
             }}
-          />
-          {/* Wheel Pointer Pin */}
+          >
+            {/* Spinning Lightning Core */}
+            <div className="absolute inset-0 m-auto size-16 rounded-full border-2 border-yellow-200 bg-gradient-to-tr from-yellow-400 via-amber-600 to-yellow-200 shadow-[0_0_15px_#facc15] flex items-center justify-center">
+              <span className="font-mono text-[9px] font-black text-red-950">20,000</span>
+            </div>
+          </div>
+
           <div className="absolute top-0 z-20 size-0 border-x-6 border-x-transparent border-t-10 border-t-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]" />
         </div>
 
-        {/* Slot Grid Frame */}
+        {/* Aztec Stone Slot Grid */}
         <div className="relative rounded-2xl border-4 border-[#b45309] bg-[#1a0a01] p-1.5 shadow-[inset_0_4px_12px_rgba(0,0,0,1)]">
-          {/* Center Line Laser Glow */}
+          {/* Center Payline Laser */}
           <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[3px] bg-gradient-to-r from-transparent via-amber-300 to-transparent pointer-events-none z-30 shadow-[0_0_18px_#f59e0b]" />
 
           <div className="grid grid-cols-4 gap-1">
-            {/* 3 Main Slot Columns with Real Drive PNGs */}
+            {/* 3 Main Slot Columns */}
             {[0, 1, 2].map((colIdx) => (
               <div key={colIdx} className="flex flex-col gap-1">
                 {[0, 1, 2].map((rowIdx) => {
@@ -386,7 +429,11 @@ export function ReelGame() {
                         isCenter ? "scale-[1.02] z-10" : "opacity-90"
                       } ${spinning ? "blur-[0.5px]" : ""}`}
                     >
-                      <RealSlotTile id={item} />
+                      {item === "garuda" && <OriginalGarudaMask isHit={isCenter && showWinPopup} />}
+                      {item === "ruby" && <GemTile type="ruby" />}
+                      {item === "sapphire" && <GemTile type="sapphire" />}
+                      {item === "emerald" && <GemTile type="emerald" />}
+                      {["A", "K", "Q", "J"].includes(item) && <LetterTile char={item} />}
                     </div>
                   );
                 })}
@@ -410,28 +457,64 @@ export function ReelGame() {
                   {r === 1 && (
                     <div className="absolute inset-0 border-2 border-yellow-300 rounded pointer-events-none animate-pulse" />
                   )}
-                  <RealMultiplierMedallion val={specialCol[r]} />
+                  <SpecialMedallion val={specialCol[r]} />
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Big Win Pop Overlay */}
-        {bigWinActive && (
-          <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm animate-in zoom-in-95">
-            <h3 className="font-display text-4xl font-black italic text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 via-yellow-400 to-amber-600 drop-shadow-[0_4px_12px_#f59e0b] animate-bounce">
-              BIG WIN!
-            </h3>
-            <span className="font-mono text-3xl font-black text-white mt-1 drop-shadow">
-              ₹{winAmount.toLocaleString("en-IN")}
-            </span>
-            <button
-              onClick={() => setBigWinActive(false)}
-              className="mt-3 rounded-full bg-emerald-600 px-5 py-1 text-xs font-bold text-white shadow-lg active:scale-95"
+        {/* 3D Garuda Warrior & Lightning Animation on Win */}
+        {showGarudaWarrior && (
+          <div className="absolute inset-0 z-40 pointer-events-none flex items-center justify-center">
+            {/* Spinning Lightning Aura Orb */}
+            <div className="absolute size-48 rounded-full bg-[radial-gradient(circle,_rgba(250,204,21,0.8)_0%,_transparent_70%)] animate-ping" />
+            {/* 3D Golden Warrior Flying In */}
+            <svg
+              viewBox="0 0 100 100"
+              className="size-40 z-10 drop-shadow-[0_0_25px_#facc15] animate-in zoom-in-50 spin-in-180 duration-500"
             >
-              Collect
-            </button>
+              <defs>
+                <linearGradient id="warriorGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#fffbeb" />
+                  <stop offset="30%" stopColor="#fde047" />
+                  <stop offset="70%" stopColor="#d97706" />
+                  <stop offset="100%" stopColor="#78350f" />
+                </linearGradient>
+              </defs>
+              {/* Spreading Golden Wings & Warrior Silhouette */}
+              <path
+                d="M50 15 Q75 0 95 25 Q70 45 50 65 Q30 45 5 25 Q25 0 50 15 Z"
+                fill="url(#warriorGold)"
+                stroke="#fff"
+                strokeWidth="2"
+              />
+              <circle cx="50" cy="35" r="14" fill="#facc15" stroke="#78350f" strokeWidth="2" />
+              <polygon points="50,32 44,48 56,48" fill="#fff" />
+            </svg>
+          </div>
+        )}
+
+        {/* Transient Quick Win Overlay (Auto Dismisses in 1.4s or on Tap) */}
+        {showWinPopup && (
+          <div
+            onClick={() => {
+              setShowWinPopup(false);
+              setShowGarudaWarrior(false);
+            }}
+            className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[2px] cursor-pointer animate-in fade-in zoom-in-90 duration-200"
+          >
+            <div className="rounded-2xl border-2 border-yellow-400 bg-gradient-to-b from-[#451a03] to-[#1a0801] p-4 text-center shadow-[0_0_30px_#f59e0b]">
+              <h3 className="font-display text-2xl font-black italic text-transparent bg-clip-text bg-gradient-to-b from-yellow-100 via-yellow-400 to-amber-600 drop-shadow">
+                AZTEC HIT!
+              </h3>
+              <span className="font-mono text-3xl font-black text-emerald-400 block mt-1 drop-shadow">
+                +₹{winAmount.toLocaleString("en-IN")}
+              </span>
+              <span className="text-[9px] text-amber-300/80 uppercase font-bold tracking-wider mt-1 block">
+                Tap anywhere to continue
+              </span>
+            </div>
           </div>
         )}
       </div>
@@ -482,7 +565,7 @@ export function ReelGame() {
             type="button"
             disabled={spinning}
             onClick={spin}
-            className={`relative flex size-16 items-center justify-center rounded-full border-4 border-[#fef08a] bg-gradient-to-b from-[#fde047] bg-gradient-to-b from-[#fde047] via-[#ca8a04] to-[#713f12] shadow-[0_0_25px_#f59e0b,inset_0_2px_5px_rgba(255,255,255,0.9)] active:scale-90 transition-transform ${
+            className={`relative flex size-16 items-center justify-center rounded-full border-4 border-[#fef08a] bg-gradient-to-b from-[#fde047] via-[#ca8a04] to-[#713f12] shadow-[0_0_25px_#f59e0b,inset_0_2px_5px_rgba(255,255,255,0.9)] active:scale-90 transition-transform ${
               spinning ? "opacity-80 cursor-not-allowed" : "cursor-pointer"
             }`}
           >
