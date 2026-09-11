@@ -4,7 +4,7 @@ import { useVault } from "@/lib/vault-store";
 import { toast } from "sonner";
 import { WinCelebration, tierFor, type WinTier } from "@/components/win-celebration";
 
-// Authentic Sound Synthesizer for Aztec Slot Clicks, Reel Stoppage & Fanfare
+// Audio Synthesizer for Aztec Slot Clicks, Reel Stoppage & Fanfare
 const playTempleSound = (type: "spin" | "stop" | "win" | "bigwin" | "click") => {
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -94,10 +94,8 @@ function FortuneTile({ id }: { id: string }) {
           </defs>
           <path d="M50 4 L88 24 L88 76 L50 96 L12 76 L12 24 Z" fill="url(#garudaGold)" stroke="#fef08a" strokeWidth="2.5" />
           <path d="M50 18 L76 34 L76 66 L50 82 L24 66 L24 34 Z" fill="#ca8a04" opacity="0.4" />
-          {/* Crimson Mask Eyes */}
           <ellipse cx="36" cy="42" rx="7" ry="5" fill="#dc2626" stroke="#fff" strokeWidth="1" />
           <ellipse cx="64" cy="42" rx="7" ry="5" fill="#dc2626" stroke="#fff" strokeWidth="1" />
-          {/* Beak & Crest */}
           <polygon points="50,44 42,62 58,62" fill="#fef08a" stroke="#854d0e" strokeWidth="1.5" />
           <path d="M38 72 Q50 82 62 72" stroke="#78350f" strokeWidth="3" fill="none" strokeLinecap="round" />
         </svg>
@@ -344,21 +342,18 @@ export function ReelGame() {
 
       {/* Top Aztec Lucky Wheel & EX Extra Bet Deck */}
       <div className="relative mb-2 overflow-hidden rounded-2xl border-2 border-amber-600/70 bg-gradient-to-b from-[#451a03] to-[#1c0c02] p-2 text-center shadow-lg">
-        {/* Giant Circular Lucky Wheel Visual */}
         <div className="relative mx-auto flex size-28 items-center justify-center">
           <div
             className={`size-full rounded-full border-4 border-amber-400 bg-[conic-gradient(#f59e0b_0deg_45deg,#b45309_45deg_90deg,#ef4444_90deg_135deg,#9333ea_135deg_180deg,#3b82f6_180deg_225deg,#10b981_225deg_270deg,#f59e0b_270deg_360deg)] shadow-[0_0_20px_#f59e0b] ${
               spinning ? "animate-spin" : ""
             }`}
           />
-          {/* Aztec Wheel Pointer & Hub */}
           <div className="absolute z-10 flex size-12 items-center justify-center rounded-full border-2 border-amber-300 bg-gradient-to-b from-yellow-300 to-amber-700 shadow-md">
             <Flame className="size-5 text-red-950 fill-red-600 animate-pulse" />
           </div>
           <div className="absolute -top-1 z-20 size-0 border-x-4 border-x-transparent border-t-8 border-t-yellow-300 drop-shadow" />
         </div>
 
-        {/* 1win / JILI EX Extra Bet Pill */}
         <div className="mt-2 flex items-center justify-between px-1">
           <div className="flex items-center gap-1.5">
             <span className="font-display text-sm font-black italic tracking-tight text-amber-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
@@ -384,11 +379,9 @@ export function ReelGame() {
 
       {/* Aztec Temple Stone Frame */}
       <div className="relative rounded-2xl border-4 border-[#b45309] bg-[#120802] p-1.5 shadow-[inset_0_4px_8px_rgba(0,0,0,0.9)]">
-        {/* Center Winning Payline Beam */}
         <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[3px] bg-gradient-to-r from-transparent via-amber-300 to-transparent pointer-events-none z-30 shadow-[0_0_15px_#f59e0b]" />
 
         <div className="grid grid-cols-4 gap-1">
-          {/* 3 Main Slot Columns */}
           {[0, 1, 2].map((c) => (
             <div key={c} className="flex flex-col gap-1">
               {[0, 1, 2].map((r) => (
@@ -427,7 +420,6 @@ export function ReelGame() {
 
       {/* Yono / JILI Gold Bottom Console */}
       <div className="mt-2.5 rounded-2xl border-2 border-amber-700/60 bg-gradient-to-b from-[#261304] to-[#0c0501] p-2 shadow-xl">
-        {/* Win Display & Audio */}
         <div className="flex items-center justify-between border-b border-amber-900/60 pb-1.5 px-1">
           <div className="flex items-center gap-1 text-[11px] font-black">
             <span className="text-amber-400">WIN</span>
@@ -452,7 +444,6 @@ export function ReelGame() {
 
         {/* Spin & Bet Trigger Deck */}
         <div className="mt-2 flex items-center justify-between gap-2 px-1">
-          {/* Bet Adjust Controls */}
           <div className="flex items-center gap-1.5">
             <button
               type="button"
@@ -460,7 +451,7 @@ export function ReelGame() {
               onClick={() => handleBetChange(-1)}
               className="flex size-7 items-center justify-center rounded-full border border-amber-600 bg-amber-950/80 text-amber-200 active:scale-95"
             >
-              <MinusclassName="size-3.5" />
+              <Minus className="size-3.5" />
             </button>
 
             <div className="rounded-lg border border-amber-700/80 bg-black/60 px-2.5 py-1 text-center">
@@ -480,7 +471,6 @@ export function ReelGame() {
             </button>
           </div>
 
-          {/* Heavy Aztec Golden Coin Spin Button */}
           <button
             type="button"
             disabled={spinning}
