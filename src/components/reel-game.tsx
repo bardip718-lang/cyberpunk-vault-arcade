@@ -3,10 +3,12 @@ import { Volume2, VolumeX, Minus, Plus } from "lucide-react";
 import { useVault } from "@/lib/vault-store";
 import { toast } from "sonner";
 
-// High-fidelity web audio engine for JILI reels, spin whir & win fanfare
+const BIG_WIN_VIDEO_URL =
+  "https://drive.google.com/uc?export=download&id=1z1I2TtfhTbKRAJ6IiMQkqQfFfHa2a5Oq";
+
 const playJiliSound = (type: "spin" | "stop" | "win" | "bigwin" | "click") => {
   try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
 
@@ -59,22 +61,10 @@ const playJiliSound = (type: "spin" | "stop" | "win" | "bigwin" | "click") => {
         osc.start(ctx.currentTime + i * 0.09);
         osc.stop(ctx.currentTime + i * 0.09 + 0.28);
       });
-    } else if (type === "click") {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(450, ctx.currentTime);
-      gain.gain.setValueAtTime(0.04, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.03);
     }
   } catch {}
 };
 
-// 1:1 High-Poly Golden Garuda Mask (Self-contained, No White Box Bug)
 function GarudaMaskTile({ isHit }: { isHit?: boolean }) {
   return (
     <div
@@ -119,7 +109,6 @@ function GarudaMaskTile({ isHit }: { isHit?: boolean }) {
   );
 }
 
-// 1:1 Inset Gold Aztec Gems
 function GemFacetTile({ type }: { type: "ruby" | "sapphire" | "emerald" }) {
   const isRuby = type === "ruby";
   const isSapph = type === "sapphire";
@@ -156,7 +145,6 @@ function StoneLetterTile({ char }: { char: string }) {
   );
 }
 
-// 4th Special Reel Lotus Multipliers (matching 1win right column)
 function SpecialLotusTile({ val }: { val: string | number }) {
   if (val === "WHEEL") {
     return (
@@ -199,7 +187,6 @@ function SpecialLotusTile({ val }: { val: string | number }) {
   );
 }
 
-// Fortune Gems 2 Multiplier Aztec Wheel with exact values
 function AztecWheelDisk({ rotation }: { rotation: number }) {
   const segments = [
     { label: "20,000", color: "#9333ea" },
@@ -257,16 +244,16 @@ export function ReelGame() {
   const [sound, setSound] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [winAmount, setWinAmount] = useState(0);
-  const [winActive, setWinActive] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
 
-  // 3 Reels x 3 Rows
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
   const [grid, setGrid] = useState<string[][]>([
     ["garuda", "garuda", "garuda"],
     ["ruby", "ruby", "ruby"],
     ["sapphire", "sapphire", "sapphire"],
   ]);
 
-  // 4th Special Column
   const [specialCol, setSpecialCol] = useState<(string | number)[]>([5, 10, 15]);
 
   const wheelAngle = useRef(0);
@@ -274,11 +261,11 @@ export function ReelGame() {
 
   const pickRandom = () => {
     const r = Math.random();
-    if (r < 0.16) return "garuda";
-    if (r < 0.32) return "ruby";
-    if (r < 0.5) return "sapphire";
-    if (r < 0.68) return "emerald";
-    if (r < 0.78) return "A";
+    if (r < 0.18) return "garuda";
+    if (r < 0.35) return "ruby";
+    if (r < 0.52) return "sapphire";
+    if (r < 0.70) return "emerald";
+    if (r < 0.80) return "A";
     if (r < 0.88) return "K";
     if (r < 0.94) return "Q";
     return "J";
@@ -291,7 +278,7 @@ export function ReelGame() {
       return;
     }
 
-    setWinActive(false);
+    setShowVideo(false);
     setSpinning(true);
     addScore(-totalBet);
     setWinAmount(0);
@@ -338,7 +325,6 @@ export function ReelGame() {
         setSpecialCol(finalSpecial);
         setSpinning(false);
 
-        // Center payline check
         const centerMulti = finalSpecial[1];
         const c0 = finalGrid[0][1];
         const c1 = finalGrid[1][1];
@@ -354,17 +340,15 @@ export function ReelGame() {
 
           addScore(payout);
           setWinAmount(payout);
-          setWinActive(true);
 
-          if (multiNum >= 10 || payout >= bet * 10) {
-            if (sound) playJiliSound("bigwin");
-          } else {
-            if (sound) playJiliSound("win");
+          // Trigger AI Video Animation Overlay
+          setShowVideo(true);
+          if (sound) playJiliSound(multiNum >= 10 ? "bigwin" : "win");
+
+          if (videoRef.current) {
+            videoRef.current.currentTime = 0;
+            videoRef.current.play().catch(() => {});
           }
-
-          setTimeout(() => {
-            setWinActive(false);
-          }, 1400);
 
           toast.success(`🎉 Aztec Hit! +₹${payout} (${multiNum}x Multiplier)`);
         }
@@ -375,7 +359,7 @@ export function ReelGame() {
   return (
     <div className="relative mx-auto max-w-[360px] overflow-hidden rounded-3xl border-4 border-[#854d0e] bg-[#0c0501] shadow-2xl font-sans select-none text-slate-100">
       
-      {/* 1win Header Top Bar */}
+      {/* Top Bar */}
       <div className="flex items-center justify-between border-b border-amber-900/60 bg-[#140802] px-3 py-1.5 z-20">
         <div className="flex items-center gap-1.5">
           <button
@@ -405,7 +389,7 @@ export function ReelGame() {
         </button>
       </div>
 
-      {/* Main Aztec Temple Shrine */}
+      {/* Main Game Screen */}
       <div
         className="relative px-2 pt-2 pb-1"
         style={{
@@ -418,16 +402,15 @@ export function ReelGame() {
           </h2>
         </div>
 
-        {/* Aztec Lucky Wheel tucked into Shrine */}
+        {/* Wheel Shrine */}
         <div className="relative mx-auto flex h-34 w-64 items-center justify-center overflow-hidden">
           <div className="absolute -top-16">
             <AztecWheelDisk rotation={wheelAngle.current} />
           </div>
-
           <div className="absolute top-0 z-20 size-0 border-x-6 border-x-transparent border-t-10 border-t-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]" />
         </div>
 
-        {/* Slot Grid Frame */}
+        {/* Reels Grid */}
         <div className="relative rounded-2xl border-4 border-[#b45309] bg-[#1a0a01] p-1.5 shadow-[inset_0_4px_12px_rgba(0,0,0,1)]">
           <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[3px] bg-gradient-to-r from-transparent via-amber-300 to-transparent pointer-events-none z-30 shadow-[0_0_18px_#f59e0b]" />
 
@@ -445,7 +428,7 @@ export function ReelGame() {
                         isCenter ? "scale-[1.02] z-10" : "opacity-90"
                       } ${spinning ? "blur-[0.5px]" : ""}`}
                     >
-                      {item === "garuda" && <GarudaMaskTile isHit={isCenter && winActive} />}
+                      {item === "garuda" && <GarudaMaskTile isHit={isCenter && showVideo} />}
                       {item === "ruby" && <GemFacetTile type="ruby" />}
                       {item === "sapphire" && <GemFacetTile type="sapphire" />}
                       {item === "emerald" && <GemFacetTile type="emerald" />}
@@ -456,7 +439,7 @@ export function ReelGame() {
               </div>
             ))}
 
-            {/* 4th Column: SPECIAL WHEEL Tower */}
+            {/* Special Tower */}
             <div className="flex flex-col gap-1 rounded-md border-2 border-amber-600 bg-gradient-to-b from-[#3b1905] via-[#1c0c02] to-[#0d0400] p-0.5">
               <div className="bg-[#92400e] text-center text-[7px] font-black uppercase tracking-wider text-amber-200 py-0.5 rounded-sm">
                 SPECIAL
@@ -467,13 +450,9 @@ export function ReelGame() {
                   className={`relative flex aspect-square w-full items-center justify-center rounded border ${
                     r === 1
                       ? "border-yellow-300 bg-amber-500/25 shadow-[0_0_15px_#f59e0b] scale-[1.04] z-10"
-     
-         : "border-amber-950/80 bg-black/50 opacity-80"
+                      : "border-amber-950/80 bg-black/50 opacity-80"
                   }`}
                 >
-                  {r === 1 && (
-                    <div className="absolute inset-0 border-2 border-yellow-300 rounded pointer-events-none animate-pulse" />
-                  )}
                   <SpecialLotusTile val={specialCol[r]} />
                 </div>
               ))}
@@ -481,23 +460,36 @@ export function ReelGame() {
           </div>
         </div>
 
-        {/* Big Win Banner Overlay */}
-        {winActive && (
+        {/* AI Video Animation Layer */}
+        {showVideo && (
           <div
-            onClick={() => setWinActive(false)}
-            className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/65 backdrop-blur-[2px] cursor-pointer animate-in zoom-in-95 duration-200"
+            onClick={() => setShowVideo(false)}
+            className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm cursor-pointer animate-in fade-in duration-300"
           >
-            <h3 className="font-display text-4xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-[#86efac] via-[#22c55e] to-[#15803d] drop-shadow-[0_4px_12px_rgba(0,0,0,1)] animate-bounce">
-              BIG WIN!
-            </h3>
-            <span className="font-mono text-3xl font-black text-amber-300 mt-1 drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
-              ₹{winAmount.toLocaleString("en-IN")}
-            </span>
+            <video
+              ref={videoRef}
+              src={BIG_WIN_VIDEO_URL}
+              playsInline
+              autoPlay
+              onEnded={() => setShowVideo(false)}
+              className="w-full max-h-[75%] object-contain drop-shadow-[0_0_25px_#f59e0b]"
+            />
+            <div className="mt-2 text-center">
+              <h3 className="font-display text-3xl font-black italic text-transparent bg-clip-text bg-gradient-to-b from-yellow-100 via-yellow-400 to-amber-600 drop-shadow">
+                AZTEC HIT!
+              </h3>
+              <span className="font-mono text-2xl font-black text-emerald-400 block mt-0.5">
+                +₹{winAmount.toLocaleString("en-IN")}
+              </span>
+              <span className="text-[9px] text-amber-300/80 font-bold uppercase tracking-wider block mt-1">
+                Tap anywhere to skip
+              </span>
+            </div>
           </div>
         )}
       </div>
 
-      {/* 1win Authentic Console Deck */}
+      {/* Console Bottom */}
       <div className="border-t-2 border-[#b45309] bg-gradient-to-b from-[#2a1204] to-[#0d0400] p-2.5 shadow-2xl">
         <div className="flex items-center justify-between border-b border-amber-900/60 pb-1.5 px-2">
           <div className="flex items-center gap-1.5">
