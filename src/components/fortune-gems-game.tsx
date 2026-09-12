@@ -272,9 +272,9 @@ export function FortuneGemsGame() {
       ]);
 
       setSpecialReel([
-        pool[Math.floor(Math.random() * pool.length)],
-        pool[Math.floor(Math.random() * pool.length)],
-        pool[Math.floor(Math.random() * pool.length)],
+        pool[Math.floor(Math.random() * pool.length)]!,
+        pool[Math.floor(Math.random() * pool.length)]!,
+        pool[Math.floor(Math.random() * pool.length)]!,
       ]);
 
       if (cycles > 16) {
