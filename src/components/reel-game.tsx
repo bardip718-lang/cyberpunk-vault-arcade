@@ -341,7 +341,7 @@ filter: !isLocked ? "blur(2px)" : "none",
 >
 {strip.map((sym, idx) => (
 <div key={idx} className="h-[72px] w-full p-1 flex items-center justify-center shrink-0">
-{sym === "wild" && <GarudaMaskTile isHit={winActive && isLocked} />}
+{sym === "wild" && <GarudaMaskTile isHit={Boolean(winActive && isLocked)} />}
 {sym === "ruby" && <LuxuryGemTile type="ruby" />}
 {sym === "emerald" && <LuxuryGemTile type="emerald" />}
 {sym === "sapphire" && <LuxuryGemTile type="sapphire" />}
