@@ -135,8 +135,7 @@ flex items-center justify-center transition-transform duration-[1700ms] ease-out
 style={{
 transform: `rotate(${rotation}deg)`,
 background:
-"conic-gradient(#9333ea 0deg 30deg, #16a34a 30deg 60deg, #dc2626 60deg 90deg, #0284c7 90deg 120deg, #78350f 120deg 150deg, #0284c7 150deg 180deg,
-#ea580c 180deg 210deg, #dc2626 210deg 240deg, #ca8a04 240deg 270deg, #dc2626 270deg 300deg, #ea580c 300deg 330deg, #16a34a 330deg 360deg)",
+"conic-gradient(#9333ea 0deg 30deg, #16a34a 30deg 60deg, #dc2626 60deg 90deg, #0284c7 90deg 120deg, #78350f 120deg 150deg, #0284c7 150deg 180deg, #ea580c 180deg 210deg, #dc2626 210deg 240deg, #ca8a04 240deg 270deg, #dc2626 270deg 300deg, #ea580c 300deg 330deg, #16a34a 330deg 360deg)",
 }}
 >
 {segments.map((s, i) => (
