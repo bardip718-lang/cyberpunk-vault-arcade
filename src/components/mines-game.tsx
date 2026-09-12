@@ -135,9 +135,10 @@ export function MinesGame() {
 
   // Click on a tile
   const handleTileClick = (index: number) => {
-    if (!inGame || tiles[index].revealed || gameOver) return;
+    if (!inGame || tiles[index]?.revealed || gameOver) return;
 
     const clickedTile = tiles[index];
+    if (!clickedTile) return;
 
     if (clickedTile.isBomb) {
       // Bomb Hit! Game Over!
@@ -162,7 +163,7 @@ export function MinesGame() {
 
       setTiles((prev) => {
         const updated = [...prev];
-        updated[index] = { ...updated[index], revealed: true };
+        updated[index] = { isBomb: false, ...updated[index], revealed: true };
         return updated;
       });
 

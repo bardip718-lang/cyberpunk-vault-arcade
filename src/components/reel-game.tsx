@@ -135,8 +135,7 @@ flex items-center justify-center transition-transform duration-[1700ms] ease-out
 style={{
 transform: `rotate(${rotation}deg)`,
 background:
-"conic-gradient(#9333ea 0deg 30deg, #16a34a 30deg 60deg, #dc2626 60deg 90deg, #0284c7 90deg 120deg, #78350f 120deg 150deg, #0284c7 150deg 180deg,
-#ea580c 180deg 210deg, #dc2626 210deg 240deg, #ca8a04 240deg 270deg, #dc2626 270deg 300deg, #ea580c 300deg 330deg, #16a34a 330deg 360deg)",
+"conic-gradient(#9333ea 0deg 30deg, #16a34a 30deg 60deg, #dc2626 60deg 90deg, #0284c7 90deg 120deg, #78350f 120deg 150deg, #0284c7 150deg 180deg, #ea580c 180deg 210deg, #dc2626 210deg 240deg, #ca8a04 240deg 270deg, #dc2626 270deg 300deg, #ea580c 300deg 330deg, #16a34a 330deg 360deg)",
 }}
 >
 {segments.map((s, i) => (
@@ -265,7 +264,10 @@ addScore(payout);
 setWinAmount(payout);
 setWinActive(true);
 playSfx("win");
-toast.success(` };
+      toast.success(`🎉 WIN ₹${payout.toLocaleString("en-IN")} (${multi}x)`);
+    }
+    }, 1750);
+  };
 return (
 <div className="relative mx-auto max-w-[360px] overflow-hidden rounded-3xl border-4 border-[#854d0e] bg-[#0c0501] shadow-2xl font-sans select-none
 text-slate-100">
@@ -322,7 +324,7 @@ winActive
 <div className="grid grid-cols-4 gap-1 h-full"> {/* Reels 1, 2, 3 Physical Strip Columns */}
 {[STRIP_1, STRIP_2, STRIP_3].map((strip, colIdx) => {
 const isLocked = reelStops[colIdx];
-const targetIdx = reelOffsets[colIdx];
+const targetIdx = reelOffsets[colIdx] ?? 0;
 const finalTranslateY = -((targetIdx - 1) * TILE_H);
 return (
 <div key={colIdx} className="relative h-full overflow-hidden rounded-lg bg-[#1c0801] shadow-inner">
@@ -339,7 +341,7 @@ filter: !isLocked ? "blur(2px)" : "none",
 >
 {strip.map((sym, idx) => (
 <div key={idx} className="h-[72px] w-full p-1 flex items-center justify-center shrink-0">
-{sym === "wild" && <GarudaMaskTile isHit={winActive && isLocked} />}
+{sym === "wild" && <GarudaMaskTile isHit={Boolean(winActive && isLocked)} />}
 {sym === "ruby" && <LuxuryGemTile type="ruby" />}
 {sym === "emerald" && <LuxuryGemTile type="emerald" />}
 {sym === "sapphire" && <LuxuryGemTile type="sapphire" />}

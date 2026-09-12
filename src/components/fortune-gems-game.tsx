@@ -272,9 +272,9 @@ export function FortuneGemsGame() {
       ]);
 
       setSpecialReel([
-        pool[Math.floor(Math.random() * pool.length)],
-        pool[Math.floor(Math.random() * pool.length)],
-        pool[Math.floor(Math.random() * pool.length)],
+        pool[Math.floor(Math.random() * pool.length)]!,
+        pool[Math.floor(Math.random() * pool.length)]!,
+        pool[Math.floor(Math.random() * pool.length)]!,
       ]);
 
       if (cycles > 16) {
@@ -288,9 +288,9 @@ export function FortuneGemsGame() {
         ];
 
         const finalSpecialReel = [
-          pool[Math.floor(Math.random() * pool.length)],
-          pool[Math.floor(Math.random() * pool.length)],
-          pool[Math.floor(Math.random() * pool.length)],
+          pool[Math.floor(Math.random() * pool.length)]!,
+          pool[Math.floor(Math.random() * pool.length)]!,
+          pool[Math.floor(Math.random() * pool.length)]!,
         ];
 
         setGrid(finalGrid);
@@ -299,9 +299,9 @@ export function FortuneGemsGame() {
 
         // Center line evaluate
         const centerMulti = finalSpecialReel[1];
-        const c0 = finalGrid[0][1];
-        const c1 = finalGrid[1][1];
-        const c2 = finalGrid[2][1];
+        const c0 = finalGrid[0]![1];
+        const c1 = finalGrid[1]![1];
+        const c2 = finalGrid[2]![1];
 
         // Check if Lucky Wheel landed on center line
         if (centerMulti === "WHEEL") {
@@ -315,7 +315,7 @@ export function FortuneGemsGame() {
 
         if (match) {
           const symId = [c0, c1, c2].find((x) => x !== "garuda") || "garuda";
-          const sym = SYMBOLS.find((s) => s.id === symId) || SYMBOLS[0];
+          const sym = SYMBOLS.find((s) => s.id === symId) || SYMBOLS[0]!;
           const multiNum = typeof centerMulti === "number" ? centerMulti : 1;
           const payout = Math.round(baseBet * (sym.pay / 2) * multiNum);
 
@@ -337,7 +337,7 @@ export function FortuneGemsGame() {
   const triggerLuckyWheel = () => {
     if (soundEnabled) playArcadeTone("wheel");
     const WHEEL_PRIZES = [50, 80, 100, 150, 200, 300];
-    const prizeMulti = WHEEL_PRIZES[Math.floor(Math.random() * WHEEL_PRIZES.length)];
+    const prizeMulti = WHEEL_PRIZES[Math.floor(Math.random() * WHEEL_PRIZES.length)]!;
     const wonAmount = baseBet * prizeMulti;
 
     setWheelPrize(wonAmount);
@@ -438,7 +438,7 @@ export function FortuneGemsGame() {
                       : "border-amber-950/60 opacity-60"
                   } ${isSpinning ? "blur-[0.5px]" : ""}`}
                 >
-                  <GemGraphic id={grid[col][row]} />
+                  <GemGraphic id={grid[col]![row]!} />
                 </div>
               ))}
             </div>
@@ -458,7 +458,7 @@ export function FortuneGemsGame() {
                     : "border-slate-800/80 bg-[#0c0803] opacity-50"
                 }`}
               >
-                <MultiplierTile value={specialReel[row]} />
+                <MultiplierTile value={specialReel[row]!} />
               </div>
             ))}
           </div>

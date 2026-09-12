@@ -65,7 +65,7 @@ export function DailySpinModal({
     setTimeout(() => {
       clearInterval(tickTimer);
       setSpinning(false);
-      const wonPrize = REWARDS[prizeIndex];
+      const wonPrize = REWARDS[prizeIndex]!;
 
       addScore(wonPrize.value);
       localStorage.setItem("win1_last_daily_spin", Date.now().toString());

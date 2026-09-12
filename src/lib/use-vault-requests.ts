@@ -56,9 +56,11 @@ export function useVaultRequests() {
         amount: Math.round(input.amount),
         utr: input.utr ?? "",
         destination: input.destination ?? "",
-        screenshotDataUrl: input.screenshotDataUrl ?? "",
+        screenshotUrl: input.screenshotDataUrl ?? "",
+        screenshotPath: "",
         status: "pending",
         createdAt: new Date().toISOString(),
+        resolvedAt: "",
       };
       const updated = [newReq, ...current];
       saveStoredRequests(updated);
