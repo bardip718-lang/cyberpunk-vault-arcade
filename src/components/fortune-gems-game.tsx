@@ -458,7 +458,7 @@ export function FortuneGemsGame() {
                     : "border-slate-800/80 bg-[#0c0803] opacity-50"
                 }`}
               >
-                <MultiplierTile value={specialReel[row]} />
+                <MultiplierTile value={specialReel[row]!} />
               </div>
             ))}
           </div>
