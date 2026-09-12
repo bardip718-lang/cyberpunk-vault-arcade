@@ -299,9 +299,9 @@ export function FortuneGemsGame() {
 
         // Center line evaluate
         const centerMulti = finalSpecialReel[1];
-        const c0 = finalGrid[0][1];
-        const c1 = finalGrid[1][1];
-        const c2 = finalGrid[2][1];
+        const c0 = finalGrid[0]![1];
+        const c1 = finalGrid[1]![1];
+        const c2 = finalGrid[2]![1];
 
         // Check if Lucky Wheel landed on center line
         if (centerMulti === "WHEEL") {
