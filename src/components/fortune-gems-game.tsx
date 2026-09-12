@@ -438,7 +438,7 @@ export function FortuneGemsGame() {
                       : "border-amber-950/60 opacity-60"
                   } ${isSpinning ? "blur-[0.5px]" : ""}`}
                 >
-                  <GemGraphic id={grid[col][row]} />
+                  <GemGraphic id={grid[col]![row]!} />
                 </div>
               ))}
             </div>
