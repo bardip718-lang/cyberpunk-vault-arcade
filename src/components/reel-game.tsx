@@ -324,7 +324,7 @@ winActive
 <div className="grid grid-cols-4 gap-1 h-full"> {/* Reels 1, 2, 3 Physical Strip Columns */}
 {[STRIP_1, STRIP_2, STRIP_3].map((strip, colIdx) => {
 const isLocked = reelStops[colIdx];
-const targetIdx = reelOffsets[colIdx];
+const targetIdx = reelOffsets[colIdx] ?? 0;
 const finalTranslateY = -((targetIdx - 1) * TILE_H);
 return (
 <div key={colIdx} className="relative h-full overflow-hidden rounded-lg bg-[#1c0801] shadow-inner">
