@@ -264,7 +264,10 @@ addScore(payout);
 setWinAmount(payout);
 setWinActive(true);
 playSfx("win");
-toast.success(` };
+      toast.success(`🎉 WIN ₹${payout.toLocaleString("en-IN")} (${multi}x)`);
+    }
+    }, 1750);
+  };
 return (
 <div className="relative mx-auto max-w-[360px] overflow-hidden rounded-3xl border-4 border-[#854d0e] bg-[#0c0501] shadow-2xl font-sans select-none
 text-slate-100">
