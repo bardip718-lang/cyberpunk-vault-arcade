@@ -163,7 +163,7 @@ export function MinesGame() {
 
       setTiles((prev) => {
         const updated = [...prev];
-        updated[index] = { ...updated[index], revealed: true };
+        updated[index] = { isBomb: false, ...updated[index], revealed: true };
         return updated;
       });
 
