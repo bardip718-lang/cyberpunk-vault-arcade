@@ -56,7 +56,7 @@ export function useVaultRequests() {
         amount: Math.round(input.amount),
         utr: input.utr ?? "",
         destination: input.destination ?? "",
-        screenshotDataUrl: input.screenshotDataUrl ?? "",
+        screenshotUrl: input.screenshotDataUrl ?? "",
         status: "pending",
         createdAt: new Date().toISOString(),
       };
