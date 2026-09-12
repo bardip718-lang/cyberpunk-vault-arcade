@@ -337,7 +337,7 @@ export function FortuneGemsGame() {
   const triggerLuckyWheel = () => {
     if (soundEnabled) playArcadeTone("wheel");
     const WHEEL_PRIZES = [50, 80, 100, 150, 200, 300];
-    const prizeMulti = WHEEL_PRIZES[Math.floor(Math.random() * WHEEL_PRIZES.length)];
+    const prizeMulti = WHEEL_PRIZES[Math.floor(Math.random() * WHEEL_PRIZES.length)]!;
     const wonAmount = baseBet * prizeMulti;
 
     setWheelPrize(wonAmount);
