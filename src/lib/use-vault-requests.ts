@@ -57,8 +57,10 @@ export function useVaultRequests() {
         utr: input.utr ?? "",
         destination: input.destination ?? "",
         screenshotUrl: input.screenshotDataUrl ?? "",
+        screenshotPath: "",
         status: "pending",
         createdAt: new Date().toISOString(),
+        resolvedAt: "",
       };
       const updated = [newReq, ...current];
       saveStoredRequests(updated);
