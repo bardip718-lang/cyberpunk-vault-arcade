@@ -315,7 +315,7 @@ export function FortuneGemsGame() {
 
         if (match) {
           const symId = [c0, c1, c2].find((x) => x !== "garuda") || "garuda";
-          const sym = SYMBOLS.find((s) => s.id === symId) || SYMBOLS[0];
+          const sym = SYMBOLS.find((s) => s.id === symId) || SYMBOLS[0]!;
           const multiNum = typeof centerMulti === "number" ? centerMulti : 1;
           const payout = Math.round(baseBet * (sym.pay / 2) * multiNum);
 
