@@ -288,9 +288,9 @@ export function FortuneGemsGame() {
         ];
 
         const finalSpecialReel = [
-          pool[Math.floor(Math.random() * pool.length)],
-          pool[Math.floor(Math.random() * pool.length)],
-          pool[Math.floor(Math.random() * pool.length)],
+          pool[Math.floor(Math.random() * pool.length)]!,
+          pool[Math.floor(Math.random() * pool.length)]!,
+          pool[Math.floor(Math.random() * pool.length)]!,
         ];
 
         setGrid(finalGrid);
