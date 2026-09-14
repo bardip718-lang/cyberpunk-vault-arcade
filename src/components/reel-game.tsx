@@ -1,463 +1,505 @@
-import React, { useState, useRef } from "react";
-import { Volume2, VolumeX, Minus, Plus } from "lucide-react";
-import { useVault } from "@/lib/vault-store";
-import { toast } from "sonner";
-// Direct High-Speed Cloud Asset CDN (Zero Local Upload Required)
-const ASSETS = {
-WILD: "https://images.unsplash.com/photo-1599839575945-a9e5af0c3fa5?auto=format&fit=crop&w=600&q=80",
-GEMS: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80",
-WHEEL: "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=600&q=80",
-};
-// Inline Authentic 3D Rendered Garuda Mask Tile
-function GarudaMaskTile({ isHit }: { isHit?: boolean }) {
-return (
-<div
-className={`relative size-full rounded-xl border-[2.5px] border-[#fbbf24] bg-gradient-to-b from-[#b45309] via-[#451a03]
-to-[#1a0801] p-1 shadow-[inset_0_2px_4px_rgba(255,255,255,0.7),0_4px_10px_rgba(0,0,0,0.9)] flex flex-col items-center
-justify-between overflow-hidden ${
-isHit ? "ring-4 ring-yellow-300 animate-pulse scale-105" : ""
-}`}
->
-<div className="relative size-[78%] flex items-center justify-center mt-0.5">
-<svg viewBox="0 0 100 88" className="size-full drop-shadow-[0_4px_10px_rgba(0,0,0,1)]">
-<defs>
-<linearGradient id="goldFeather" x1="0%" y1="0%" x2="100%" y2="100%">
-<stop offset="0%" stopColor="#fffbeb" />
-<stop offset="25%" stopColor="#fde047" />
-<stop offset="60%" stopColor="#d97706" />
-<stop offset="90%" stopColor="#78350f" />
-<stop offset="100%" stopColor="#451a03" />
-</linearGradient>
-<radialGradient id="rubyGlow" cx="50%" cy="50%" r="50%">
-<stop offset="0%" stopColor="#fee2e2" />
-<stop offset="35%" stopColor="#ef4444" />
-<stop offset="100%" stopColor="#7f1d1d" />
-</radialGradient>
-</defs>
-<path d="M12 25 L32 10 L50 2 L68 10 L88 25 L82 55 L50 82 L18 55 Z" fill="url(#goldFeather)" stroke="#fef08a"
-strokeWidth="2" />
-<ellipse cx="36" cy="38" rx="6" ry="4" fill="url(#rubyGlow)" stroke="#fff" strokeWidth="0.8" />
-<ellipse cx="64" cy="38" rx="6" ry="4" fill="url(#rubyGlow)" stroke="#fff" strokeWidth="0.8" />
-<circle cx="36" cy="38" r="2" fill="#200501" />
-<circle cx="64" cy="38" r="2" fill="#200501" />
-<polygon points="50,42 42,60 58,60" fill="#fde047" stroke="#78350f" strokeWidth="1.8" />
-</svg>
-</div>
-<div className="w-full bg-gradient-to-r from-[#991b1b] via-[#dc2626] to-[#991b1b] border-t-2 border-yellow-300 py-0.5
-text-center shadow">
-<span className="font-display text-[9px] font-black tracking-widest text-amber-100 uppercase drop-shadow">
-WILD
-</span>
-</div>
-</div>
-);
-}
-// Inline Luxury Faceted Gem
-function LuxuryGemTile({ type }: { type: "ruby" | "emerald" | "sapphire" }) {
-const isRuby = type === "ruby";
-const isSapph = type === "sapphire";
-return (
-<div className="relative size-full rounded-xl border-[2px] border-[#ca8a04] bg-gradient-to-b from-[#fef08a] via-[#ca8a04]
-to-[#451a03] p-1 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),0_4px_8px_rgba(0,0,0,0.85)] flex items-center
-justify-center">
-<div className="relative size-[88%] rounded-lg border border-[#fbbf24] bg-gradient-to-b from-[#3d1502] to-[#120501] p-1
-flex items-center justify-center shadow-inner">
-<div
-className={`size-[82%] ${
-isRuby ? "rounded-full" : isSapph ? "rotate-45 rounded-sm" : "rounded-md"
-} border-2 ${
-isRuby
-? "border-rose-300 bg-gradient-to-br from-[#ffe4e6] via-[#e11d48] to-[#4c0519] shadow-[0_0_12px_#f43f5e]"
-: isSapph
-? "border-blue-300 bg-gradient-to-br from-[#dbeafe] via-[#2563eb] to-[#082f49] shadow-[0_0_12px_#3b82f6]"
-: "border-emerald-300 bg-gradient-to-br from-[#d1fae5] via-[#059669] to-[#022c22] shadow-[0_0_12px_#10b981]"
-} flex items-center justify-center shadow-md`}
->
-<div className="size-[35%] bg-white/40 border border-white/80 rounded-xs" />
-</div>
-</div>
-</div>
-);
-}
-// Multiplier Lotus Badge
-function AztecMultiplierBadge({ val }: { val: string | number }) {
-if (val === "WHEEL") {
-return (
-<div className="relative size-12 rounded-full border-2 border-yellow-200 bg-gradient-to-tr from-amber-500 via-rose-600
-to-yellow-300 shadow-[0_0_15px_#facc15] flex items-center justify-center animate-pulse">
-<span className="font-display text-[8.5px] font-black tracking-widest text-white uppercase drop-shadow">
-WHEEL </span>
-</div>
-);
-}
-const num = Number(val);
-const colorGrad =
-num >= 15
-? "from-rose-500 via-red-600 to-red-950"
-: num >= 10
-? "from-purple-500 via-purple-600 to-purple-950"
-: num >= 5
-? "from-blue-500 via-blue-600 to-blue-950"
-: "from-emerald-500 via-emerald-600 to-emerald-950";
-return (
-<div className="relative size-12 flex items-center justify-center">
-<svg viewBox="0 0 100 100" className="absolute inset-0 size-full drop-shadow">
-<polygon
-points="50,0 62,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 38,35"
-fill="#d97706"
-stroke="#fef08a"
-strokeWidth="3.5"
-/>
-</svg>
-<div className={`relative size-8 rounded-full border-2 border-yellow-200 bg-gradient-to-b ${colorGrad} shadow flex
-items-center justify-center`}>
-<span className="font-display text-[12px] font-black text-yellow-100 drop-shadow">
-{num}x
-</span>
-</div>
-</div>
-);
-}
-// 3D Multiplier Wheel
-function AztecWheelDisc({ rotation }: { rotation: number }) {
-const segments = [
-{ label: "20,000", color: "#9333ea" },
-{ label: "200", color: "#16a34a" },
-{ label: "20", color: "#dc2626" },
-{ label: "600", color: "#0284c7" },
-{ label: "100", color: "#78350f" },
-{ label: "1,000", color: "#0284c7" },
-{ label: "4,000", color: "#ea580c" },
-{ label: "160", color: "#dc2626" },
-{ label: "2,000", color: "#ca8a04" },
-{ label: "60", color: "#dc2626" },
-{ label: "400", color: "#ea580c" },
-{ label: "300", color: "#16a34a" },
+import React, { useState, useRef, useEffect } from "react";
+import { Volume2, VolumeX, Plus, Minus } from "lucide-react";
+
+type SymbolType =
+  | "wild"
+  | "ruby"
+  | "emerald"
+  | "sapphire"
+  | "A"
+  | "K";
+
+const TILE = 76;
+
+const REEL_1: SymbolType[] = [
+  "ruby","A","wild","emerald","K","ruby",
+  "sapphire","wild","A","emerald","ruby"
 ];
-return (
-<div
-className="relative size-56 rounded-full border-[6px] border-[#fbbf24]
-shadow-[0_0_25px_#f59e0b,inset_0_0_15px_rgba(0,0,0,0.8)] overflow-hidden flex items-center justify-center
-transition-transform duration-[1700ms] ease-out"
-style={{
-transform: `rotate(${rotation}deg)`,
-background:
-	"conic-gradient(#9333ea 0deg 30deg, #16a34a 30deg 60deg, #dc2626 60deg 90deg, #0284c7 90deg 120deg, #78350f 120deg 150deg, #0284c7 150deg 180deg, #ea580c 180deg 210deg, #dc2626 210deg 240deg, #ca8a04 240deg 270deg, #dc2626 270deg 300deg, #ea580c 300deg 330deg, #16a34a 330deg 360deg)",
-}}
->
-{segments.map((s, i) => (
-<div
-key={i}
-className="absolute top-2 text-[8px] font-black text-white font-mono origin-bottom h-26 drop-shadow"
-style={{ transform: `rotate(${i * 30 + 15}deg)` }}
->
-{s.label}
-</div>
-))}
-<div className="absolute size-14 rounded-full border-2 border-yellow-300 bg-gradient-to-b from-[#fde047] via-[#ca8a04]
-to-[#713f12] shadow-[0_0_15px_#f59e0b] flex items-center justify-center z-10">
-<span className="font-display text-[9px] font-black text-black drop-shadow">JILI</span>
-</div>
-</div>
+
+const REEL_2: SymbolType[] = [
+  "emerald","ruby","K","wild","sapphire",
+  "ruby","A","wild","emerald","ruby","K"
+];
+
+const REEL_3: SymbolType[] = [
+  "wild","ruby","emerald","A","sapphire",
+  "K","ruby","wild","emerald","A","ruby"
+];
+
+const MULTI = [2,3,5,10,15,"WHEEL",5,10,15];
+
+const BG =
+  "https://images.unsplash.com/photo-1544731612-de7f96afe55f?q=80&w=1200&auto=format&fit=crop";
+
+const GarudaWild = ({ glow=false }:{ glow?:boolean }) => (
+  <div className={`relative w-full h-full rounded-xl overflow-hidden border-2 ${
+      glow ? "border-yellow-300 shadow-[0_0_20px_#FACC15]" : "border-amber-700"
+    }`}>
+    <img
+      src="/assets/garuda-wild.png"
+      className="absolute inset-0 w-full h-full object-cover"
+    />
+    <div className="absolute bottom-0 w-full py-1 bg-gradient-to-r from-red-800 via-red-600 to-red-800 text-center text-[10px] font-black tracking-[0.3em]">
+      WILD
+    </div>
+  </div>
 );
-}
-const STRIP_1 = ["ruby", "A", "emerald", "K", "wild", "sapphire", "ruby", "emerald", "wild", "A", "ruby"];
-const STRIP_2 = ["emerald", "K", "wild", "ruby", "sapphire", "A", "emerald", "wild", "ruby", "K", "emerald"];
-const STRIP_3 = ["wild", "sapphire", "ruby", "A", "emerald", "K", "wild", "ruby", "emerald", "wild", "ruby"];
-const SPECIAL_STRIP = [2, 3, 5, 10, 15, "WHEEL", 2, 5, 10, 15, "WHEEL", 3];
-const TILE_H = 72;
-export function ReelGame() {
-const { user, addScore } = useVault();
-const [bet, setBet] = useState(30);
-const [extraBet, setExtraBet] = useState(false);
-const [sound, setSound] = useState(true);
-const [isSpinning, setIsSpinning] = useState(false); const [winAmount, setWinAmount] = useState(0);
-const [winActive, setWinActive] = useState(false);
-const [reelStops, setReelStops] = useState<[boolean, boolean, boolean, boolean]>([true, true, true, true]);
-const [reelOffsets, setReelOffsets] = useState<[number, number, number, number]>([2, 2, 2, 3]);
-const wheelRotation = useRef(0);
-const totalBet = extraBet ? Math.round(bet * 1.5) : bet;
-const playSfx = (type: "spin" | "stop" | "win") => {
-if (!sound) return;
-try {
-const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext
-}).webkitAudioContext;
-if (!AudioCtx) return;
-const ctx = new AudioCtx();
-if (type === "spin") {
-const osc = ctx.createOscillator();
-const gain = ctx.createGain();
-osc.type = "triangle";
-osc.frequency.setValueAtTime(240, ctx.currentTime);
-gain.gain.setValueAtTime(0.08, ctx.currentTime);
-gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-osc.connect(gain);
-gain.connect(ctx.destination);
-osc.start();
-osc.stop(ctx.currentTime + 0.1);
-} else if (type === "stop") {
-const osc = ctx.createOscillator();
-const gain = ctx.createGain();
-osc.type = "sine";
-osc.frequency.setValueAtTime(150, ctx.currentTime);
-gain.gain.setValueAtTime(0.16, ctx.currentTime);
-gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
-osc.connect(gain);
-gain.connect(ctx.destination);
-osc.start();
-osc.stop(ctx.currentTime + 0.07);
-} else if (type === "win") {
-[523, 659, 783, 1046].forEach((freq, i) => {
-const osc = ctx.createOscillator();
-const gain = ctx.createGain();
-osc.type = "triangle";
-osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.08);
-gain.gain.setValueAtTime(0.14, ctx.currentTime + i * 0.08);
-gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 0.22);
-osc.connect(gain);
-gain.connect(ctx.destination);
-osc.start(ctx.currentTime + i * 0.08);
-osc.stop(ctx.currentTime + i * 0.08 + 0.22);
-});
-}
-} catch {}
+
+const Gem = ({ type }:{ type:"ruby"|"emerald"|"sapphire" }) => {
+  const src =
+    type==="ruby"
+      ? "/assets/ruby.png"
+      : type==="emerald"
+      ? "/assets/emerald.png"
+      : "/assets/sapphire.png";
+
+  return (
+    <div className="w-full h-full rounded-xl border border-yellow-700 bg-[#3A1B07] p-1">
+      <img src={src} className="w-full h-full object-contain" />
+    </div>
+  );
 };
-const spin = () => {
-if (isSpinning) return;
-if (!user || user.balance < totalBet) {
-toast.error("Insufficient balance!");
-return;
-}
-addScore(-totalBet);
-setIsSpinning(true);
-setWinActive(false);
-setWinAmount(0);
-setReelStops([false, false, false, false]);
-playSfx("spin");
-wheelRotation.current += 360 * 3 + Math.floor(Math.random() * 360);
-const willHit = Math.random() < 0.22;
-let stop0: number, stop1: number, stop2: number, stop3: number;
-if (willHit) {
-const matchSym = Math.random() < 0.35 ? "wild" : "ruby";
-stop0 = STRIP_1.findIndex((s, i) => i >= 2 && i <= 8 && (s === matchSym || s === "wild"));
-stop1 = STRIP_2.findIndex((s, i) => i >= 2 && i <= 8 && (s === matchSym || s === "wild"));
-stop2 = STRIP_3.findIndex((s, i) => i >= 2 && i <= 8 && (s === matchSym || s === "wild"));
-stop3 = Math.floor(Math.random() * 6) + 2;
-} else {
-stop0 = Math.floor(Math.random() * 5) + 2;
-stop1 = (stop0 + 3) % 6 + 2;
-stop2 = (stop0 + 5) % 6 + 2;
-stop3 = Math.floor(Math.random() * 5) + 2;
-}
-setReelOffsets([stop0, stop1, stop2, stop3]);
-setTimeout(() => {
-setReelStops(([_, r1, r2, r3]) => [true, r1, r2, r3]);
-playSfx("stop");
-}, 700); setTimeout(() => {
-setReelStops(([r0, _, r2, r3]) => [r0, true, r2, r3]);
-playSfx("stop");
-}, 1050);
-setTimeout(() => {
-setReelStops(([r0, r1, _, r3]) => [r0, r1, true, r3]);
-playSfx("stop");
-}, 1400);
-setTimeout(() => {
-setReelStops([true, true, true, true]);
-playSfx("stop");
-setIsSpinning(false);
-if (willHit) {
-const multi = Number(SPECIAL_STRIP[stop3]) || 2;
-const payout = Math.round(bet * 4 * multi);
-addScore(payout);
-setWinAmount(payout);
-setWinActive(true);
-playSfx("win");
-	toast.success(`Big win! ₹${payout.toLocaleString("en-IN")}`);
-	}
-	}, 1750);
-	};
-	const strips = [STRIP_1, STRIP_2, STRIP_3];
-	return (
-	<div className="mx-auto w-full max-w-md overflow-hidden rounded-xl border-2 border-amber-600 bg-[#0d0400] shadow-2xl">
-	<div className="flex items-center justify-between border-b-2 border-amber-700 bg-[#241004] px-3 py-2">
-	<div>
-	<p className="font-display text-sm font-black text-amber-300">GARUDA GOLD</p>
-	<p className="text-[9px] font-bold uppercase text-amber-500">Neon reels</p>
-	</div>
-	<div className="flex items-center gap-2">
-	<label className="flex cursor-pointer items-center gap-1 text-[9px] font-bold uppercase text-amber-300">
-	<input
-	type="checkbox"
-	checked={extraBet}
-	disabled={isSpinning}
-	onChange={(event) => setExtraBet(event.target.checked)}
-	className="accent-amber-500"
-	/>
-	Extra bet
-	</label>
-	<button
-	type="button"
-	onClick={() => setSound((enabled) => !enabled)}
-	className="flex size-8 items-center justify-center rounded-full border border-amber-600 text-amber-200"
-	aria-label={sound ? "Mute game sounds" : "Enable game sounds"}
-	>
-	{sound ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
-	</button>
-	</div>
-	</div>
-	<div className="relative bg-[#160601] p-2">
-	<div className="mb-2 flex justify-center overflow-hidden">
-	<div className="scale-75">
-	<AztecWheelDisc rotation={wheelRotation.current} />
-	</div>
-	</div>
-	<div className="grid h-[216px] grid-cols-[repeat(3,minmax(0,1fr))_64px] gap-1 overflow-hidden rounded-lg border-2 border-amber-500 bg-[#0d0400] p-1">
-	{strips.map((strip, colIdx) => {
-	const isLocked = reelStops[colIdx] ?? false;
-	const targetIdx = reelOffsets[colIdx] ?? 0;
-	const finalTranslateY = -((targetIdx - 1) * TILE_H);
-	return (
-	<div key={colIdx} className="relative h-full overflow-hidden rounded-lg bg-[#1c0801] shadow-inner">
-	<div
-	className="flex w-full flex-col will-change-transform"
-	style={{
-	transform: isLocked ? `translate3d(0, ${finalTranslateY}px, 0)` : "translate3d(0, -576px, 0)",
-	transition: isLocked ? "transform 0.45s cubic-bezier(0.1, 1.35, 0.25, 1)" : "none",
-	animation: !isLocked ? "reelPhysicalRoll 0.22s linear infinite" : "none",
-	filter: !isLocked ? "blur(2px)" : "none",
-	}}
-	>
-	{strip.map((sym, idx) => (
-	<div key={idx} className="flex h-[72px] w-full shrink-0 items-center justify-center p-1">
-	{sym === "wild" && <GarudaMaskTile isHit={Boolean(winActive && isLocked)} />}
-	{sym === "ruby" && <LuxuryGemTile type="ruby" />}
-	{sym === "emerald" && <LuxuryGemTile type="emerald" />}
-	{sym === "sapphire" && <LuxuryGemTile type="sapphire" />}
-	{["A", "K"].includes(sym) && (
-	<div className="flex size-full items-center justify-center rounded-xl border border-amber-950 bg-[#160601] shadow-inner">
-	<span className="bg-gradient-to-b from-[#fef08a] via-[#eab308] to-[#92400e] bg-clip-text font-display text-3xl font-black text-transparent drop-shadow">
-	{sym}
-	</span>
-	</div>
-	)}
-	</div>
-	))}
-	</div>
-	</div>
-	);
-	})}
-	<div className="relative h-full overflow-hidden rounded-lg border-2 border-amber-600 bg-[#2b1003] shadow-inner">
-	<div className="bg-[#92400e] py-0.5 text-center text-[7px] font-black uppercase text-amber-200">SPECIAL</div>
-	<div
-	className="flex w-full flex-col will-change-transform"
-	style={{
-	transform: reelStops[3]
-	? `translate3d(0, ${-(((reelOffsets[3] ?? 0) - 1) * TILE_H)}px, 0)`
-	: "translate3d(0, -504px, 0)",
-	transition: reelStops[3] ? "transform 0.48s cubic-bezier(0.1, 1.35, 0.25, 1)" : "none",
-	animation: !reelStops[3] ? "reelPhysicalRoll 0.20s linear infinite" : "none",
-	filter: !reelStops[3] ? "blur(1.5px)" : "none",
-	}}
-	>
-	{SPECIAL_STRIP.map((val, idx) => (
-	<div key={idx} className="flex h-[72px] w-full shrink-0 items-center justify-center p-1">
-	<AztecMultiplierBadge val={val} />
-	</div>
-	))}
-	</div>
-	</div>
-	</div>
-{/* Big Win Flare Overlay */}
-{winActive && (
-<div
-onClick={() => setWinActive(false)}
-className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm cursor-pointer
-animate-in zoom-in-95 duration-200"
->
-<div className="relative flex flex-col items-center justify-center">
-<div className="size-20 mb-2">
-<GarudaMaskTile isHit />
-</div>
-<h3 className="font-display text-4xl font-black italic text-transparent bg-clip-text bg-gradient-to-b from-yellow-200
-via-amber-400 to-amber-600 drop-shadow">
-BIG WIN!
-</h3>
-<span className="font-mono text-3xl font-black text-emerald-400 mt-2 drop-shadow">
-+₹{winAmount.toLocaleString("en-IN")}
-</span>
-<span className="text-[10px] text-amber-300 font-bold uppercase tracking-wider mt-3">
-Tap anywhere to continue
-</span>
-</div>
-</div>
-)}
-</div>
-{/* Control Console */}
-<div className="border-t-2 border-[#b45309] bg-gradient-to-b from-[#2a1204] to-[#0d0400] p-2.5 shadow-2xl">
-<div className="flex items-center justify-between border-b border-amber-900/60 pb-1.5 px-2">
-<div className="flex items-center gap-1.5"> <span className="font-display text-xs font-black text-amber-400">WIN</span>
-<span className="font-mono text-sm font-black text-emerald-400">
-₹{winAmount > 0 ? winAmount.toLocaleString("en-IN") : "0.00"}
-</span>
-</div>
-<span className="text-[11px] font-mono text-amber-300 font-bold">
-Balance: <strong className="text-white">₹{user?.balance || 0}</strong>
-</span>
-</div>
-<div className="mt-2 flex items-center justify-between px-2">
-<div className="flex items-center gap-2">
-<button
-type="button"
-disabled={isSpinning}
-onClick={() => setBet((b) => Math.max(10, b - 10))}
-className="flex size-8 items-center justify-center rounded-full border border-amber-600 bg-[#241004] text-amber-200
-active:scale-95 shadow"
->
-<Minus className="size-4" />
-</button>
-<div className="rounded-xl border border-amber-600 bg-[#0f0501] px-3 py-1 text-center shadow-inner">
-<span className="block text-[8px] uppercase tracking-wider text-amber-400/80 font-bold">
-Bet
-</span>
-<span className="font-mono text-sm font-black text-white">₹{totalBet}</span>
-</div>
-<button
-type="button"
-disabled={isSpinning}
-onClick={() => setBet((b) => b + 10)}
-className="flex size-8 items-center justify-center rounded-full border border-amber-600 bg-[#241004] text-amber-200
-active:scale-95 shadow"
->
-<Plus className="size-4" />
-</button>
-</div>
-<button
-type="button"
-disabled={isSpinning}
-onClick={spin}
-className={`relative flex size-16 items-center justify-center rounded-full border-4 border-[#fef08a] bg-gradient-to-b
-from-[#fde047] via-[#ca8a04] to-[#713f12] shadow-[0_0_25px_#f59e0b] active:scale-90 transition-transform ${
-isSpinning ? "opacity-80 cursor-not-allowed" : "cursor-pointer"
-}`}
->
-<div className="flex flex-col items-center justify-center">
-<span className="font-display text-[12px] font-black tracking-wider text-[#451a03]">
-SPIN
-</span>
-<span className="font-mono text-[8.5px] font-black text-red-950">
-₹{totalBet}
-</span>
-</div>
-</button>
-</div>
-</div>
-<style>{`
-@keyframes reelPhysicalRoll {
-0% { transform: translate3d(0, 0, 0); }
-100% { transform: translate3d(0, -432px, 0); }
-}
-`}</style>
-</div>
+/* ---------- PART 2 : TEMPLE + WHEEL ---------- */
+
+const Wheel = ({ deg }: { deg: number }) => (
+  <div
+    className="relative w-56 h-56 rounded-full border-[7px] border-yellow-400 overflow-hidden shadow-[0_0_30px_#F59E0B]"
+    style={{
+      transform: `rotate(${deg}deg)`,
+      transition: "transform 2.8s cubic-bezier(.15,1,.2,1)",
+      background:
+        "conic-gradient(#7C3AED 0 30deg,#2563EB 30 60deg,#16A34A 60 90deg,#EA580C 90 120deg,#DC2626 120 150deg,#CA8A04 150 180deg,#0EA5E9 180 210deg,#92400E 210 240deg,#2563EB 240 270deg,#DC2626 270 300deg,#EA580C 300 330deg,#16A34A 330 360deg)",
+    }}
+  >
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="w-16 h-16 rounded-full bg-gradient-to-b from-yellow-300 to-yellow-700 border-4 border-yellow-100 flex items-center justify-center font-black text-black">
+        JILI
+      </div>
+    </div>
+
+    <div className="absolute left-1/2 -translate-x-1/2 top-0 w-0 h-0 border-l-[8px] border-r-[8px] border-b-[16px] border-transparent border-b-yellow-300"/>
+  </div>
 );
-}
+
+/* ---------- PLAYER STATE ---------- */
+
+const [balance, setBalance] = useState(2000);
+const [bet, setBet] = useState(30);
+const [win, setWin] = useState(0);
+const [sound, setSound] = useState(true);
+const [extraBet, setExtraBet] = useState(false);
+
+const [spinning, setSpinning] = useState(false);
+const [wheelDeg, setWheelDeg] = useState(0);
+
+const totalBet = extraBet ? Math.round(bet * 1.5) : bet;
+
+/* ---------- REEL POSITION ---------- */
+
+const [r1, setR1] = useState(2);
+const [r2, setR2] = useState(2);
+const [r3, setR3] = useState(2);
+const [r4, setR4] = useState(3);
+
+/* ---------- WILD VIDEO ---------- */
+
+const videoRef = useRef<HTMLVideoElement>(null);
+
+const playWildVideo = () => {
+  if (!videoRef.current) return;
+  videoRef.current.currentTime = 0;
+  videoRef.current.play().catch(() => {});
+};
+/* ---------- PART 3 : SPIN ENGINE ---------- */
+
+const getMid = (strip: SymbolType[], stop: number) => strip[stop];
+
+const isWild = (s: SymbolType) => s === "wild";
+
+const calculateWin = (
+  a: SymbolType,
+  b: SymbolType,
+  c: SymbolType,
+  multi: number
+) => {
+  const match =
+    (a === b && b === c) ||
+    (isWild(a) && b === c) ||
+    (isWild(b) && a === c) ||
+    (isWild(c) && a === b);
+
+  if (!match) return 0;
+
+  return totalBet * 4 * multi;
+};
+
+const spin = () => {
+  if (spinning || balance < totalBet) return;
+
+  setSpinning(true);
+  setWin(0);
+  setBalance((b) => b - totalBet);
+
+  setWheelDeg((d) => d + 1440 + Math.floor(Math.random() * 360));
+
+  const hit = Math.random() < 0.32;
+
+  let s1 = 2, s2 = 2, s3 = 2, s4 = 3;
+
+  if (hit) {
+    const sym: SymbolType =
+      Math.random() < 0.4 ? "wild" : "ruby";
+
+    s1 = REEL_1.findIndex((x) => x === sym || x === "wild");
+    s2 = REEL_2.findIndex((x) => x === sym || x === "wild");
+    s3 = REEL_3.findIndex((x) => x === sym || x === "wild");
+
+    s4 = Math.floor(Math.random() * 5) + 2;
+  } else {
+    s1 = Math.floor(Math.random() * 7) + 1;
+    s2 = Math.floor(Math.random() * 7) + 1;
+    s3 = Math.floor(Math.random() * 7) + 1;
+    s4 = Math.floor(Math.random() * 5) + 2;
+  }
+
+  setTimeout(() => setR1(s1), 600);
+  setTimeout(() => setR2(s2), 900);
+  setTimeout(() => setR3(s3), 1200);
+  setTimeout(() => setR4(s4), 1500);
+
+  setTimeout(() => {
+    const A = getMid(REEL_1, s1);
+    const B = getMid(REEL_2, s2);
+    const C = getMid(REEL_3, s3);
+
+    const mul =
+      typeof MULTI[s4] === "number"
+        ? (MULTI[s4] as number)
+        : 2;
+
+    const payout = calculateWin(A, B, C, mul);
+
+    if (A === "wild" || B === "wild" || C === "wild") {
+      playWildVideo();
+    }
+
+    if (payout > 0) {
+      setWin(payout);
+      setBalance((b) => b + payout);
+    }
+
+    setSpinning(false);
+  }, 1800);
+};
+/* ---------- PART 4 : FX + SOUND ---------- */
+
+const audioRef = useRef<AudioContext | null>(null);
+
+const [flash, setFlash] = useState(false);
+const [shake, setShake] = useState(false);
+
+const playSound = (type: "spin" | "stop" | "win") => {
+  if (!sound) return;
+
+  if (!audioRef.current) {
+    audioRef.current = new AudioContext();
+  }
+
+  const ctx = audioRef.current;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  if (type === "spin") {
+    osc.type = "triangle";
+    osc.frequency.value = 240;
+  }
+
+  if (type === "stop") {
+    osc.type = "sine";
+    osc.frequency.value = 160;
+  }
+
+  if (type === "win") {
+    osc.type = "square";
+    osc.frequency.value = 880;
+
+    setFlash(true);
+    setShake(true);
+
+    setTimeout(() => setFlash(false), 250);
+    setTimeout(() => setShake(false), 400);
+  }
+
+  gain.gain.setValueAtTime(0.12, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(
+    0.001,
+    ctx.currentTime + 0.18
+  );
+
+  osc.start();
+  osc.stop(ctx.currentTime + 0.18);
+};
+
+useEffect(() => {
+  if (spinning) playSound("spin");
+}, [spinning]);
+
+useEffect(() => {
+  if (win > 0) playSound("win");
+}, [win]);
+
+/* ---------- PARTICLES ---------- */
+
+const GoldParticles = () => (
+  <div className="absolute inset-0 pointer-events-none overflow-hidden">
+    {Array.from({ length: 24 }).map((_, i) => (
+      <div
+        key={i}
+        className="absolute w-2 h-2 rounded-full bg-yellow-300 animate-ping"
+        style={{
+          left: `${(i * 23) % 100}%`,
+          top: `${(i * 17) % 100}%`,
+          animationDelay: `${i * 0.05}s`,
+        }}
+      />
+    ))}
+  </div>
+);
+
+/* ---------- CSS ---------- */
+
+const ReelCSS = () => (
+  <style>{`
+    @keyframes reelSpin{
+      0%{transform:translateY(0)}
+      100%{transform:translateY(-456px)}
+    }
+
+    @keyframes screenShake{
+      0%,100%{transform:translateX(0)}
+      25%{transform:translateX(-4px)}
+      50%{transform:translateX(4px)}
+      75%{transform:translateX(-3px)}
+    }
+  `}</style>
+);
+/* ---------- PART 5 : TEMPLE UI ---------- */
+
+return (
+  <div
+    className={`relative mx-auto max-w-[360px] overflow-hidden rounded-3xl border-4 border-amber-700 bg-[#140802] text-white ${
+      shake ? "animate-[screenShake_.35s]" : ""
+    }`}
+  >
+    <ReelCSS />
+
+    {flash && <GoldParticles />}
+
+    <img
+      src={BG}
+      className="absolute inset-0 h-full w-full object-cover opacity-25"
+    />
+
+    <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-[#1A0C02]/70 to-[#140802]" />
+
+    <div className="relative z-10">
+      {/* Header */}
+
+      <div className="flex items-center justify-between border-b border-amber-700 bg-[#2B1406]/90 px-3 py-2">
+        <div>
+          <div className="text-[9px] font-bold tracking-[0.35em] text-yellow-300">
+            JILI GAMES
+          </div>
+
+          <h1 className="text-lg font-black italic text-yellow-100">
+            FORTUNE GEMS 2
+          </h1>
+        </div>
+
+        <button
+          onClick={() => setSound(!sound)}
+          className="rounded-full border border-yellow-500 bg-[#3A1B08] p-2"
+        >
+          {sound ? <Volume2 size={18} /> : <VolumeX size={18} />}
+        </button>
+      </div>
+
+      {/* Wheel */}
+
+      <div className="relative flex justify-center py-3">
+        <Wheel deg={wheelDeg} />
+      </div>
+
+      {/* Reel Area */}
+
+      <div className="mx-2 rounded-2xl border-2 border-amber-600 bg-[#241003]/90 p-2 shadow-[inset_0_0_18px_rgba(0,0,0,.8)]">
+        <div className="grid grid-cols-4 gap-1">
+          {/* Reel 1 */}
+
+          <div className="space-y-1">
+            {[
+              REEL_1[r1 - 1],
+              REEL_1[r1],
+              REEL_1[r1 + 1],
+            ].map((s, i) => (
+              <div
+                key={i}
+                className="h-[76px] overflow-hidden rounded-xl border border-yellow-700 bg-[#3A1B08]"
+              >
+                {s === "wild" ? (
+                  <GarudaWild glow={win > 0} />
+                ) : s === "ruby" ? (
+                  <Gem type="ruby" />
+                ) : s === "emerald" ? (
+                  <Gem type="emerald" />
+                ) : s === "sapphire" ? (
+                  <Gem type="sapphire" />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-3xl font-black text-yellow-300">
+                    {s}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Reel 2 */}
+
+          <div className="space-y-1">
+            {[
+              REEL_2[r2 - 1],
+              REEL_2[r2],
+              REEL_2[r2 + 1],
+            ].map((s, i) => (
+              <div
+                key={i}
+                className="h-[76px] overflow-hidden rounded-xl border border-yellow-700 bg-[#3A1B08]"
+              >
+                {s === "wild" ? (
+                  <GarudaWild glow={win > 0} />
+                ) : s === "ruby" ? (
+                  <Gem type="ruby" />
+                ) : s === "emerald" ? (
+                  <Gem type="emerald" />
+                ) : s === "sapphire" ? (
+                  <Gem type="sapphire" />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-3xl font-black text-yellow-300">
+                    {s}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Reel 3 */}
+
+          <div className="space-y-1">
+            {[
+              REEL_3[r3 - 1],
+              REEL_3[r3],
+              REEL_3[r3 + 1],
+            ].map((s, i) => (
+              <div
+                key={i}
+                className="h-[76px] overflow-hidden rounded-xl border border-yellow-700 bg-[#3A1B08]"
+              >
+                {s === "wild" ? (
+                  <GarudaWild glow={win > 0} />
+                ) : s === "ruby" ? (
+                  <Gem type="ruby" />
+                ) : s === "emerald" ? (
+                  <Gem type="emerald" />
+                ) : s === "sapphire" ? (
+                  <Gem type="sapphire" />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-3xl font-black text-yellow-300">
+                    {s}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+			          {/* Special Multiplier */}
+          <div className="space-y-1">
+            {[MULTI[r4 - 1], MULTI[r4], MULTI[r4 + 1]].map((m, i) => (
+              <div
+                key={i}
+                className="h-[76px] rounded-xl border border-yellow-500 bg-gradient-to-b from-[#4B1F08] to-[#241003] flex items-center justify-center"
+              >
+                {m === "WHEEL" ? (
+                  <span className="text-[11px] font-black text-yellow-300">
+                    WHEEL
+                  </span>
+                ) : (
+                  <span className="text-xl font-black text-white">{m}×</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Wild Animation */}
+      <video
+        ref={videoRef}
+        src="/assets/garuda-win.mp4"
+        className="hidden"
+        muted
+        playsInline
+      />
+
+      {/* Win Panel */}
+      <div className="px-3 pt-3 text-center">
+        <div className="text-[10px] font-bold tracking-[0.3em] text-yellow-300">
+          BIG WIN
+        </div>
+
+        <div className="text-3xl font-black text-emerald-400">
+          ₹{win}
+        </div>
+
+        <div className="mt-1 text-[11px] text-yellow-100">
+          Balance ₹{balance}
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="p-3">
+        <div className="mb-3 flex items-center justify-between">
+          <button
+            onClick={() => setBet(Math.max(10, bet - 10))}
+            className="h-10 w-10 rounded-full border border-yellow-600 bg-[#3A1B08] flex items-center justify-center"
+          >
+            <Minus size={18} />
+          </button>
+
+          <div className="text-center">
+            <div className="text-[9px] text-yellow-300">TOTAL BET</div>
+            <div className="text-xl font-black">₹{totalBet}</div>
+          </div>
+
+          <button
+            onClick={() => setBet(bet + 10)}
+            className="h-10 w-10 rounded-full border border-yellow-600 bg-[#3A1B08] flex items-center justify-center"
+          >
+            <Plus size={18} />
+          </button>
+        </div>
+
+        <button
+          disabled={spinning}
+          onClick={spin}
+          className="w-full rounded-2xl bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-800 py-4 text-xl font-black text-black shadow-[0_0_25px_#F59E0B]"
+        >
+          {spinning ? "SPINNING..." : "SPIN"}
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
 export default ReelGame;
