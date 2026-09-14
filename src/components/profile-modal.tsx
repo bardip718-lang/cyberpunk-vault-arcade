@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { User, ShieldCheck, Wallet, Trophy, Flame, LogOut, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
@@ -16,7 +16,11 @@ export function ProfileModal({
   onWithdraw: () => void;
 }) {
   const { user, signOut } = useVault();
-  const phone = localStorage.getItem("win1_user_phone");
+  const [phone, setPhone] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPhone(window.localStorage.getItem("win1_user_phone"));
+  }, [open]);
 
   const totalDeposited = user?.totalDeposited || 0;
   const vipTier = totalDeposited >= 5000 ? "VIP Diamond" : totalDeposited >= 1000 ? "VIP Gold" : "VIP Silver";

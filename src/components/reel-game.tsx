@@ -142,9 +142,7 @@ transition-transform duration-[1700ms] ease-out"
 style={{
 transform: `rotate(${rotation}deg)`,
 background:
-"conic-gradient(#9333ea 0deg 30deg, #16a34a 30deg 60deg, #dc2626 60deg 90deg, #0284c7 90deg 120deg, #78350f 120deg 150deg,
-#0284c7 150deg 180deg, #ea580c 180deg 210deg, #dc2626 210deg 240deg, #ca8a04 240deg 270deg, #dc2626 270deg 300deg, #ea580c
-300deg 330deg, #16a34a 330deg 360deg)",
+	"conic-gradient(#9333ea 0deg 30deg, #16a34a 30deg 60deg, #dc2626 60deg 90deg, #0284c7 90deg 120deg, #78350f 120deg 150deg, #0284c7 150deg 180deg, #ea580c 180deg 210deg, #dc2626 210deg 240deg, #ca8a04 240deg 270deg, #dc2626 270deg 300deg, #ea580c 300deg 330deg, #16a34a 330deg 360deg)",
 }}
 >
 {segments.map((s, i) => (
@@ -274,67 +272,101 @@ addScore(payout);
 setWinAmount(payout);
 setWinActive(true);
 playSfx("win");
-toast.success(` const finalTranslateY = -((targetIdx - 1) * TILE_H);
-return (
-<div key={colIdx} className="relative h-full overflow-hidden rounded-lg bg-[#1c0801] shadow-inner">
-<div
-className="w-full flex flex-col will-change-transform"
-style={{
-transform: isLocked ? `translate3d(0, ${finalTranslateY}px, 0)` : `translate3d(0, -576px, 0)`,
-transition: isLocked
-? "transform 0.45s cubic-bezier(0.1, 1.35, 0.25, 1)"
-: "none",
-animation: !isLocked ? "reelPhysicalRoll 0.22s linear infinite" : "none",
-filter: !isLocked ? "blur(2px)" : "none",
-}}
->
-{strip.map((sym, idx) => (
-<div key={idx} className="h-[72px] w-full p-1 flex items-center justify-center shrink-0">
-{sym === "wild" && <GarudaMaskTile isHit={winActive && isLocked} />}
-{sym === "ruby" && <LuxuryGemTile type="ruby" />}
-{sym === "emerald" && <LuxuryGemTile type="emerald" />}
-{sym === "sapphire" && <LuxuryGemTile type="sapphire" />}
-{["A", "K"].includes(sym) && (
-<div className="size-full rounded-xl border border-amber-950 bg-[#160601] flex items-center justify-center shadow-inner">
-<span className="font-display text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-[#fef08a]
-via-[#eab308] to-[#92400e] drop-shadow">
-{sym}
-</span>
-</div>
-)}
-</div>
-))}
-</div>
-</div>
-);
-})}
-{/* 4th Column: Multiplier Tower */}
-<div className="relative h-full overflow-hidden rounded-lg bg-[#2b1003] border-2 border-amber-600 shadow-inner">
-<div className="bg-[#92400e] text-center text-[7px] font-black uppercase text-amber-200 py-0.5">
-SPECIAL
-</div>
-<div
-className="w-full flex flex-col will-change-transform"
-style={{
-transform: reelStops[3]
-? `translate3d(0, ${-((reelOffsets[3] - 1) * TILE_H)}px, 0)`
-: `translate3d(0, -504px, 0)`,
-transition: reelStops[3]
-? "transform 0.48s cubic-bezier(0.1, 1.35, 0.25, 1)"
-: "none",
-animation: !reelStops[3] ? "reelPhysicalRoll 0.20s linear infinite" : "none",
-filter: !reelStops[3] ? "blur(1.5px)" : "none",
-}}
->
-{SPECIAL_STRIP.map((val, idx) => (
-<div key={idx} className="h-[72px] w-full p-1 flex items-center justify-center shrink-0">
-<AztecMultiplierBadge val={val} />
-</div>
-))}
-</div>
-</div>
-</div>
-</div>
+	toast.success(`Big win! ₹${payout.toLocaleString("en-IN")}`);
+	}
+	}, 1750);
+	};
+	const strips = [STRIP_1, STRIP_2, STRIP_3];
+	return (
+	<div className="mx-auto w-full max-w-md overflow-hidden rounded-xl border-2 border-amber-600 bg-[#0d0400] shadow-2xl">
+	<div className="flex items-center justify-between border-b-2 border-amber-700 bg-[#241004] px-3 py-2">
+	<div>
+	<p className="font-display text-sm font-black text-amber-300">GARUDA GOLD</p>
+	<p className="text-[9px] font-bold uppercase text-amber-500">Neon reels</p>
+	</div>
+	<div className="flex items-center gap-2">
+	<label className="flex cursor-pointer items-center gap-1 text-[9px] font-bold uppercase text-amber-300">
+	<input
+	type="checkbox"
+	checked={extraBet}
+	disabled={isSpinning}
+	onChange={(event) => setExtraBet(event.target.checked)}
+	className="accent-amber-500"
+	/>
+	Extra bet
+	</label>
+	<button
+	type="button"
+	onClick={() => setSound((enabled) => !enabled)}
+	className="flex size-8 items-center justify-center rounded-full border border-amber-600 text-amber-200"
+	aria-label={sound ? "Mute game sounds" : "Enable game sounds"}
+	>
+	{sound ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+	</button>
+	</div>
+	</div>
+	<div className="relative bg-[#160601] p-2">
+	<div className="mb-2 flex justify-center overflow-hidden">
+	<div className="scale-75">
+	<AztecWheelDisc rotation={wheelRotation.current} />
+	</div>
+	</div>
+	<div className="grid h-[216px] grid-cols-[repeat(3,minmax(0,1fr))_64px] gap-1 overflow-hidden rounded-lg border-2 border-amber-500 bg-[#0d0400] p-1">
+	{strips.map((strip, colIdx) => {
+	const isLocked = reelStops[colIdx] ?? false;
+	const targetIdx = reelOffsets[colIdx] ?? 0;
+	const finalTranslateY = -((targetIdx - 1) * TILE_H);
+	return (
+	<div key={colIdx} className="relative h-full overflow-hidden rounded-lg bg-[#1c0801] shadow-inner">
+	<div
+	className="flex w-full flex-col will-change-transform"
+	style={{
+	transform: isLocked ? `translate3d(0, ${finalTranslateY}px, 0)` : "translate3d(0, -576px, 0)",
+	transition: isLocked ? "transform 0.45s cubic-bezier(0.1, 1.35, 0.25, 1)" : "none",
+	animation: !isLocked ? "reelPhysicalRoll 0.22s linear infinite" : "none",
+	filter: !isLocked ? "blur(2px)" : "none",
+	}}
+	>
+	{strip.map((sym, idx) => (
+	<div key={idx} className="flex h-[72px] w-full shrink-0 items-center justify-center p-1">
+	{sym === "wild" && <GarudaMaskTile isHit={Boolean(winActive && isLocked)} />}
+	{sym === "ruby" && <LuxuryGemTile type="ruby" />}
+	{sym === "emerald" && <LuxuryGemTile type="emerald" />}
+	{sym === "sapphire" && <LuxuryGemTile type="sapphire" />}
+	{["A", "K"].includes(sym) && (
+	<div className="flex size-full items-center justify-center rounded-xl border border-amber-950 bg-[#160601] shadow-inner">
+	<span className="bg-gradient-to-b from-[#fef08a] via-[#eab308] to-[#92400e] bg-clip-text font-display text-3xl font-black text-transparent drop-shadow">
+	{sym}
+	</span>
+	</div>
+	)}
+	</div>
+	))}
+	</div>
+	</div>
+	);
+	})}
+	<div className="relative h-full overflow-hidden rounded-lg border-2 border-amber-600 bg-[#2b1003] shadow-inner">
+	<div className="bg-[#92400e] py-0.5 text-center text-[7px] font-black uppercase text-amber-200">SPECIAL</div>
+	<div
+	className="flex w-full flex-col will-change-transform"
+	style={{
+	transform: reelStops[3]
+	? `translate3d(0, ${-(((reelOffsets[3] ?? 0) - 1) * TILE_H)}px, 0)`
+	: "translate3d(0, -504px, 0)",
+	transition: reelStops[3] ? "transform 0.48s cubic-bezier(0.1, 1.35, 0.25, 1)" : "none",
+	animation: !reelStops[3] ? "reelPhysicalRoll 0.20s linear infinite" : "none",
+	filter: !reelStops[3] ? "blur(1.5px)" : "none",
+	}}
+	>
+	{SPECIAL_STRIP.map((val, idx) => (
+	<div key={idx} className="flex h-[72px] w-full shrink-0 items-center justify-center p-1">
+	<AztecMultiplierBadge val={val} />
+	</div>
+	))}
+	</div>
+	</div>
+	</div>
 {/* Big Win Flare Overlay */}
 {winActive && (
 <div
