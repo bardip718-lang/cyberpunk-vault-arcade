@@ -89,13 +89,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "google-site-verification", content: "TPalwJp-PowMkRqDEiW1ywWLzH00JplehfBmxYWfaxk" },
 
     ],
-    scripts: [
-      {
-        src: "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7422138384098542",
-        crossOrigin: "anonymous",
-        async: true,
-      },
-    ],
+    // AdSense is intentionally DISABLED. The loader (publisher ca-pub-7422138384098542) enabled
+    // Auto ads on every screen, including games, wallet, deposit and admin. Re-add a single loader
+    // here only after a deliberate policy review, and restrict any units to informational pages.
+    scripts: [],
     links: [
       {
         rel: "stylesheet",

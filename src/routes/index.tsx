@@ -44,18 +44,14 @@ import { useVaultRequests } from "@/lib/use-vault-requests";
 import { useSettleOwnRequests } from "@/lib/use-settle-requests";
 import { ReferEarn } from "@/components/refer-earn";
 import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
+import { pageHead, SiteFooter } from "@/components/site-shell";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "1win — Arcade Gaming & Reward Vault" },
-      {
-        name: "description",
-        content:
-          "1win is a high-reward vault: Aviator crash, Fortune Gems 2 slots, Mines, and Lightning Roulette.",
-      },
-    ],
-  }),
+  head: () => {
+    const h = pageHead("/", "win1 — Neon Arcade: Crash, Slots, Mines & Roulette", "Browser arcade with chance-based games, a free demo mode with virtual coins, and an optional manually-reviewed UPI deposit wallet. 18+.");
+    return { ...h, meta: h.meta.map((m) => ("property" in m && m.property === "og:type" ? { ...m, content: "website" } : m)) };
+  },
   component: Index,
 });
 
@@ -123,7 +119,7 @@ const GAME_CARDS = [
     title: "BLACKJACK",
     provider: "1WIN GAMES",
     players: "410",
-    badge: "SKILL",
+    badge: "CARDS",
     badgeBg: "bg-blue-600",
     image: "https://images.unsplash.com/photo-1511193311914-0346f16efe90?w=500&auto=format&fit=crop&q=80",
     gradient: "from-blue-950/80 via-transparent to-black/90",
@@ -440,6 +436,31 @@ function Index() {
               <AdminConsole />
             </div>
           )}
+
+          {/* Publisher introduction */}
+          <section aria-labelledby="intro-title" className="mt-6 space-y-3 text-[12px] leading-relaxed text-muted-foreground">
+            <h1 id="intro-title" className="text-base font-black text-foreground">A neon arcade of quick chance games</h1>
+            <p>
+              win1 is a small browser arcade with six games: an Aviator-style crash game, two slots
+              (Fortune Gems 2 and Neon Reels 777), Mines, roulette and a card game. Everything runs on a
+              phone with no app to install.
+            </p>
+            <p>
+              <strong className="text-foreground">Demo mode:</strong> if you are not signed in you play with
+              virtual demo coins that have no cash value and can never be withdrawn.
+            </p>
+            <p>
+              <strong className="text-foreground">Real-money mode:</strong> signed-in players can deposit by
+              UPI. Each deposit and withdrawal is checked by hand by the operator. This is real-money,
+              casino-style play: outcomes are random and you can lose what you deposit. 18+ only, and only
+              where legal for you.
+            </p>
+            <p>
+              New here? Read the <Link to="/how-to-play" className="text-primary underline">game rules</Link>{" "}
+              and our <Link to="/responsible-play" className="text-primary underline">responsible play</Link> advice.
+            </p>
+          </section>
+          <SiteFooter />
         </div>
       )}
 
