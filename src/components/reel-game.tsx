@@ -81,6 +81,7 @@ const Wheel = ({ deg }: { deg: number }) => (
   </div>
 );
 
+export function ReelGame() {
 /* ---------- PLAYER STATE ---------- */
 
 const [balance, setBalance] = useState(2000);
@@ -112,7 +113,7 @@ const playWildVideo = () => {
 };
 /* ---------- PART 3 : SPIN ENGINE ---------- */
 
-const getMid = (strip: SymbolType[], stop: number) => strip[stop];
+const getMid = (strip: SymbolType[], stop: number): SymbolType => strip[stop] ?? "ruby";
 
 const isWild = (s: SymbolType) => s === "wild";
 
@@ -501,5 +502,6 @@ return (
     </div>
   </div>
 );
+}
 
 export default ReelGame;
