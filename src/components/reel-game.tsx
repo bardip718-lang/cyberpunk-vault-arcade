@@ -1,33 +1,40 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Volume2, VolumeX, Minus, Plus, Sparkles } from "lucide-react";
+import { Volume2, VolumeX, Minus, Plus } from "lucide-react";
 
-type SymbolType = "wild" | "ruby" | "emerald" | "sapphire" | "A" | "K";
+type SymbolType = "wild" | "ruby" | "emerald" | "sapphire" | "A" | "K" | "Q";
 
-const REEL_1: SymbolType[] = [
-  "ruby", "A", "wild", "emerald", "K", "ruby",
-  "sapphire", "wild", "A", "emerald", "ruby",
-];
-const REEL_2: SymbolType[] = [
-  "emerald", "ruby", "K", "wild", "sapphire",
-  "ruby", "A", "wild", "emerald", "ruby", "K",
-];
-const REEL_3: SymbolType[] = [
-  "wild", "ruby", "emerald", "A", "sapphire",
-  "K", "ruby", "wild", "emerald", "A", "ruby",
-];
+const SYMBOLS: SymbolType[] = ["wild", "ruby", "emerald", "sapphire", "A", "K", "Q"];
+const WEIGHTS = [5, 12, 16, 18, 17, 17, 15]; // wild is rare
 
-const MULTI: (number | "WHEEL")[] = [2, 3, 5, 10, 15, "WHEEL", 5, 10, 15];
+// Paytable: multiplier of total bet for 3 / 4 / 5 of a kind on a row
+const PAY: Record<SymbolType, [number, number, number]> = {
+  wild: [5, 15, 50],
+  ruby: [3, 8, 25],
+  emerald: [2, 5, 15],
+  sapphire: [2, 4, 12],
+  A: [1, 2, 6],
+  K: [0.8, 1.5, 4],
+  Q: [0.5, 1, 3],
+};
 
 const BG = "/assets/temple-bg.jpg";
+
+function pickSymbol(): SymbolType {
+  const total = WEIGHTS.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < SYMBOLS.length; i++) {
+    r -= WEIGHTS[i]!;
+    if (r <= 0) return SYMBOLS[i]!;
+  }
+  return "Q";
+}
 
 /* ---------- SYMBOL TILES ---------- */
 
 const GarudaWild = ({ glow = false }: { glow?: boolean }) => (
   <div
-    className={`relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-xl border-2 bg-gradient-to-b from-[#3A1B08] to-[#1A0C02] ${
-      glow
-        ? "border-yellow-300 shadow-[0_0_22px_#FACC15]"
-        : "border-amber-700/80"
+    className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border-2 bg-gradient-to-b from-[#3A1B08] to-[#1A0C02] ${
+      glow ? "border-yellow-300 shadow-[0_0_18px_#FACC15]" : "border-amber-700/80"
     }`}
   >
     <img
@@ -36,13 +43,13 @@ const GarudaWild = ({ glow = false }: { glow?: boolean }) => (
       loading="lazy"
       width={1024}
       height={1024}
-      className={`h-[80%] w-[80%] object-contain drop-shadow-[0_0_10px_rgba(250,204,21,0.7)] ${
+      className={`h-[78%] w-[78%] object-contain drop-shadow-[0_0_10px_rgba(250,204,21,0.7)] ${
         glow ? "animate-pulse" : ""
       }`}
     />
-    <div className="absolute bottom-0 w-full bg-gradient-to-r from-red-900 via-red-600 to-red-900 py-0.5 text-center text-[9px] font-black tracking-[0.3em] text-yellow-100">
+    <span className="absolute bottom-0.5 rounded bg-red-700/90 px-1.5 text-[7px] font-black tracking-[0.2em] text-yellow-100">
       WILD
-    </div>
+    </span>
   </div>
 );
 
@@ -53,201 +60,198 @@ const GEM_SRC: Record<"ruby" | "emerald" | "sapphire", string> = {
 };
 
 const Gem = ({ type }: { type: "ruby" | "emerald" | "sapphire" }) => (
-  <div className="flex h-full w-full items-center justify-center rounded-xl border border-yellow-700/70 bg-gradient-to-b from-[#3A1B07] to-[#1A0C02] p-1.5">
+  <div className="flex h-full w-full items-center justify-center rounded-lg border border-yellow-700/60 bg-gradient-to-b from-[#331808] to-[#1A0C02] p-1">
     <img
       src={GEM_SRC[type]}
       alt={`${type} gem symbol`}
       loading="lazy"
       width={1024}
       height={1024}
-      className="h-full w-full object-contain drop-shadow-[0_0_8px_rgba(250,204,21,0.35)]"
+      className="h-full w-full object-contain drop-shadow-[0_0_8px_rgba(250,204,21,0.3)]"
     />
   </div>
 );
 
 function SymbolTile({ s, glow }: { s: SymbolType; glow: boolean }) {
   if (s === "wild") return <GarudaWild glow={glow} />;
-  if (s === "ruby" || s === "emerald" || s === "sapphire")
-    return <Gem type={s} />;
+  if (s === "ruby" || s === "emerald" || s === "sapphire") return <Gem type={s} />;
   return (
-    <div className="flex h-full items-center justify-center rounded-xl border border-yellow-700/70 bg-gradient-to-b from-[#3A1B08] to-[#1A0C02] text-3xl font-black text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+    <div
+      className={`flex h-full items-center justify-center rounded-lg border bg-gradient-to-b from-[#331808] to-[#1A0C02] text-2xl font-black drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
+        glow
+          ? "border-yellow-300 text-yellow-200 shadow-[0_0_14px_rgba(250,204,21,0.5)]"
+          : "border-yellow-700/60 text-yellow-300/90"
+      }`}
+    >
       {s}
     </div>
   );
 }
 
-/* ---------- BONUS WHEEL ---------- */
-
-const Wheel = ({ deg }: { deg: number }) => (
-  <div
-    aria-hidden
-    className="relative h-40 w-40 overflow-hidden rounded-full border-[6px] border-yellow-400 shadow-[0_0_30px_#F59E0B] sm:h-48 sm:w-48"
-    style={{
-      transform: `rotate(${deg}deg)`,
-      transition: "transform 2.8s cubic-bezier(.15,1,.2,1)",
-      background:
-        "conic-gradient(#7C3AED 0 30deg,#2563EB 30deg 60deg,#16A34A 60deg 90deg,#EA580C 90deg 120deg,#DC2626 120deg 150deg,#CA8A04 150deg 180deg,#0EA5E9 180deg 210deg,#92400E 210deg 240deg,#2563EB 240deg 270deg,#DC2626 270deg 300deg,#EA580C 300deg 330deg,#16A34A 330deg 360deg)",
-    }}
-  >
-    <div className="absolute inset-0 flex items-center justify-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full border-4 border-yellow-100 bg-gradient-to-b from-yellow-300 to-yellow-700 text-xs font-black text-black">
-        BONUS
-      </div>
-    </div>
-    <div className="absolute left-1/2 top-0 w-0 h-0 -translate-x-1/2 border-l-[8px] border-r-[8px] border-b-[16px] border-transparent border-b-yellow-300" />
-  </div>
-);
-
 /* ---------- GAME ---------- */
+
+const COLS = 5;
+const ROWS = 3;
 
 export function ReelGame() {
   // Demo/virtual coins only — not connected to the real wallet.
   const [balance, setBalance] = useState(2000);
   const [bet, setBet] = useState(30);
   const [win, setWin] = useState(0);
+  const [winCells, setWinCells] = useState<Set<string>>(new Set());
   const [sound, setSound] = useState(true);
-  const [extraBet, setExtraBet] = useState(false);
   const [spinning, setSpinning] = useState(false);
-  const [wheelDeg, setWheelDeg] = useState(0);
-  const [flash, setFlash] = useState(false);
+  // Per-column stopped flags drive the staggered stop animation
+  const [stopped, setStopped] = useState<boolean[]>(Array(COLS).fill(true));
   const [shake, setShake] = useState(false);
 
-  const [r1, setR1] = useState(2);
-  const [r2, setR2] = useState(2);
-  const [r3, setR3] = useState(2);
-  const [r4, setR4] = useState(3);
+  const [grid, setGrid] = useState<SymbolType[][]>(() =>
+    Array.from({ length: COLS }, () => [pickSymbol(), pickSymbol(), pickSymbol()])
+  );
 
-  const totalBet = extraBet ? Math.round(bet * 1.5) : bet;
   const audioRef = useRef<AudioContext | null>(null);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const intervalsRef = useRef<ReturnType<typeof setInterval>[]>([]);
 
   useEffect(() => {
     const timers = timersRef.current;
-    return () => timers.forEach(clearTimeout);
+    const intervals = intervalsRef.current;
+    return () => {
+      timers.forEach(clearTimeout);
+      intervals.forEach(clearInterval);
+    };
   }, []);
 
   const later = (fn: () => void, ms: number) => {
     timersRef.current.push(setTimeout(fn, ms));
   };
 
-  const getMid = (strip: SymbolType[], stop: number): SymbolType =>
-    strip[stop] ?? "ruby";
-
-  const isWild = (s: SymbolType) => s === "wild";
-
-  const calculateWin = (
-    a: SymbolType,
-    b: SymbolType,
-    c: SymbolType,
-    multi: number
-  ) => {
-    const match =
-      (a === b && b === c) ||
-      (isWild(a) && b === c) ||
-      (isWild(b) && a === c) ||
-      (isWild(c) && a === b);
-    if (!match) return 0;
-    return totalBet * 4 * multi;
-  };
-
-  const playSound = (type: "spin" | "stop" | "win") => {
+  const tone = (freq: number, dur = 0.12, type: OscillatorType = "sine", vol = 0.1) => {
     if (!sound) return;
     try {
       audioRef.current ??= new AudioContext();
       const ctx = audioRef.current;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
       osc.connect(gain);
       gain.connect(ctx.destination);
-      if (type === "spin") {
-        osc.type = "triangle";
-        osc.frequency.value = 240;
-      } else if (type === "stop") {
-        osc.type = "sine";
-        osc.frequency.value = 160;
-      } else {
-        osc.type = "square";
-        osc.frequency.value = 880;
-        setFlash(true);
-        setShake(true);
-        later(() => setFlash(false), 350);
-        later(() => setShake(false), 450);
-      }
-      gain.gain.setValueAtTime(0.12, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+      gain.gain.setValueAtTime(vol, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
       osc.start();
-      osc.stop(ctx.currentTime + 0.18);
+      osc.stop(ctx.currentTime + dur);
     } catch {
       // audio unavailable
     }
   };
 
+  const winJingle = () => {
+    [523, 659, 784, 1047].forEach((f, i) => later(() => tone(f, 0.18, "triangle", 0.12), i * 90));
+  };
+
+  // Evaluate all 3 rows: left-to-right matches with wild substitution
+  const evaluate = (g: SymbolType[][]) => {
+    let total = 0;
+    const cells = new Set<string>();
+    for (let row = 0; row < ROWS; row++) {
+      const line = g.map((col) => col[row]!);
+      // candidate symbols = non-wild symbols present; if all wild, use wild
+      const candidates = line.filter((s) => s !== "wild");
+      const targets: SymbolType[] = candidates.length
+        ? [...new Set(candidates)]
+        : ["wild"];
+      let best = 0;
+      let bestLen = 0;
+      for (const t of targets) {
+        let len = 0;
+        for (const s of line) {
+          if (s === t || s === "wild") len++;
+          else break;
+        }
+        if (len >= 3) {
+          const pay = PAY[t][len - 3]! * bet;
+          if (pay > best) {
+            best = pay;
+            bestLen = len;
+          }
+        }
+      }
+      if (best > 0) {
+        total += best;
+        for (let c = 0; c < bestLen; c++) cells.add(`${c}-${row}`);
+      }
+    }
+    return { total: Math.round(total), cells };
+  };
+
   const spin = () => {
-    if (spinning || balance < totalBet) return;
+    if (spinning || balance < bet) return;
 
     setSpinning(true);
     setWin(0);
-    setBalance((b) => b - totalBet);
-    setWheelDeg((d) => d + 1440 + Math.floor(Math.random() * 360));
-    playSound("spin");
+    setWinCells(new Set());
+    setBalance((b) => b - bet);
+    setStopped(Array(COLS).fill(false));
+    tone(240, 0.15, "triangle", 0.08);
 
-    const hit = Math.random() < 0.32;
-    let s1 = 2, s2 = 2, s3 = 2, s4 = 3;
+    // Final result decided up-front — the animation lands on these symbols
+    const finalGrid = Array.from({ length: COLS }, () => [
+      pickSymbol(),
+      pickSymbol(),
+      pickSymbol(),
+    ]);
 
-    if (hit) {
-      const sym: SymbolType = Math.random() < 0.4 ? "wild" : "ruby";
-      s1 = Math.max(1, REEL_1.findIndex((x) => x === sym || x === "wild"));
-      s2 = Math.max(1, REEL_2.findIndex((x) => x === sym || x === "wild"));
-      s3 = Math.max(1, REEL_3.findIndex((x) => x === sym || x === "wild"));
-      s4 = Math.floor(Math.random() * 5) + 2;
-    } else {
-      s1 = Math.floor(Math.random() * 7) + 1;
-      s2 = Math.floor(Math.random() * 7) + 1;
-      s3 = Math.floor(Math.random() * 7) + 1;
-      s4 = Math.floor(Math.random() * 5) + 2;
-    }
+    // Each column cycles symbols vertically (reel-strip motion) until it stops
+    finalGrid.forEach((finalCol, col) => {
+      const iv = setInterval(() => {
+        setGrid((prev) => {
+          const next = prev.map((c) => [...c]);
+          next[col] = [pickSymbol(), next[col]![0]!, next[col]![1]!];
+          return next;
+        });
+      }, 70);
+      intervalsRef.current.push(iv);
 
-    // Staggered reel stops
+      // Staggered stop: left to right
+      later(() => {
+        clearInterval(iv);
+        setGrid((prev) => {
+          const next = prev.map((c) => [...c]);
+          next[col] = finalCol;
+          return next;
+        });
+        setStopped((prev) => {
+          const next = [...prev];
+          next[col] = true;
+          return next;
+        });
+        tone(160, 0.08, "sine", 0.09);
+      }, 700 + col * 350);
+    });
+
+    // Settle after the last column lands
     later(() => {
-      setR1(s1);
-      playSound("stop");
-    }, 600);
-    later(() => {
-      setR2(s2);
-      playSound("stop");
-    }, 950);
-    later(() => {
-      setR3(s3);
-      playSound("stop");
-    }, 1300);
-    later(() => setR4(s4), 1600);
-
-    later(() => {
-      const A = getMid(REEL_1, s1);
-      const B = getMid(REEL_2, s2);
-      const C = getMid(REEL_3, s3);
-      const m = MULTI[s4];
-      const mul = typeof m === "number" ? m : 2;
-      const payout = calculateWin(A, B, C, mul);
-
-      if (payout > 0) {
-        setWin(payout);
-        setBalance((b) => b + payout);
-        playSound("win");
+      const { total, cells } = evaluate(finalGrid);
+      if (total > 0) {
+        setWin(total);
+        setWinCells(cells);
+        setBalance((b) => b + total);
+        winJingle();
+        if (total >= bet * 10) {
+          setShake(true);
+          later(() => setShake(false), 450);
+        }
       }
       setSpinning(false);
-    }, 1900);
+    }, 700 + COLS * 350 + 150);
   };
 
-  const reels: { strip: SymbolType[]; pos: number }[] = [
-    { strip: REEL_1, pos: r1 },
-    { strip: REEL_2, pos: r2 },
-    { strip: REEL_3, pos: r3 },
-  ];
+  const winTier = win >= bet * 25 ? "JACKPOT" : win >= bet * 8 ? "BIG WIN" : "NICE WIN";
 
   return (
     <div
-      className={`relative mx-auto w-full max-w-[400px] select-none overflow-hidden rounded-3xl border-4 border-amber-700 bg-[#140802] text-white shadow-2xl ${
+      className={`relative mx-auto w-full max-w-md select-none overflow-hidden rounded-3xl border-4 border-amber-700 bg-[#140802] text-white shadow-2xl ${
         shake ? "animate-[reelShake_.4s]" : ""
       }`}
     >
@@ -263,6 +267,12 @@ export function ReelGame() {
           15%{opacity:1}
           100%{transform:translateY(110%);opacity:0}
         }
+        @keyframes landBounce{
+          0%{transform:translateY(-8%)}
+          60%{transform:translateY(3%)}
+          100%{transform:translateY(0)}
+        }
+        .reel-land{animation:landBounce .28s ease-out}
       `}</style>
 
       {/* Temple backdrop */}
@@ -272,20 +282,20 @@ export function ReelGame() {
         aria-hidden
         width={768}
         height={1344}
-        className="absolute inset-0 h-full w-full object-cover opacity-30"
+        className="absolute inset-0 h-full w-full object-cover opacity-25"
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-[#1A0C02]/70 to-[#140802]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-[#1A0C02]/75 to-[#140802]" />
 
       {/* Win particles */}
-      {flash && (
+      {win > 0 && (
         <div aria-hidden className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
-          {Array.from({ length: 18 }).map((_, i) => (
+          {Array.from({ length: 16 }).map((_, i) => (
             <div
               key={i}
               className="absolute h-2 w-2 rounded-full bg-yellow-300"
               style={{
-                left: `${(i * 53) % 100}%`,
-                animation: `coinFall ${1 + (i % 4) * 0.3}s ease-in ${i * 0.06}s forwards`,
+                left: `${(i * 61) % 100}%`,
+                animation: `coinFall ${1.1 + (i % 4) * 0.3}s ease-in ${i * 0.07}s forwards`,
                 boxShadow: "0 0 8px #FACC15",
               }}
             />
@@ -300,7 +310,7 @@ export function ReelGame() {
             <div className="text-[9px] font-bold tracking-[0.35em] text-yellow-300">
               TEMPLE OF FORTUNE
             </div>
-            <h1 className="text-lg font-black italic text-yellow-100">
+            <h1 className="text-lg font-black italic leading-tight text-yellow-100">
               GARUDA GEMS
             </h1>
           </div>
@@ -319,64 +329,26 @@ export function ReelGame() {
           </div>
         </div>
 
-        {/* Bonus wheel */}
-        <div className="relative flex justify-center py-3">
-          <Wheel deg={wheelDeg} />
-        </div>
-
-        {/* Reel frame */}
-        <div className="mx-2 rounded-2xl border-2 border-amber-500/80 bg-[#241003]/90 p-2 shadow-[inset_0_0_18px_rgba(0,0,0,.8),0_0_24px_rgba(245,158,11,0.25)]">
-          {/* Center payline marker */}
-          <div className="pointer-events-none absolute left-3 right-3 top-1/2 z-20 h-[2px] -translate-y-1/2 bg-gradient-to-r from-transparent via-yellow-400/80 to-transparent" />
-          <div className="grid grid-cols-4 gap-1.5">
-            {reels.map(({ strip, pos }, col) => (
-              <div key={col} className="space-y-1.5">
-                {[strip[pos - 1], strip[pos], strip[pos + 1]].map((s, i) => (
+        {/* Reel frame: 5 columns x 3 rows */}
+        <div className="mx-3 mt-3 rounded-2xl border-2 border-amber-500/80 bg-[#241003]/90 p-2 shadow-[inset_0_0_18px_rgba(0,0,0,.8),0_0_24px_rgba(245,158,11,0.25)]">
+          <div className="grid grid-cols-5 gap-1.5">
+            {grid.map((col, c) => (
+              <div
+                key={c}
+                className={`space-y-1.5 ${stopped[c] ? "reel-land" : ""}`}
+              >
+                {col.map((s, r) => (
                   <div
-                    key={i}
-                    className={`h-[72px] overflow-hidden rounded-xl transition-all sm:h-[80px] ${
-                      i === 1
-                        ? "ring-2 ring-yellow-400/70 shadow-[0_0_12px_rgba(250,204,21,0.35)]"
-                        : "opacity-70"
-                    } ${spinning ? "blur-[1px]" : ""}`}
+                    key={r}
+                    className={`h-[64px] overflow-hidden rounded-lg transition-[filter] duration-200 sm:h-[72px] ${
+                      !stopped[c] ? "blur-[2px] brightness-90" : ""
+                    }`}
                   >
-                    <SymbolTile s={s ?? "ruby"} glow={win > 0 && i === 1} />
+                    <SymbolTile s={s} glow={winCells.has(`${c}-${r}`)} />
                   </div>
                 ))}
               </div>
             ))}
-
-            {/* Multiplier reel */}
-            <div className="space-y-1.5 rounded-xl border border-amber-500/50 bg-gradient-to-b from-amber-950/40 to-[#1A0C02] p-1">
-              <div className="py-0.5 text-center text-[8px] font-black uppercase tracking-widest text-yellow-300">
-                Multi
-              </div>
-              {[MULTI[r4 - 1], MULTI[r4], MULTI[r4 + 1]].map((m, i) => (
-                <div
-                  key={i}
-                  className={`flex h-[58px] items-center justify-center rounded-lg border sm:h-[64px] ${
-                    i === 1
-                      ? "border-yellow-400 bg-yellow-500/20 shadow-[0_0_14px_rgba(250,204,21,0.5)]"
-                      : "border-amber-900/60 bg-[#140802] opacity-60"
-                  } ${spinning ? "blur-[1px]" : ""}`}
-                >
-                  {m === "WHEEL" ? (
-                    <span className="flex flex-col items-center text-[9px] font-black text-yellow-300">
-                      <Sparkles className="size-3" />
-                      WHEEL
-                    </span>
-                  ) : (
-                    <span
-                      className={`font-black ${
-                        i === 1 ? "text-xl text-yellow-200" : "text-base text-white/70"
-                      }`}
-                    >
-                      {m}×
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
           </div>
         </div>
 
@@ -385,7 +357,7 @@ export function ReelGame() {
           {win > 0 ? (
             <>
               <div className="text-[10px] font-bold tracking-[0.3em] text-yellow-300">
-                {win >= totalBet * 40 ? "JACKPOT" : win >= totalBet * 16 ? "BIG WIN" : "NICE WIN"}
+                {winTier}
               </div>
               <div className="text-3xl font-black text-emerald-400 drop-shadow-[0_0_12px_rgba(52,211,153,0.6)]">
                 +{win} coins
@@ -393,7 +365,7 @@ export function ReelGame() {
             </>
           ) : (
             <div className="text-[11px] text-yellow-100/70">
-              Match 3 symbols on the glowing centre line
+              Match 3+ symbols left-to-right on any row
             </div>
           )}
           <div className="mt-1 text-[11px] font-bold text-yellow-100">
@@ -418,20 +390,7 @@ export function ReelGame() {
               <div className="text-[9px] font-bold tracking-widest text-yellow-300">
                 TOTAL BET
               </div>
-              <div className="text-xl font-black">{totalBet} coins</div>
-              <button
-                type="button"
-                onClick={() => setExtraBet(!extraBet)}
-                disabled={spinning}
-                aria-pressed={extraBet}
-                className={`mt-1 rounded-lg border px-2 py-0.5 text-[10px] font-black transition-all ${
-                  extraBet
-                    ? "border-yellow-400 bg-yellow-500 text-black"
-                    : "border-amber-800 bg-[#1A0C02] text-yellow-300"
-                }`}
-              >
-                EX {extraBet ? "ON (+50%)" : "OFF"}
-              </button>
+              <div className="text-xl font-black">{bet} coins</div>
             </div>
 
             <button
@@ -447,11 +406,11 @@ export function ReelGame() {
 
           <button
             type="button"
-            disabled={spinning || balance < totalBet}
+            disabled={spinning || balance < bet}
             onClick={spin}
             className="w-full rounded-2xl bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-800 py-4 text-xl font-black tracking-widest text-black shadow-[0_0_25px_#F59E0B] transition-all active:scale-95 disabled:opacity-50"
           >
-            {spinning ? "SPINNING…" : balance < totalBet ? "OUT OF COINS" : "SPIN"}
+            {spinning ? "SPINNING…" : balance < bet ? "OUT OF COINS" : "SPIN"}
           </button>
           <p className="mt-2 text-center text-[9px] text-yellow-100/50">
             Free demo play with virtual coins only. No real-money prizes.
