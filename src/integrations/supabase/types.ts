@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -87,6 +87,8 @@ export type Database = {
           destination: string
           id: string
           kind: string
+          owner_id: string | null
+          request_key: string | null
           resolved_at: string | null
           screenshot_url: string
           status: string
@@ -102,6 +104,8 @@ export type Database = {
           destination?: string
           id?: string
           kind: string
+          owner_id?: string | null
+          request_key?: string | null
           resolved_at?: string | null
           screenshot_url?: string
           status?: string
@@ -117,6 +121,8 @@ export type Database = {
           destination?: string
           id?: string
           kind?: string
+          owner_id?: string | null
+          request_key?: string | null
           resolved_at?: string | null
           screenshot_url?: string
           status?: string
@@ -133,7 +139,69 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      resolve_vault_request: {
+        Args: { p_id: string; p_status: string }
+        Returns: {
+          amount: number
+          created_at: string
+          destination: string
+          id: string
+          kind: string
+          owner_id: string | null
+          request_key: string | null
+          resolved_at: string | null
+          screenshot_url: string
+          status: string
+          updated_at: string
+          user_email: string
+          user_key: string
+          user_name: string
+          utr: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transaction_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      submit_vault_request: {
+        Args: {
+          p_amount: number
+          p_destination: string
+          p_email: string
+          p_key: string
+          p_kind: string
+          p_name: string
+          p_owner: string
+          p_request_key: string
+          p_screenshot: string
+          p_utr: string
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          destination: string
+          id: string
+          kind: string
+          owner_id: string | null
+          request_key: string | null
+          resolved_at: string | null
+          screenshot_url: string
+          status: string
+          updated_at: string
+          user_email: string
+          user_key: string
+          user_name: string
+          utr: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transaction_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       [_ in never]: never

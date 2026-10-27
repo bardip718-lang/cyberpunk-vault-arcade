@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const BUCKET = "deposit-proofs";
 
@@ -58,38 +59,27 @@ function mapRow(row: Row, signed: string | null): VaultRequest {
   };
 }
 
-export const listRequests = createServerFn({ method: "GET" }).handler(
-  async (): Promise<VaultRequest[]> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
-      .from("transaction_requests")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(200);
-    if (error) throw new Error(error.message);
-
-    const rows = (data ?? []) as unknown as Row[];
-    const paths = rows.map((r) => r.screenshot_url).filter((p): p is string => !!p);
-    const signedMap = new Map<string, string>();
-    if (paths.length > 0) {
-      const { data: signed } = await supabaseAdmin.storage
-        .from(BUCKET)
-        .createSignedUrls(paths, 60 * 60);
-      for (const s of signed ?? []) {
-        if (s.path && s.signedUrl) signedMap.set(s.path, s.signedUrl);
-      }
-    }
-
-    return rows.map((r) => mapRow(r, r.screenshot_url ? (signedMap.get(r.screenshot_url) ?? null) : null));
-  },
-);
+async function readRequests(ownerId?: string): Promise<VaultRequest[]> {
+ const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+ let query = supabaseAdmin.from("transaction_requests").select("*").order("created_at", { ascending: false });
+ if (ownerId) query = query.eq("owner_id", ownerId);
+ const rows: Row[] = [];
+ for (let offset=0; ;offset+=500) { const {data,error}=await query.range(offset,offset+499); if(error) throw new Error("Could not load transaction records. Please retry."); rows.push(...(data??[]) as unknown as Row[]); if((data?.length??0)<500)break; }
+ const paths=rows.map(row=>row.screenshot_url).filter((path):path is string=>!!path);
+ const urls=new Map<string,string>();
+ if(paths.length) {const {data}=await supabaseAdmin.storage.from(BUCKET).createSignedUrls(paths,300);for(const item of data??[])if(item.path&&item.signedUrl)urls.set(item.path,item.signedUrl);}
+ return rows.map(row=>mapRow(row, row.screenshot_url ? urls.get(row.screenshot_url)??null : null));
+}
+export const listRequests = createServerFn({method:"GET"}).middleware([requireSupabaseAuth]).handler(async ({context})=>readRequests(context.userId));
+export const listOperatorRequests = createServerFn({method:"POST"}).inputValidator((input:unknown)=>z.object({adminPasscode:z.string().min(1).max(200)}).parse(input)).handler(async ({data})=>{const {assertOperator}=await import("@/lib/admin-auth.server");assertOperator(data.adminPasscode);return readRequests();});
 
 const submitSchema = z.object({
   kind: z.enum(["deposit", "withdrawal"]),
   userKey: z.string().min(1).max(120),
   userName: z.string().min(1).max(120),
   userEmail: z.string().max(160).default(""),
-  amount: z.number().int().min(1).max(1_000_000),
+  amount: z.number().int().min(100).max(1_000_000),
+  requestKey: z.string().uuid(),
   utr: z.string().max(40).default(""),
   destination: z.string().max(300).default(""),
   /** data:image/...;base64,xxxx */
@@ -97,20 +87,17 @@ const submitSchema = z.object({
 });
 
 export const submitRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => submitSchema.parse(input))
-  .handler(async ({ data }): Promise<VaultRequest> => {
+  .handler(async ({ data, context }): Promise<VaultRequest> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    if (data.kind === "withdrawal") {
-      const { availableWithdrawable } = await import("@/lib/balance.server");
-      const available = await availableWithdrawable(data.userKey);
-      if (data.amount > available) {
-        throw new Error(
-          `Withdrawal exceeds your verified balance. You can withdraw up to ₹${available}.`,
-        );
-      }
-    }
-
+    const {data: identity, error: identityError}=await context.supabase.auth.getUser();
+    if(identityError || !identity.user)throw new Error("A verified account is required to submit requests.");
+    const userKey=identity.user.phone || identity.user.email || context.userId;
+    if(data.kind==="deposit" && (!/^\d{12}$/.test(data.utr) || !/^data:image\/(png|jpeg|webp);base64,/.test(data.screenshotDataUrl)))throw new Error("Enter a 12-digit UTR and upload a PNG, JPEG or WebP screenshot.");
+    const {data: existing}=await supabaseAdmin.from("transaction_requests").select("*").eq("request_key",data.requestKey).eq("owner_id",context.userId).maybeSingle();
+    if(existing)return mapRow(existing as unknown as Row,null);
     let screenshotPath = "";
     if (data.screenshotDataUrl.startsWith("data:image/")) {
       const [meta, b64] = data.screenshotDataUrl.split(",");
@@ -118,29 +105,17 @@ export const submitRequest = createServerFn({ method: "POST" })
         const contentType = meta?.slice(5).split(";")[0] ?? "image/png";
         const ext = contentType.split("/")[1]?.replace(/[^a-z0-9]/gi, "") || "png";
         const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-        const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        if(bytes.length>5*1024*1024)throw new Error("Screenshot must be under 5 MB.");
+        const path = `${context.userId}/${data.requestKey}.${ext}`;
         const { error: upErr } = await supabaseAdmin.storage
           .from(BUCKET)
           .upload(path, bytes, { contentType, upsert: false });
-        if (!upErr) screenshotPath = path;
+        if (upErr) throw new Error("Screenshot upload failed. Please retry.");
+        screenshotPath = path;
       }
     }
 
-    const { data: inserted, error } = await supabaseAdmin
-      .from("transaction_requests")
-      .insert({
-        kind: data.kind,
-        user_key: data.userKey,
-        user_name: data.userName,
-        user_email: data.userEmail,
-        amount: data.amount,
-        utr: data.utr,
-        destination: data.destination,
-        status: "pending",
-        screenshot_url: screenshotPath,
-      } as never)
-      .select("*")
-      .single();
+    const {data: inserted,error}=await supabaseAdmin.rpc("submit_vault_request", {p_owner:context.userId,p_key:userKey,p_name:String(identity.user.user_metadata?.["name"]||"Player"),p_email:identity.user.email||"",p_kind:data.kind,p_amount:data.amount,p_utr:data.utr,p_destination:data.destination,p_screenshot:screenshotPath,p_request_key:data.requestKey});
     if (error) throw new Error(error.message);
 
     return mapRow(inserted as unknown as Row, null);
@@ -160,39 +135,7 @@ export const resolveRequest = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: current, error: readErr } = await supabaseAdmin
-      .from("transaction_requests")
-      .select("*")
-      .eq("id", data.id)
-      .single();
-    if (readErr) throw new Error(readErr.message);
-
-    const row = current as unknown as Row;
-    if (row.status !== "pending") {
-      throw new Error("This request has already been resolved.");
-    }
-
-    if (row.kind === "withdrawal" && data.status === "approved") {
-      const { settledBalance } = await import("@/lib/balance.server");
-      const settled = await settledBalance(row.user_key);
-      if (Number(row.amount) > settled) {
-        throw new Error(
-          `Cannot approve: player's verified balance is only ₹${settled}. This payout is not backed by approved deposits.`,
-        );
-      }
-    }
-
-    const { data: updated, error } = await supabaseAdmin
-      .from("transaction_requests")
-      .update({
-        status: data.status,
-        resolved_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as never)
-      .eq("id", data.id)
-      .eq("status", "pending")
-      .select("*")
-      .single();
+    const {data: updated,error}=await supabaseAdmin.rpc("resolve_vault_request",{p_id:data.id,p_status:data.status});
     if (error) throw new Error(error.message);
     return mapRow(updated as unknown as Row, null);
   });

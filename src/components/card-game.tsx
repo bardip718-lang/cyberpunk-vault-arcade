@@ -1,7 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { Volume2, VolumeX, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useVault } from "@/lib/vault-store";
+import { useDemoGame } from "@/lib/use-demo-game";
 import { sfx } from "@/lib/sfx";
 import { toast } from "sonner";
 
@@ -20,7 +20,12 @@ function deal(): Card[] {
 }
 
 export function CardGame() {
-  const { user, addScore } = useVault();
+  const { balance, change: addScore } = useDemoGame();
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const actionLock = useRef(false);
+  const cardsRef = useRef<Card[]>([]);
+  const pickedRef = useRef<number[]>([]);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   const [cards, setCards] = useState<Card[]>(deal);
   const [picked, setPicked] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
@@ -31,16 +36,17 @@ export function CardGame() {
   const play = useCallback((fn: () => void) => sound && fn(), [sound]);
 
   function start() {
-    if (!user) {
-      toast.error("Sign in or enter guest mode to play");
+    if (balance < ENTRY) {
+      toast.error("Not enough demo coins");
       return;
     }
-    if (user.balance < ENTRY) {
-      toast.error("Not enough credits — top up the vault");
-      return;
-    }
-    addScore(-ENTRY);
-    setCards(deal());
+    if (!addScore(-ENTRY)) return;
+    if (timer.current) clearTimeout(timer.current);
+    actionLock.current = false;
+    pickedRef.current = [];
+    const nextDeal = deal();
+    cardsRef.current = nextDeal;
+    setCards(nextDeal);
     setPicked([]);
     setMoves(0);
     setLocked(false);
@@ -48,22 +54,28 @@ export function CardGame() {
   }
 
   function flip(id: number) {
-    if (!active || locked) return;
-    const card = cards[id]!;
+    if (!active || actionLock.current || locked) return;
+    const current = cardsRef.current;
+    const card = current[id];
+    if (!card) return;
     if (card.flipped || card.matched) return;
     play(sfx.flip);
-    const next = cards.map((c) => (c.id === id ? { ...c, flipped: true } : c));
-    const sel = [...picked, id];
+    const next = current.map((c) => (c.id === id ? { ...c, flipped: true } : c));
+    const sel = [...pickedRef.current, id];
+    pickedRef.current = sel;
+    cardsRef.current = next;
     setCards(next);
     setPicked(sel);
 
     if (sel.length === 2) {
       setMoves((m) => m + 1);
       const [a, b] = sel as [number, number];
-      if (next[a]!.icon === next[b]!.icon) {
+      if (next[a]?.icon === next[b]?.icon) {
         play(sfx.match);
         const matched = next.map((c) => (c.id === a || c.id === b ? { ...c, matched: true } : c));
         setCards(matched);
+        cardsRef.current = matched;
+        pickedRef.current = [];
         setPicked([]);
         addScore(MATCH_REWARD);
         if (matched.every((c) => c.matched)) {
@@ -73,9 +85,13 @@ export function CardGame() {
           toast.success(`Grid cleared! Bonus +${CLEAR_BONUS} credits`);
         }
       } else {
+        actionLock.current = true;
         setLocked(true);
-        setTimeout(() => {
-          setCards((cs) => cs.map((c) => (c.id === a || c.id === b ? { ...c, flipped: false } : c)));
+        timer.current = setTimeout(() => {
+          cardsRef.current = cardsRef.current.map((c) => (c.id === a || c.id === b ? { ...c, flipped: false } : c));
+          setCards(cardsRef.current);
+          pickedRef.current = [];
+          actionLock.current = false;
           setPicked([]);
           setLocked(false);
         }, 700);
@@ -84,12 +100,12 @@ export function CardGame() {
   }
 
   return (
-    <section className="neon-panel rounded-xl p-5">
+    <section className="vault-dashboard">
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-display text-xl neon-text">Data Match</h2>
           <p className="text-sm text-muted-foreground">
-            Entry {ENTRY} credits · +{MATCH_REWARD} per match · +{CLEAR_BONUS} clear bonus
+            Demo balance {balance} · Entry {ENTRY} coins · +{MATCH_REWARD} per match · +{CLEAR_BONUS} clear bonus
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -109,11 +125,14 @@ export function CardGame() {
 
       <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
         {cards.map((c) => (
-          <button
+          <Button
+            variant="outline"
+            disabled={!active || locked || c.flipped || c.matched}
+            data-revealed={c.flipped || c.matched}
             key={c.id}
             onClick={() => flip(c.id)}
             aria-label={c.flipped || c.matched ? `Card ${c.icon}` : "Hidden card"}
-            className={`flex aspect-square items-center justify-center rounded-md border text-2xl transition-all duration-200 ${
+            className={`card-face h-auto flex aspect-square items-center justify-center rounded-md border text-2xl transition-all duration-200 ${
               c.matched
                 ? "border-success/60 bg-success/15 text-success"
                 : c.flipped
@@ -122,7 +141,7 @@ export function CardGame() {
             } ${!active ? "opacity-70" : ""}`}
           >
             {c.flipped || c.matched ? c.icon : "?"}
-          </button>
+          </Button>
         ))}
       </div>
 
