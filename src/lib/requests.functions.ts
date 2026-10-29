@@ -139,3 +139,15 @@ export const resolveRequest = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return mapRow(updated as unknown as Row, null);
   });
+
+export type OperatorUser = { id: string; contact: string; name: string; createdAt: string; lastSignIn: string | null; referralCode: string; deposited: number; withdrawn: number; pending: number };
+export const listOperatorUsers = createServerFn({method:"POST"}).inputValidator((input:unknown)=>z.object({adminPasscode:z.string().min(1).max(200)}).parse(input)).handler(async ({data}):Promise<OperatorUser[]>=>{
+  const {assertOperator}=await import("@/lib/admin-auth.server");assertOperator(data.adminPasscode);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const users: import("@supabase/supabase-js").User[]=[];
+  for(let page=1;page<=20;page++){const {data:res,error}=await supabaseAdmin.auth.admin.listUsers({page,perPage:200});if(error)throw new Error("Could not load registered users. Please retry.");users.push(...res.users);if(res.users.length<200)break;}
+  const {data:tx,error:txErr}=await supabaseAdmin.from("transaction_requests").select("owner_id,kind,status,amount");if(txErr)throw new Error("Could not load user activity. Please retry.");
+  const {data:refs}=await supabaseAdmin.from("referrals").select("user_key,code");
+  return users.map(u=>{const contact=u.phone||u.email||"";const mine=(tx??[]).filter(t=>t.owner_id===u.id);const sum=(k:string,s:string)=>mine.filter(t=>t.kind===k&&t.status===s).reduce((a,t)=>a+Number(t.amount),0);
+    return {id:u.id,contact,name:String(u.user_metadata?.["name"]??""),createdAt:u.created_at,lastSignIn:u.last_sign_in_at??null,referralCode:(refs??[]).find(r=>r.user_key===contact||r.user_key===u.id)?.code??"",deposited:sum("deposit","approved"),withdrawn:sum("withdrawal","approved"),pending:mine.filter(t=>t.status==="pending").length};});
+});
