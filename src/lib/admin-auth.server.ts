@@ -17,11 +17,12 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 export function assertOperator(passcode: string): void {
-  const expected = process.env["ADMIN_CONSOLE_PASSCODE"];
+  const expected = process.env["ADMIN_CONSOLE_PASSCODE"]?.trim();
+  passcode = (passcode ?? "").trim();
   if (!expected || expected.length < 6) {
-    throw new Error("Operator passcode is not configured on the server.");
+    throw new Error("Operator passcode is not configured on the server (ADMIN_CONSOLE_PASSCODE missing or under 6 characters). Reset it in Project Settings → Secrets.");
   }
   if (!passcode || !timingSafeEqual(passcode, expected)) {
-    throw new Error("Not authorized: invalid operator passcode.");
+    throw new Error(`Not authorized: invalid operator passcode (you entered ${passcode.length} characters; check spelling and capital letters).`);
   }
 }
