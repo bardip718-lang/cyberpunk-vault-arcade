@@ -144,7 +144,7 @@ export type OperatorUser = { id: string; contact: string; name: string; createdA
 export const listOperatorUsers = createServerFn({method:"POST"}).inputValidator((input:unknown)=>z.object({adminPasscode:z.string().min(1).max(200)}).parse(input)).handler(async ({data}):Promise<OperatorUser[]>=>{
   const {assertOperator}=await import("@/lib/admin-auth.server");assertOperator(data.adminPasscode);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const users=[] as Awaited<ReturnType<typeof supabaseAdmin.auth.admin.listUsers>>["data"]["users"];
+  const users: import("@supabase/supabase-js").User[]=[];
   for(let page=1;page<=20;page++){const {data:res,error}=await supabaseAdmin.auth.admin.listUsers({page,perPage:200});if(error)throw new Error("Could not load registered users. Please retry.");users.push(...res.users);if(res.users.length<200)break;}
   const {data:tx,error:txErr}=await supabaseAdmin.from("transaction_requests").select("owner_id,kind,status,amount");if(txErr)throw new Error("Could not load user activity. Please retry.");
   const {data:refs}=await supabaseAdmin.from("referrals").select("user_key,code");
