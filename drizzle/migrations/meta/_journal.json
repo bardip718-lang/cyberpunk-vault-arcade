@@ -8,6 +8,13 @@
       "when": 1793083562378,
       "tag": "0000_secure_atomic_transaction_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793772438222,
+      "tag": "0001_owner_portal_authorization",
+      "breakpoints": true
     }
   ]
 }
