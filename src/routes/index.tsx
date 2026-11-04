@@ -236,14 +236,12 @@ function Index() {
     setWithdrawOpen(true);
   };
 
+  // Only reveals the console panel. All operator data/actions are authorised
+  // server-side by ADMIN_CONSOLE_PASSCODE inside the console itself; a second
+  // browser-side PIN was confusing (different value) and not real security.
   const handleAdminAccess = () => {
     if (isAdminUnlocked) return;
-    const pin = window.prompt("Enter Admin Secret PIN:");
-    if (pin === "789012") {
-      setIsAdminUnlocked(true);
-    } else if (pin !== null) {
-      alert("Invalid Security PIN");
-    }
+    setIsAdminUnlocked(true);
   };
 
   const filteredGames = GAME_CARDS.filter((g) => {
