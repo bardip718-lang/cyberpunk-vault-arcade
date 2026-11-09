@@ -111,7 +111,7 @@ const GAME_CARDS = [
     players: "Virtual demo coins",
     badge: "NEW",
     badgeBg: "bg-amber-500",
-    image: "/assets/500x/garuda.svg",
+    image: "/assets/garuda-wild.webp",
     gradient: "from-violet-950/80 via-transparent to-black/90",
   },
   {

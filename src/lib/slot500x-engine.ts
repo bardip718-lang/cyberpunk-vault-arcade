@@ -33,7 +33,16 @@ interface Layout {
   gap: number;
 }
 
-const ASSETS: AssetName[] = ["garuda", "ruby", "emerald", "sapphire", "diamond", "bonus"];
+const ASSET_PATHS = {
+  garuda: "/assets/garuda-wild.webp",
+  ruby: "/assets/ruby.webp",
+  emerald: "/assets/emerald.webp",
+  sapphire: "/assets/sapphire.webp",
+  diamond: "/assets/500x/diamond.svg",
+  bonus: "/assets/500x/bonus.svg",
+} as const satisfies Record<AssetName, string>;
+const ASSETS = Object.keys(ASSET_PATHS) as AssetName[];
+const TEMPLE_BACKGROUND = "/assets/temple-bg.jpg";
 const SYMBOL_ASSET: Record<SlotSymbol, AssetName> = {
   wild: "garuda",
   ruby: "ruby",
@@ -70,6 +79,7 @@ export class Slot500xEngine {
   private readonly ctx: CanvasRenderingContext2D;
   private readonly callbacks: EngineCallbacks;
   private readonly images = new Map<AssetName, HTMLImageElement>();
+  private templeBackground: HTMLImageElement | null = null;
   private readonly palette: {
     ink: string;
     deep: string;
@@ -139,21 +149,30 @@ export class Slot500xEngine {
   }
 
   async loadAssets() {
-    await Promise.all(
-      ASSETS.map(
-        (name) =>
-          new Promise<void>((resolve) => {
-            const image = new Image();
-            image.decoding = "async";
-            image.onload = () => {
-              if (!this.destroyed) this.images.set(name, image);
-              resolve();
-            };
-            image.onerror = () => resolve();
-            image.src = `/assets/500x/${name}.svg`;
-          }),
-      ),
+    const symbols = ASSETS.map(
+      (name) =>
+        new Promise<void>((resolve) => {
+          const image = new Image();
+          image.decoding = "async";
+          image.onload = () => {
+            if (!this.destroyed) this.images.set(name, image);
+            resolve();
+          };
+          image.onerror = () => resolve();
+          image.src = ASSET_PATHS[name];
+        }),
     );
+    const background = new Promise<void>((resolve) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.onload = () => {
+        if (!this.destroyed) this.templeBackground = image;
+        resolve();
+      };
+      image.onerror = () => resolve();
+      image.src = TEMPLE_BACKGROUND;
+    });
+    await Promise.all([...symbols, background]);
   }
 
   setReducedMotion(reduced: boolean) {
@@ -191,6 +210,7 @@ export class Slot500xEngine {
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
     this.images.clear();
+    this.templeBackground = null;
     this.particles = [];
   }
 
@@ -296,6 +316,17 @@ export class Slot500xEngine {
     background.addColorStop(1, this.palette.ink);
     ctx.fillStyle = background;
     ctx.fillRect(0, 0, this.width, this.height);
+
+    const temple = this.templeBackground;
+    if (temple?.complete && temple.naturalWidth > 0) {
+      const scale = Math.max(this.width / temple.naturalWidth, this.height / temple.naturalHeight);
+      const width = temple.naturalWidth * scale;
+      const height = temple.naturalHeight * scale;
+      ctx.save();
+      ctx.globalAlpha = 0.2;
+      ctx.drawImage(temple, (this.width - width) / 2, (this.height - height) / 2, width, height);
+      ctx.restore();
+    }
 
     if (!this.reducedMotion) {
       ctx.save();
