@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReelGame } from "@/components/reel-game";
+import { Slot500xGame } from "@/components/slot-500x-game";
 import { CardGame } from "@/components/card-game";
 import { RouletteGame } from "@/components/roulette-game";
 import { AdminConsole } from "@/components/admin-console";
@@ -101,6 +102,17 @@ const GAME_CARDS = [
     badgeBg: "bg-purple-600",
     image: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=500&auto=format&fit=crop&q=80",
     gradient: "from-purple-950/80 via-transparent to-black/90",
+  },
+  {
+    id: "500x",
+    category: "slots",
+    title: "500X",
+    provider: "VAULT CANVAS",
+    players: "Virtual demo coins",
+    badge: "NEW",
+    badgeBg: "bg-amber-500",
+    image: "/assets/500x/garuda.svg",
+    gradient: "from-violet-950/80 via-transparent to-black/90",
   },
   {
     id: "reels",
@@ -298,6 +310,7 @@ function Index() {
           {activeTab === "fortunegems" && <FortuneGemsGame />}
           {activeTab === "roulette" && <RouletteGame />}
           {activeTab === "reels" && <ReelGame />}
+          {activeTab === "500x" && <Slot500xGame />}
           {activeTab === "cards" && <CardGame />}
           {activeTab === "aviator" && <AviatorGame />}
           {activeTab === "mines" && <MinesGame />}
@@ -402,7 +415,7 @@ function Index() {
                 <div className="mt-1 flex items-center gap-1.5 px-0.5">
                   <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981] animate-pulse" />
                   <span className="text-[9.5px] font-bold text-slate-400">
-                    {g.players} playing
+                    {g.players}{g.id === "500x" ? "" : " playing"}
                   </span>
                 </div>
               </div>
@@ -439,8 +452,8 @@ function Index() {
           <section aria-labelledby="intro-title" className="mt-6 space-y-3 text-[12px] leading-relaxed text-muted-foreground">
             <h1 id="intro-title" className="text-base font-black text-foreground">A neon arcade of quick chance games</h1>
             <p>
-              win1 is a small browser arcade with six games: an Aviator-style crash game, two slots
-              (Fortune Gems 2 and Neon Reels 777), Mines, roulette and a card game. Everything runs on a
+              win1 is a small browser arcade with seven games: an Aviator-style crash game, three slots
+              (Fortune Gems 2, Neon Reels 777 and 500X), Mines, roulette and a card game. Everything runs on a
               phone with no app to install.
             </p>
             <p>
